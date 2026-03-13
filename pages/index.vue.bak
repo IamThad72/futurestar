@@ -1,0 +1,24 @@
+<template>
+    <button class="btn btn-primary">daisyUI button</button>
+  <IonPage>
+    <IonHeader>
+      <IonToolbar>
+        <IonTitle>Nuxt + Tailwind + daisyUI + Ionic + Pinia</IonTitle>
+      </IonToolbar>
+    </IonHeader>
+
+    <IonContent class="ion-padding">
+      <button class="btn btn-primary" @click="counter.increment()">
+        daisyUI button (Pinia): {{ counter.count }}
+      </button>
+<button class="btn btn-primary">daisyUI button</button>
+      <IonButton expand="block" class="mt-4" @click="counter.increment()">
+        Ionic button (same store): {{ counter.count }}
+      </IonButton>
+    </IonContent>
+  </IonPage>
+</template>
+
+<script setup lang="ts">
+const counter = useCounterStore();
+</script>

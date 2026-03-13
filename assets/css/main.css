@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+@plugin "daisyui" {
+  /* list the built-in themes you want available */
+  themes: light --default, dark --prefersdark, cupcake, bumblebee, emerald, corporate, synthwave, retro, cyberpunk, valentine, halloween, garden, forest, aqua, lofi, pastel, fantasy, wireframe, black, luxury, dracula, cmyk, autumn, business, acid, lemonade, night, coffee, winter, dim, nord, sunset;
+}
+
+/* your custom theme */
+@plugin "daisyui/theme" {
+  name: "myTheme";
+  default: true;
+  prefersdark: false;
+  color-scheme: light;
+
+  --color-primary: #1e3a8a;
+  --color-primary-content: #ffffff;
+
+  --color-secondary: #1d4ed8;
+  --color-secondary-content: #ffffff;
+
+  --color-accent: #00e200;
+  --color-accent-content: #040404;
+
+  --color-neutral: #040404;
+  --color-neutral-content: #e5e7eb;
+
+  --color-base-100: #fbffff;
+  --color-base-200: #dadede;
+  --color-base-300: #babebe;
+  --color-base-content: #151616;
+
+  --color-info: #00bcff;
+  --color-info-content: #000d16;
+
+  --color-success: #60c648;
+  --color-success-content: #030e02;
+
+  --color-warning: #f36a00;
+  --color-warning-content: #140400;
+
+  --color-error: #dc2626;
+  --color-error-content: #16090a;
+}
+
+/* Safe area for notched devices (use with viewport-fit=cover) */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.pb-safe-content {
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0));
+}

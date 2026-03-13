@@ -1,0 +1,35 @@
+{
+  "name": "myfin",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "migrate": "node scripts/run-migrations.mjs"
+  },
+  "dependencies": {
+    "@azure/cosmos": "^4.9.0",
+    "@headlessui/vue": "^1.7.23",
+    "@heroicons/vue": "^2.2.0",
+    "@nuxtjs/ionic": "^1.0.2",
+    "@pinia/nuxt": "^0.11.3",
+    "mongodb": "^7.0.0",
+    "nuxt": "^4.2.2",
+    "nuxt-charts": "^2.1.2",
+    "nuxt-headlessui": "^1.2.2",
+    "p-limit": "^7.2.0",
+    "pg": "^8.17.2",
+    "pinia": "^3.0.4",
+    "vue": "^3.5.26",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.18",
+    "@types/pg": "^8.16.0",
+    "daisyui": "^5.5.14",
+    "tailwindcss": "^4.1.18"
+  }
+}

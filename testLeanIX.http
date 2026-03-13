@@ -1,0 +1,26 @@
+
+
+
+#  curl -X POST 'https://usfoods.leanix.net/services/mcp-server/v1/mcp' \
+#   -H 'Authorization: Token LXT_xQn7EbGBDwf2xTRkS3djzvuVqbXZvqwYVYj3jBzD' \
+#   -H 'Content-Type: application/json' \
+#   -H 'Accept: application/json, text/event-stream' \
+#   --data '{"id":"health","method":"tools/list"}'
+# ``
+
+curl -X 'POST' \
+  'https://usfoods.leanix.net/services/mcp-server/v1/mcp?toolsets=inventory,report_diagrams,roadmap_planning' \
+  -H 'accept: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -H 'Authorization: Token LXT_xQn7EbGBDwf2xTRkS3djzvuVqbXZvqwYVYj3jBzD' \
+  -H 'Content-Type: application/json' \
+  -H 'Access-Control-Request-Method: POST' \
+  -H 'Access-Control-Request-Headers: authorization, content-type, accept'
+
+  -d '{
+  "jsonrpc": "2.0",
+  "id": "health",
+  "method": "tools/list",
+  "params": {}
+}'
+Request URL
