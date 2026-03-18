@@ -1,17 +1,10 @@
-import { createError, getCookie, readBody } from "h3";
+import { createError, readBody } from "h3";
 import { createDbClient } from "../../utils/db";
-import { SESSION_COOKIE_NAME } from "../../utils/session";
+import { getSessionUserId } from "../../utils/auth";
 import { getUserGroupMembership } from "../../utils/group";
 
 export default defineEventHandler(async (event) => {
-  const sessionToken = getCookie(event, SESSION_COOKIE_NAME);
-
-  if (!sessionToken) {
-    throw createError({
-      statusCode: 401,
-      statusMessage: "You must be logged in to remove members.",
-    });
-  }
+  const userId = await getSessionUserId(event);
 
   const body = await readBody(event);
   const targetUserId = body?.user_id != null ? Number(body.user_id) : NaN;
@@ -27,22 +20,6 @@ export default defineEventHandler(async (event) => {
 
   try {
     await client.connect();
-    const sessionResult = await client.query(
-      `SELECT user_id
-       FROM app_sessions
-       WHERE session_token = $1 AND expires_at > NOW()`,
-      [sessionToken],
-    );
-
-    const userId = sessionResult.rows[0]?.user_id;
-
-    if (!userId) {
-      throw createError({
-        statusCode: 401,
-        statusMessage: "Session expired. Please log in again.",
-      });
-    }
-
     const membership = await getUserGroupMembership(client, userId);
 
     if (!membership?.group_id) {

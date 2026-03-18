@@ -16,6 +16,7 @@
     "@heroicons/vue": "^2.2.0",
     "@nuxtjs/ionic": "^1.0.2",
     "@pinia/nuxt": "^0.11.3",
+    "@supabase/supabase-js": "^2.99.1",
     "mongodb": "^7.0.0",
     "nuxt": "^4.2.2",
     "nuxt-charts": "^2.1.2",

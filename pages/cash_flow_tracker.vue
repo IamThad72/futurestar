@@ -1,5 +1,5 @@
 <template>
-  <section class="mx-auto w-full max-w-7xl space-y-4 sm:space-y-6 p-4 sm:p-6 overflow-x-hidden min-w-0">
+  <section class="mx-auto w-full max-w-screen-2xl space-y-4 sm:space-y-6 p-4 sm:p-6 overflow-x-hidden min-w-0">
     <header>
       <h1 class="text-xl sm:text-2xl font-semibold">Cash Flow Tracker</h1>
     </header>
@@ -33,78 +33,90 @@
         <button type="button" class="btn btn-primary btn-sm" @click="showAddTransaction = true">
           Add Transaction
         </button>
+        <input
+          ref="csvFileInputRef"
+          type="file"
+          accept=".csv"
+          class="hidden"
+          @change="onCsvFileSelected"
+        />
+        <button type="button" class="btn btn-outline btn-sm" @click="csvFileInputRef?.click()">
+          Upload CSV
+        </button>
       </div>
 
-      <!-- Budget vs Actual Table -->
-      <div class="collapse collapse-arrow rounded-lg border border-base-200 bg-base-100">
+      <!-- Budget vs Actual List -->
+      <div class="collapse collapse-arrow rounded-lg border border-base-200 bg-base-100 -mx-2 sm:-mx-4">
         <input type="checkbox" />
-        <div class="collapse-title font-semibold text-lg min-h-0 py-4">
-          Budget vs Actual — {{ monthNames[selectedMonth - 1] }} {{ selectedYear }}
+        <div class="collapse-title font-semibold text-lg min-h-0 py-2 px-4">
+          Budget Details - {{ String(selectedMonth).padStart(2, '0') }}-{{ String(selectedYear).slice(-2) }}
         </div>
-        <div class="collapse-content">
+        <div class="collapse-content px-2 pt-2 pb-4">
         <div v-if="loading" class="p-8 text-center text-base-content/70">Loading...</div>
-        <div v-else class="overflow-x-auto">
-          <table class="table [&_th]:py-2 [&_th]:px-3 [&_td]:py-2 [&_td]:px-3">
-            <thead>
-              <tr>
-                <th>Type</th>
-                <th>Category</th>
-                <th>Sub-category</th>
-                <th class="text-right">Budgeted (mo)</th>
-                <th class="text-right">Actual</th>
-                <th class="text-right">Variance</th>
-              </tr>
-            </thead>
-            <tbody>
-              <!-- Income rows -->
-              <template v-for="group in incomeGroupedByCategory" :key="`inc-${group.category}`">
-                <tr v-for="(item, idx) in group.items" :key="`inc-${item.id}`">
-                  <td v-if="idx === 0" :rowspan="group.items.length" class="font-medium text-success">Income</td>
-                  <td v-if="idx === 0" :rowspan="group.items.length">{{ group.category }}</td>
-                  <td>
-                    <button
-                      type="button"
-                      class="link link-hover link-success text-left"
-                      @click="openSubCategoryModal(item, 'income', group)"
-                    >
-                      {{ item.sub_category || "—" }}
-                    </button>
-                  </td>
-                  <td class="text-right">{{ formatAmount(item.monthly_amount) }}</td>
-                  <td class="text-right">{{ formatAmount(getActualForItem(item.id, 'income')) }}</td>
-                  <td class="text-right" :class="getVarianceClass(item.id, 'income', item.monthly_amount)">
-                    {{ formatVariance(item.id, 'income', item.monthly_amount) }}
-                  </td>
-                </tr>
-              </template>
-              <!-- Expense rows -->
-              <template v-for="group in expensesGroupedByCategory" :key="`exp-${group.category}`">
-                <tr v-for="(item, idx) in group.items" :key="`exp-${item.id}`">
-                  <td v-if="idx === 0" :rowspan="group.items.length" class="font-medium text-error">Expense</td>
-                  <td v-if="idx === 0" :rowspan="group.items.length">{{ group.category }}</td>
-                  <td>
-                    <button
-                      type="button"
-                      class="link link-hover link-error text-left"
-                      @click="openSubCategoryModal(item, 'expense', group)"
-                    >
-                      {{ item.sub_category || "—" }}
-                    </button>
-                  </td>
-                  <td class="text-right">{{ formatAmount(item.monthly_amount) }}</td>
-                  <td class="text-right">{{ formatAmount(getActualForItem(item.id, 'expense')) }}</td>
-                  <td class="text-right" :class="getVarianceClass(item.id, 'expense', item.monthly_amount)">
-                    {{ formatVariance(item.id, 'expense', item.monthly_amount) }}
-                  </td>
-                </tr>
-              </template>
-              <tr v-if="!loading && !incomeGroupedByCategory.length && !expensesGroupedByCategory.length">
-                <td colspan="6" class="text-center text-base-content/50 py-8">
-                  No budget items yet. Add budget items in Cash Flow Management first.
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <div v-else class="space-y-3">
+          <!-- Income lists -->
+          <template v-for="group in incomeGroupedByCategory" :key="`inc-${group.category}`">
+            <ion-list lines="full" class="budget-ion-list rounded-lg border border-base-200 text-xs">
+              <div class="budget-category-header budget-category-income">{{ group.category }}</div>
+              <ion-item lines="full" class="budget-header-item">
+                <div class="grid grid-cols-[1fr_auto_auto] gap-2 w-full text-[10px] font-medium text-base-content/60 uppercase tracking-wide">
+                  <span></span>
+                  <span class="text-right">Budget</span>
+                  <span class="text-right">Actual</span>
+                </div>
+              </ion-item>
+              <ion-item
+                v-for="item in group.items"
+                :key="`inc-${item.id}`"
+                button
+                detail="false"
+                class="budget-data-item"
+                @click="openSubCategoryModal(item, 'income', group)"
+              >
+                <div class="grid grid-cols-[1fr_auto_auto] gap-2 w-full items-center">
+                  <span class="text-black">
+                    {{ item.sub_category || "—" }}
+                    <span :class="getVarianceClass(item.id, 'income', item.monthly_amount)">({{ formatVariance(item.id, 'income', item.monthly_amount) }})</span>
+                  </span>
+                  <span class="text-right">${{ formatAmount(item.monthly_amount) }}</span>
+                  <span class="text-right">${{ formatAmount(getActualForItem(item.id, 'income')) }}</span>
+                </div>
+              </ion-item>
+            </ion-list>
+          </template>
+          <!-- Expense lists -->
+          <template v-for="group in expensesGroupedByCategory" :key="`exp-${group.category}`">
+            <ion-list lines="full" class="budget-ion-list rounded-lg border border-base-200 text-xs">
+              <div class="budget-category-header budget-category-expense">{{ group.category }}</div>
+              <ion-item lines="full" class="budget-header-item">
+                <div class="grid grid-cols-[1fr_auto_auto] gap-2 w-full text-[10px] font-medium text-base-content/60 uppercase tracking-wide">
+                  <span></span>
+                  <span class="text-right">Budget</span>
+                  <span class="text-right">Actual</span>
+                </div>
+              </ion-item>
+              <ion-item
+                v-for="item in group.items"
+                :key="`exp-${item.id}`"
+                button
+                detail="false"
+                class="budget-data-item"
+                @click="openSubCategoryModal(item, 'expense', group)"
+              >
+                <div class="grid grid-cols-[1fr_auto_auto] gap-2 w-full items-center">
+                  <span class="text-black">
+                    {{ item.sub_category || "—" }}
+                    <span :class="getVarianceClass(item.id, 'expense', item.monthly_amount)">({{ formatVariance(item.id, 'expense', item.monthly_amount) }})</span>
+                  </span>
+                  <span class="text-right">${{ formatAmount(item.monthly_amount) }}</span>
+                  <span class="text-right">${{ formatAmount(getActualForItem(item.id, 'expense')) }}</span>
+                </div>
+              </ion-item>
+            </ion-list>
+          </template>
+          <p v-if="!incomeGroupedByCategory.length && !expensesGroupedByCategory.length" class="text-center text-base-content/50 py-8">
+            No budget items yet. Add budget items in Cash Flow Management first.
+          </p>
         </div>
         </div>
       </div>
@@ -171,6 +183,16 @@
               <span class="label-text text-sm">Description</span>
               <input v-model.trim="txForm.description" class="input input-bordered w-full" type="text" placeholder="Optional" />
             </label>
+            <label v-if="showDestinationAccountSelector" class="form-control w-full">
+              <span class="label-text text-sm">Destination Account</span>
+              <select v-model="txForm.cashInvestmentId" class="select select-bordered w-full">
+                <option value="">None</option>
+                <option v-for="acct in cashAccounts" :key="acct.ci_id" :value="String(acct.ci_id)">
+                  {{ [acct.institution, acct.acct_type].filter(Boolean).join(" — ") || `Account #${acct.ci_id}` }}
+                </option>
+              </select>
+              <span class="label-text-alt text-base-content/60">Savings account, 401k, or other cash account</span>
+            </label>
             <div v-if="txError" class="text-sm text-error">{{ txError }}</div>
             <div class="modal-action">
               <button type="button" class="btn btn-ghost" @click="addDialogRef?.close()">Cancel</button>
@@ -201,6 +223,26 @@
               >
                 <template v-if="editingTxId === tx.id">
                   <form @submit.prevent="saveEditTransaction" class="space-y-3">
+                    <label class="form-control w-full">
+                      <span class="label-text text-sm">Category / Sub-category</span>
+                      <select v-model="editTxForm.budgetItemId" class="select select-bordered select-sm w-full" required>
+                        <option value="">Select...</option>
+                        <template v-if="editTxForm.type === 'income'">
+                          <optgroup v-for="group in incomeGroupedByCategory" :key="`edit-inc-${group.category}`" :label="group.category">
+                            <option v-for="item in group.items" :key="item.id" :value="String(item.id)">
+                              {{ item.sub_category || group.category }} — ${{ formatAmount(item.monthly_amount) }}/mo
+                            </option>
+                          </optgroup>
+                        </template>
+                        <template v-else>
+                          <optgroup v-for="group in expensesGroupedByCategory" :key="`edit-exp-${group.category}`" :label="group.category">
+                            <option v-for="item in group.items" :key="item.id" :value="String(item.id)">
+                              {{ item.sub_category || group.category }} — ${{ formatAmount(item.monthly_amount) }}/mo
+                            </option>
+                          </optgroup>
+                        </template>
+                      </select>
+                    </label>
                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <label class="form-control">
                         <span class="label-text text-sm">Date</span>
@@ -214,6 +256,15 @@
                     <label class="form-control">
                       <span class="label-text text-sm">Description</span>
                       <input v-model.trim="editTxForm.description" class="input input-bordered input-sm w-full" type="text" />
+                    </label>
+                    <label v-if="(editTxForm.type === 'expense' && (selectedBudgetItem?.expense_type === 'savings' || selectedBudgetItem?.expense_type === 'investment')) || (editTxForm.type === 'income' && selectedBudgetItem?.income_type === 'gross')" class="form-control">
+                      <span class="label-text text-sm">Destination Account</span>
+                      <select v-model="editTxForm.cashInvestmentId" class="select select-bordered select-sm w-full">
+                        <option value="">None</option>
+                        <option v-for="acct in cashAccounts" :key="acct.ci_id" :value="String(acct.ci_id)">
+                          {{ [acct.institution, acct.acct_type].filter(Boolean).join(" — ") || `Account #${acct.ci_id}` }}
+                        </option>
+                      </select>
                     </label>
                     <div v-if="editTxError" class="text-sm text-error">{{ editTxError }}</div>
                     <div class="flex gap-2">
@@ -230,6 +281,9 @@
                         {{ tx.type === 'income' ? '' : '-' }}${{ formatAmount(tx.amount) }}
                       </span>
                       <div v-if="tx.description" class="text-sm text-base-content/60 mt-0.5">{{ tx.description }}</div>
+                      <div v-if="tx.destination_institution || tx.destination_acct_type" class="text-xs text-base-content/50 mt-0.5">
+                        → {{ [tx.destination_institution, tx.destination_acct_type].filter(Boolean).join(" — ") }}
+                      </div>
                     </div>
                     <div class="flex gap-1">
                       <button type="button" class="btn btn-ghost btn-sm btn-square" aria-label="Edit" @click="startEditTx(tx)">
@@ -244,7 +298,42 @@
               </div>
             </div>
             <div class="mt-4 pt-4 border-t border-base-200">
-              <button type="button" class="btn btn-primary btn-sm" @click="addTxForSubCategory">
+              <template v-if="showAddFormInSubCategory && isSubCategorySavingsOrInvestment">
+                <form @submit.prevent="submitSubCategoryAdd" class="space-y-3 p-3 rounded-lg bg-base-200/50">
+                  <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <label class="form-control">
+                      <span class="label-text text-sm">Date <span class="text-error">*</span></span>
+                      <input v-model="subCategoryAddForm.date" class="input input-bordered input-sm w-full" type="date" required />
+                    </label>
+                    <label class="form-control">
+                      <span class="label-text text-sm">Amount <span class="text-error">*</span></span>
+                      <input v-model.number="subCategoryAddForm.amount" class="input input-bordered input-sm w-full" type="number" min="0" step="0.01" required />
+                    </label>
+                  </div>
+                  <label class="form-control">
+                    <span class="label-text text-sm">Description</span>
+                    <input v-model.trim="subCategoryAddForm.description" class="input input-bordered input-sm w-full" type="text" placeholder="Optional" />
+                  </label>
+                  <label class="form-control">
+                    <span class="label-text text-sm">Destination Account <span class="text-error">*</span></span>
+                    <select v-model="subCategoryAddForm.cashInvestmentId" class="select select-bordered select-sm w-full" required>
+                      <option value="">Select account...</option>
+                      <option v-for="acct in cashAccounts" :key="acct.ci_id" :value="String(acct.ci_id)">
+                        {{ [acct.institution, acct.acct_type].filter(Boolean).join(" — ") || `Account #${acct.ci_id}` }}
+                      </option>
+                    </select>
+                    <span class="label-text-alt text-base-content/60">Account to add the savings amount to</span>
+                  </label>
+                  <div v-if="subCategoryAddError" class="text-sm text-error">{{ subCategoryAddError }}</div>
+                  <div class="flex gap-2">
+                    <button type="submit" class="btn btn-primary btn-sm" :disabled="subCategoryAddSaving">
+                      {{ subCategoryAddSaving ? "Adding..." : "Add" }}
+                    </button>
+                    <button type="button" class="btn btn-ghost btn-sm" @click="cancelSubCategoryAdd">Cancel</button>
+                  </div>
+                </form>
+              </template>
+              <button v-else type="button" class="btn btn-primary btn-sm" @click="addTxFromSubCategory">
                 Add Transaction
               </button>
             </div>
@@ -276,6 +365,167 @@
           <button>close</button>
         </form>
       </dialog>
+
+      <!-- Gross Income Breakdown Modal -->
+      <dialog ref="grossBreakdownModalRef" class="modal" @close="onGrossBreakdownModalClose">
+        <div class="modal-box">
+          <h3 class="font-semibold text-lg mb-4">Gross Income Breakdown</h3>
+          <p class="text-sm text-base-content/60 mb-4">
+            Enter the breakdown for this gross income transaction. All fields are optional.
+          </p>
+          <form @submit.prevent="submitGrossWithBreakdown" class="space-y-4">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <label class="form-control w-full">
+                <span class="label-text text-sm">Family Insurance</span>
+                <input
+                  v-model.number="grossBreakdownForm.familyInsurance"
+                  class="input input-bordered w-full"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                />
+              </label>
+              <label class="form-control w-full">
+                <span class="label-text text-sm">Supplemental Insurance</span>
+                <input
+                  v-model.number="grossBreakdownForm.supplementalInsurance"
+                  class="input input-bordered w-full"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                />
+              </label>
+              <label class="form-control w-full">
+                <span class="label-text text-sm">Savings</span>
+                <input
+                  v-model.number="grossBreakdownForm.savings"
+                  class="input input-bordered w-full"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                />
+              </label>
+              <label class="form-control w-full">
+                <span class="label-text text-sm">Payroll</span>
+                <input
+                  v-model.number="grossBreakdownForm.payroll"
+                  class="input input-bordered w-full"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                />
+              </label>
+            </div>
+            <label v-if="showDestinationInGrossBreakdown" class="form-control w-full">
+              <span class="label-text text-sm">Savings Destination Account</span>
+              <select v-model="grossBreakdownForm.cashInvestmentId" class="select select-bordered w-full">
+                <option value="">None</option>
+                <option v-for="acct in cashAccounts" :key="acct.ci_id" :value="String(acct.ci_id)">
+                  {{ [acct.institution, acct.acct_type].filter(Boolean).join(" — ") || `Account #${acct.ci_id}` }}
+                </option>
+              </select>
+              <span class="label-text-alt text-base-content/60">Where the savings portion goes (e.g. 401k, savings account)</span>
+            </label>
+            <div v-if="grossBreakdownError" class="text-sm text-error">{{ grossBreakdownError }}</div>
+            <div class="modal-action">
+              <button type="button" class="btn btn-ghost" @click="grossBreakdownModalRef?.close()">Cancel</button>
+              <button type="submit" class="btn btn-primary" :disabled="txSubmitting">
+                {{ txSubmitting ? "Adding..." : "Add Transaction" }}
+              </button>
+            </div>
+          </form>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+          <button>close</button>
+        </form>
+      </dialog>
+
+      <!-- CSV Upload Modal -->
+      <dialog ref="csvUploadModalRef" class="modal" @close="closeCsvModal">
+        <div class="modal-box max-w-4xl max-h-[90vh] flex flex-col">
+          <h3 class="font-semibold text-lg mb-4">Import Transactions from CSV</h3>
+          <p class="text-sm text-base-content/60 mb-4">
+            Assign a transaction type and budget item to each row. CSV should have Transaction Date (or Date), Amount, and Description columns.
+          </p>
+          <div v-if="csvError" class="alert alert-error mb-4">
+            <span>{{ csvError }}</span>
+          </div>
+          <div v-if="csvRows.length" class="flex-1 overflow-y-auto min-h-0 border border-base-200 rounded-lg">
+            <table class="table table-pin-rows table-xs">
+              <thead>
+                <tr>
+                  <th class="w-16">Ignore</th>
+                  <th>Date</th>
+                  <th class="text-right">Amount</th>
+                  <th>Description</th>
+                  <th>Type</th>
+                  <th>Budget Item</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, idx) in csvRows" :key="idx" :class="{ 'bg-error/10': !row.ignored && (!row.type || !row.budgetItemId), 'opacity-50 bg-base-200/50': row.ignored }">
+                  <td>
+                    <label class="label cursor-pointer justify-start gap-1">
+                      <input v-model="row.ignored" type="checkbox" class="checkbox checkbox-sm" />
+                      <span class="label-text text-xs">Ignore</span>
+                    </label>
+                  </td>
+                  <td class="whitespace-nowrap">{{ row.date }}</td>
+                  <td class="text-right font-mono">{{ formatAmount(row.amount) }}</td>
+                  <td class="max-w-48 truncate" :title="row.description">{{ row.description || "—" }}</td>
+                  <td>
+                    <select v-model="row.type" class="select select-bordered select-sm w-28" :disabled="row.ignored" @change="row.budgetItemId = ''">
+                      <option value="">Select...</option>
+                      <option value="income">Income</option>
+                      <option value="expense">Expense</option>
+                    </select>
+                  </td>
+                  <td>
+                    <select v-model="row.budgetItemId" class="select select-bordered select-sm w-44" :disabled="row.ignored">
+                      <option value="">Select...</option>
+                      <template v-if="row.type === 'income'">
+                        <optgroup v-for="group in incomeGroupedByCategory" :key="`csv-inc-${group.category}`" :label="group.category">
+                          <option v-for="item in group.items" :key="item.id" :value="String(item.id)">
+                            {{ item.sub_category || group.category }}
+                          </option>
+                        </optgroup>
+                      </template>
+                      <template v-else-if="row.type === 'expense'">
+                        <optgroup v-for="group in expensesGroupedByCategory" :key="`csv-exp-${group.category}`" :label="group.category">
+                          <option v-for="item in group.items" :key="item.id" :value="String(item.id)">
+                            {{ item.sub_category || group.category }}
+                          </option>
+                        </optgroup>
+                      </template>
+                    </select>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-else class="py-8 text-center text-base-content/50 italic">
+            No rows to import. Upload a CSV with date, amount, and description columns.
+          </div>
+          <div class="modal-action mt-4">
+            <button type="button" class="btn btn-ghost" @click="closeCsvModal">Cancel</button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              :disabled="!allCsvRowsHaveType || csvSaving"
+              @click="saveCsvTransactions"
+            >
+              {{ csvSaving ? "Saving..." : `Save ${csvRowsToImport.length} Transaction${csvRowsToImport.length !== 1 ? "s" : ""}` }}
+            </button>
+          </div>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+          <button>close</button>
+        </form>
+      </dialog>
     </div>
   </section>
 </template>
@@ -285,19 +535,44 @@ const auth = useAuthStore();
 const addDialogRef = ref(null);
 const deleteDialogRef = ref(null);
 const subCategoryModalRef = ref(null);
+const csvFileInputRef = ref(null);
+const csvUploadModalRef = ref(null);
 const selectedBudgetItem = ref(null);
 const editingTxId = ref(null);
-const editTxForm = ref({ date: "", amount: null, description: "" });
+const editTxForm = ref({ date: "", amount: null, description: "", budgetItemId: "", type: "income", cashInvestmentId: "" });
 const editTxError = ref("");
 const editTxSaving = ref(false);
 const budgets = ref({ income: [], expenses: [] });
 const transactions = ref([]);
+const cashAccounts = ref([]);
 const loading = ref(true);
 const showAddTransaction = ref(false);
 const txSubmitting = ref(false);
 const deleting = ref(false);
 const txError = ref("");
 const deletingTx = ref(null);
+const csvRows = ref([]);
+const csvError = ref("");
+const csvSaving = ref(false);
+const grossBreakdownModalRef = ref(null);
+const grossBreakdownError = ref("");
+const showAddFormInSubCategory = ref(false);
+const subCategoryAddForm = ref({
+  date: "",
+  amount: null,
+  description: "",
+  cashInvestmentId: "",
+});
+const subCategoryAddError = ref("");
+const subCategoryAddSaving = ref(false);
+
+const grossBreakdownForm = ref({
+  familyInsurance: null,
+  supplementalInsurance: null,
+  savings: null,
+  payroll: null,
+  cashInvestmentId: "",
+});
 
 const now = new Date();
 const currentYear = now.getFullYear();
@@ -319,6 +594,7 @@ const txForm = ref({
   date: "",
   amount: null,
   description: "",
+  cashInvestmentId: "",
 });
 
 /** Group income by category */
@@ -353,6 +629,43 @@ const expensesGroupedByCategory = computed(() => {
   return Object.entries(byCategory)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([category, items]) => ({ category, items }));
+});
+
+/** Selected income budget item (when type is income) */
+const selectedIncomeItem = computed(() => {
+  if (txForm.value.type !== "income" || !txForm.value.budgetItemId) return null;
+  const id = parseInt(txForm.value.budgetItemId, 10);
+  const items = budgets.value.income ?? [];
+  return items.find((i) => i.id === id) ?? null;
+});
+
+/** Whether the selected budget item is gross income */
+const isGrossIncomeSelected = computed(() => {
+  const item = selectedIncomeItem.value;
+  return item && (item.income_type || "gross") === "gross";
+});
+
+/** Selected expense budget item (when type is expense) */
+const selectedExpenseItem = computed(() => {
+  if (txForm.value.type !== "expense" || !txForm.value.budgetItemId) return null;
+  const id = parseInt(txForm.value.budgetItemId, 10);
+  const items = budgets.value.expenses ?? [];
+  return items.find((i) => i.id === id) ?? null;
+});
+
+/** Show destination account selector for income transactions */
+const showDestinationAccountSelector = computed(() => txForm.value.type === "income");
+
+/** Show destination account in gross breakdown when savings amount is entered */
+const showDestinationInGrossBreakdown = computed(() => {
+  const s = grossBreakdownForm.value.savings;
+  return s != null && !isNaN(s) && s > 0;
+});
+
+/** Whether selected budget item in sub-category modal is savings or investment */
+const isSubCategorySavingsOrInvestment = computed(() => {
+  const item = selectedBudgetItem.value;
+  return item && item.type === "expense" && (item.expense_type === "savings" || item.expense_type === "investment");
 });
 
 /** Actual totals by budget item for selected month */
@@ -420,16 +733,19 @@ async function loadData() {
   if (!auth.user) return;
   loading.value = true;
   try {
-    const [budgetData, txData] = await Promise.all([
+    const [budgetData, txData, cashData] = await Promise.all([
       $fetch("/api/budget/list"),
       $fetch("/api/budget/transactions/list"),
+      $fetch("/api/records/cash-and-investments"),
     ]);
     budgets.value = { income: budgetData.income ?? [], expenses: budgetData.expenses ?? [] };
     transactions.value = txData.transactions ?? [];
+    cashAccounts.value = cashData.records ?? [];
   } catch (err) {
     console.error("Failed to load", err);
     budgets.value = { income: [], expenses: [] };
     transactions.value = [];
+    cashAccounts.value = [];
   } finally {
     loading.value = false;
   }
@@ -444,6 +760,7 @@ watch(showAddTransaction, (v) => {
       date: `${selectedYear.value}-${pad(selectedMonth.value)}-01`,
       amount: null,
       description: "",
+      cashInvestmentId: "",
     };
     txError.value = "";
     nextTick(() => addDialogRef.value?.showModal());
@@ -455,6 +772,230 @@ watch(() => txForm.value.type, () => {
   txForm.value.budgetItemId = "";
 });
 
+/** Non-ignored CSV rows that will be imported */
+const csvRowsToImport = computed(() => csvRows.value.filter((r) => !r.ignored));
+
+/** All non-ignored rows have type and budget item selected */
+const allCsvRowsHaveType = computed(() => {
+  const toImport = csvRowsToImport.value;
+  if (!toImport.length) return false;
+  return toImport.every((r) => r.type && r.budgetItemId);
+});
+
+/** Parse CSV text into rows with date, amount, description */
+function parseCsv(text) {
+  const lines = text.split(/\r?\n/).filter((l) => l.trim());
+  if (lines.length < 2) return [];
+  const rows = [];
+  const transactionDateCols = ["transaction date", "trans date", "transaction_date", "transactiondate"];
+  const otherDateCols = ["date", "posting date", "posted"];
+  const amountCols = ["amount", "debit", "credit", "withdrawal", "deposit"];
+  const descCols = ["description", "memo", "details", "name", "payee", "merchant"];
+  const headerParts = parseCsvLine(lines[0]);
+  let dateIdx = headerParts.findIndex((p) => transactionDateCols.some((c) => p.toLowerCase().trim().includes(c)));
+  if (dateIdx < 0) {
+    dateIdx = headerParts.findIndex((p) => otherDateCols.some((c) => p.toLowerCase().trim().includes(c)));
+  }
+  const useDateIdx = dateIdx >= 0 ? dateIdx : 0;
+  let amountIdx = headerParts.findIndex((p) => amountCols.some((c) => p.toLowerCase().includes(c)));
+  if (amountIdx < 0) amountIdx = 1;
+  const descIdx = headerParts.findIndex((p) => descCols.some((c) => p.toLowerCase().includes(c)));
+  const hasDebit = headerParts.some((p) => p.toLowerCase().includes("debit"));
+  const hasCredit = headerParts.some((p) => p.toLowerCase().includes("credit"));
+  for (let i = 1; i < lines.length; i++) {
+    const parts = parseCsvLine(lines[i]);
+    if (parts.length < 2) continue;
+    let dateVal = (parts[useDateIdx] || "").trim();
+    let amountVal = amountIdx >= 0 ? (parts[amountIdx] || "").trim() : "";
+    const descVal = descIdx >= 0 ? (parts[descIdx] || "").trim() : parts.slice(2).join(" ").trim() || "";
+    if (hasDebit && hasCredit) {
+      const debitIdx = headerParts.findIndex((p) => p.toLowerCase().includes("debit"));
+      const creditIdx = headerParts.findIndex((p) => p.toLowerCase().includes("credit"));
+      const debit = parseFloat(String(parts[debitIdx] || "0").replace(/[$,()\s]/g, "")) || 0;
+      const credit = parseFloat(String(parts[creditIdx] || "0").replace(/[$,()\s]/g, "")) || 0;
+      amountVal = credit > 0 ? String(credit) : debit > 0 ? `-${debit}` : "0";
+    }
+    const amount = parseAmount(amountVal);
+    if (amount == null || isNaN(amount) || amount === 0) continue;
+    const normDate = toISODateString(dateVal);
+    if (!normDate) continue;
+    rows.push({
+      date: normDate,
+      amount: Math.abs(amount),
+      description: descVal || null,
+      type: "",
+      budgetItemId: "",
+      ignored: false,
+    });
+  }
+  return rows;
+}
+
+function parseCsvLine(line) {
+  const result = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      inQuotes = !inQuotes;
+    } else if ((c === "," || c === "\t") && !inQuotes) {
+      result.push(current.trim());
+      current = "";
+    } else {
+      current += c;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+function parseAmount(val) {
+  if (!val) return null;
+  const cleaned = String(val).replace(/[$,]/g, "").replace(/\(([^)]+)\)/, "-$1").trim();
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? null : num;
+}
+
+/** Convert any date value to ISO format YYYY-MM-DD for PostgreSQL insert */
+function toISODateString(val) {
+  if (val == null || val === "") return null;
+  const str = String(val).trim();
+  if (!str) return null;
+  const pad = (n) => String(n).padStart(2, "0");
+
+  const isoMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s]|$)/);
+  if (isoMatch) {
+    const y = parseInt(isoMatch[1], 10);
+    const mo = parseInt(isoMatch[2], 10);
+    const d = parseInt(isoMatch[3], 10);
+    if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) {
+      return `${y}-${pad(mo)}-${pad(d)}`;
+    }
+  }
+
+  const slashMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slashMatch) {
+    const a = parseInt(slashMatch[1], 10);
+    const b = parseInt(slashMatch[2], 10);
+    let y = parseInt(slashMatch[3], 10);
+    if (y < 100) y += 2000;
+    let mo, d;
+    if (a > 12) {
+      d = a;
+      mo = b;
+    } else if (b > 12) {
+      mo = a;
+      d = b;
+    } else {
+      mo = a;
+      d = b;
+    }
+    if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) {
+      return `${y}-${pad(mo)}-${pad(d)}`;
+    }
+  }
+
+  const dashMatch = str.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (dashMatch) {
+    const a = parseInt(dashMatch[1], 10);
+    const b = parseInt(dashMatch[2], 10);
+    let y = parseInt(dashMatch[3], 10);
+    if (y < 100) y += 2000;
+    let mo, d;
+    if (a > 12) {
+      d = a;
+      mo = b;
+    } else if (b > 12) {
+      mo = a;
+      d = b;
+    } else {
+      mo = a;
+      d = b;
+    }
+    if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) {
+      return `${y}-${pad(mo)}-${pad(d)}`;
+    }
+  }
+
+  const num = parseInt(str, 10);
+  if (!isNaN(num) && num > 1000) {
+    const excelEpoch = new Date(1899, 11, 30);
+    const d = new Date(excelEpoch.getTime() + num * 86400000);
+    if (!isNaN(d.getTime())) {
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
+  }
+
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) {
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+  return null;
+}
+
+function onCsvFileSelected(ev) {
+  const file = ev?.target?.files?.[0];
+  ev.target.value = "";
+  if (!file) return;
+  csvError.value = "";
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const text = e.target?.result;
+      if (!text) {
+        csvError.value = "Could not read file.";
+        return;
+      }
+      const rows = parseCsv(text);
+      if (!rows.length) {
+        csvError.value = "No valid transactions found. Ensure CSV has date, amount, and description columns.";
+        csvRows.value = [];
+      } else {
+        csvRows.value = rows;
+        csvError.value = "";
+        nextTick(() => csvUploadModalRef.value?.showModal());
+      }
+    } catch (err) {
+      csvError.value = err?.message || "Failed to parse CSV.";
+      csvRows.value = [];
+    }
+  };
+  reader.readAsText(file, "UTF-8");
+}
+
+function closeCsvModal() {
+  csvUploadModalRef.value?.close();
+  csvRows.value = [];
+  csvError.value = "";
+}
+
+async function saveCsvTransactions() {
+  if (!allCsvRowsHaveType.value || csvSaving.value) return;
+  csvError.value = "";
+  csvSaving.value = true;
+  try {
+    for (const row of csvRowsToImport.value) {
+      const dateStr = toISODateString(row.date);
+      if (!dateStr) {
+        csvError.value = `Invalid date for row: ${row.description || row.amount}`;
+        return;
+      }
+      const body =
+        row.type === "income"
+          ? { type: "income", income_id: parseInt(row.budgetItemId, 10), transaction_date: dateStr, amount: row.amount, description: row.description || null }
+          : { type: "expense", expense_id: parseInt(row.budgetItemId, 10), transaction_date: dateStr, amount: row.amount, description: row.description || null };
+      await $fetch("/api/budget/transactions/submit", { method: "POST", body });
+    }
+    closeCsvModal();
+    await loadData();
+  } catch (err) {
+    csvError.value = err?.data?.message || err?.message || "Failed to save transactions.";
+  } finally {
+    csvSaving.value = false;
+  }
+}
+
 async function submitTransaction() {
   txError.value = "";
   const id = txForm.value.budgetItemId;
@@ -464,23 +1005,81 @@ async function submitTransaction() {
     return;
   }
 
+  if (txForm.value.type === "income" && isGrossIncomeSelected.value) {
+    addDialogRef.value?.close();
+    grossBreakdownForm.value = {
+      familyInsurance: null,
+      supplementalInsurance: null,
+      savings: null,
+      payroll: null,
+      cashInvestmentId: "",
+    };
+    grossBreakdownError.value = "";
+    nextTick(() => grossBreakdownModalRef.value?.showModal());
+    return;
+  }
+
+  await doSubmitTransaction();
+}
+
+async function doSubmitTransaction(breakdown = null) {
+  const id = txForm.value.budgetItemId;
+  const amount = txForm.value.amount;
+  let description = txForm.value.description || null;
+  if (breakdown) {
+    const parts = [];
+    if (breakdown.familyInsurance != null && !isNaN(breakdown.familyInsurance) && breakdown.familyInsurance > 0) {
+      parts.push(`Family Insurance: $${formatAmount(breakdown.familyInsurance)}`);
+    }
+    if (breakdown.supplementalInsurance != null && !isNaN(breakdown.supplementalInsurance) && breakdown.supplementalInsurance > 0) {
+      parts.push(`Supplemental Insurance: $${formatAmount(breakdown.supplementalInsurance)}`);
+    }
+    if (breakdown.savings != null && !isNaN(breakdown.savings) && breakdown.savings > 0) {
+      parts.push(`Savings: $${formatAmount(breakdown.savings)}`);
+    }
+    if (breakdown.payroll != null && !isNaN(breakdown.payroll) && breakdown.payroll > 0) {
+      parts.push(`Payroll: $${formatAmount(breakdown.payroll)}`);
+    }
+    if (parts.length) {
+      const breakdownStr = `Breakdown: ${parts.join(", ")}`;
+      description = description ? `${description}. ${breakdownStr}` : breakdownStr;
+    }
+  }
+
+  const cashInvestmentId = breakdown?.cashInvestmentId
+    ? (breakdown.cashInvestmentId ? parseInt(String(breakdown.cashInvestmentId), 10) : null)
+    : (txForm.value.cashInvestmentId ? parseInt(String(txForm.value.cashInvestmentId), 10) : null);
+  const effectiveCiId = cashInvestmentId && !isNaN(cashInvestmentId) && cashInvestmentId > 0 ? cashInvestmentId : null;
+
   txSubmitting.value = true;
   try {
     const body =
       txForm.value.type === "income"
-        ? { type: "income", income_id: parseInt(id, 10), transaction_date: txForm.value.date, amount, description: txForm.value.description || null }
-        : { type: "expense", expense_id: parseInt(id, 10), transaction_date: txForm.value.date, amount, description: txForm.value.description || null };
+        ? { type: "income", income_id: parseInt(id, 10), transaction_date: txForm.value.date, amount, description, cash_investment_id: effectiveCiId }
+        : { type: "expense", expense_id: parseInt(id, 10), transaction_date: txForm.value.date, amount, description, cash_investment_id: effectiveCiId };
     await $fetch("/api/budget/transactions/submit", { method: "POST", body });
     addDialogRef.value?.close();
+    grossBreakdownModalRef.value?.close();
     await loadData();
     if (selectedBudgetItem.value) {
       nextTick(() => subCategoryModalRef.value?.showModal());
     }
   } catch (err) {
+    grossBreakdownError.value = err?.data?.message || err?.message || "Failed to add transaction.";
     txError.value = err?.data?.message || err?.message || "Failed to add transaction.";
   } finally {
     txSubmitting.value = false;
   }
+}
+
+async function submitGrossWithBreakdown() {
+  grossBreakdownError.value = "";
+  await doSubmitTransaction(grossBreakdownForm.value);
+}
+
+function onGrossBreakdownModalClose() {
+  grossBreakdownError.value = "";
+  nextTick(() => addDialogRef.value?.showModal());
 }
 
 function openSubCategoryModal(item, type, group) {
@@ -491,16 +1090,22 @@ function openSubCategoryModal(item, type, group) {
     sub_category: item.sub_category || null,
   };
   editingTxId.value = null;
+  showAddFormInSubCategory.value = false;
   nextTick(() => subCategoryModalRef.value?.showModal());
 }
 
 function startEditTx(tx) {
   editingTxId.value = tx.id;
   const d = new Date(tx.date);
+  const type = tx.type === "income" ? "income" : "expense";
+  const budgetItemId = tx.income_id != null ? String(tx.income_id) : String(tx.expense_id);
   editTxForm.value = {
     date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
     amount: tx.amount,
     description: tx.description || "",
+    budgetItemId,
+    type,
+    cashInvestmentId: tx.cash_investment_id != null ? String(tx.cash_investment_id) : "",
   };
   editTxError.value = "";
 }
@@ -513,19 +1118,35 @@ async function saveEditTransaction() {
   if (!editingTxId.value) return;
   editTxError.value = "";
   const amount = editTxForm.value.amount;
+  const budgetItemId = editTxForm.value.budgetItemId;
   if (amount == null || isNaN(amount)) {
     editTxError.value = "Enter a valid amount.";
     return;
   }
+  if (!budgetItemId) {
+    editTxError.value = "Select a category / sub-category.";
+    return;
+  }
   editTxSaving.value = true;
   try {
+    const cashInvestmentId = editTxForm.value.cashInvestmentId
+      ? parseInt(String(editTxForm.value.cashInvestmentId), 10)
+      : null;
+    const effectiveCiId = cashInvestmentId && !isNaN(cashInvestmentId) && cashInvestmentId > 0 ? cashInvestmentId : null;
+    const body = {
+      transaction_date: editTxForm.value.date,
+      amount,
+      description: editTxForm.value.description || null,
+      cash_investment_id: effectiveCiId,
+    };
+    if (editTxForm.value.type === "income") {
+      body.income_id = parseInt(budgetItemId, 10);
+    } else {
+      body.expense_id = parseInt(budgetItemId, 10);
+    }
     await $fetch(`/api/budget/transactions/${editingTxId.value}`, {
       method: "PUT",
-      body: {
-        transaction_date: editTxForm.value.date,
-        amount,
-        description: editTxForm.value.description || null,
-      },
+      body,
     });
     editingTxId.value = null;
     await loadData();
@@ -541,20 +1162,77 @@ function confirmDeleteFromModal(tx) {
   confirmDelete(tx);
 }
 
-function addTxForSubCategory() {
+function addTxFromSubCategory() {
   const item = selectedBudgetItem.value;
   if (!item) return;
-  subCategoryModalRef.value?.close();
-  const pad = (n) => String(n).padStart(2, "0");
-  txForm.value = {
-    type: item.type,
-    budgetItemId: String(item.id),
-    date: `${selectedYear.value}-${pad(selectedMonth.value)}-01`,
-    amount: null,
-    description: "",
-  };
-  txError.value = "";
-  nextTick(() => addDialogRef.value?.showModal());
+  if (item.type === "expense" && (item.expense_type === "savings" || item.expense_type === "investment")) {
+    const pad = (n) => String(n).padStart(2, "0");
+    subCategoryAddForm.value = {
+      date: `${selectedYear.value}-${pad(selectedMonth.value)}-01`,
+      amount: null,
+      description: "",
+      cashInvestmentId: "",
+    };
+    subCategoryAddError.value = "";
+    showAddFormInSubCategory.value = true;
+  } else {
+    subCategoryModalRef.value?.close();
+    const pad = (n) => String(n).padStart(2, "0");
+    txForm.value = {
+      type: item.type,
+      budgetItemId: String(item.id),
+      date: `${selectedYear.value}-${pad(selectedMonth.value)}-01`,
+      amount: null,
+      description: "",
+      cashInvestmentId: "",
+    };
+    txError.value = "";
+    nextTick(() => addDialogRef.value?.showModal());
+  }
+}
+
+function cancelSubCategoryAdd() {
+  showAddFormInSubCategory.value = false;
+  subCategoryAddError.value = "";
+}
+
+async function submitSubCategoryAdd() {
+  const item = selectedBudgetItem.value;
+  if (!item || item.type !== "expense") return;
+  subCategoryAddError.value = "";
+  const amount = subCategoryAddForm.value.amount;
+  const cashInvestmentId = subCategoryAddForm.value.cashInvestmentId
+    ? parseInt(String(subCategoryAddForm.value.cashInvestmentId), 10)
+    : null;
+  if (amount == null || isNaN(amount)) {
+    subCategoryAddError.value = "Enter a valid amount.";
+    return;
+  }
+  if (!cashInvestmentId || isNaN(cashInvestmentId) || cashInvestmentId <= 0) {
+    subCategoryAddError.value = "Select a destination account.";
+    return;
+  }
+  subCategoryAddSaving.value = true;
+  try {
+    await $fetch("/api/budget/transactions/submit", {
+      method: "POST",
+      body: {
+        type: "expense",
+        expense_id: item.id,
+        transaction_date: subCategoryAddForm.value.date,
+        amount,
+        description: subCategoryAddForm.value.description || null,
+        cash_investment_id: cashInvestmentId,
+      },
+    });
+    showAddFormInSubCategory.value = false;
+    subCategoryAddForm.value = { date: "", amount: null, description: "", cashInvestmentId: "" };
+    await loadData();
+  } catch (err) {
+    subCategoryAddError.value = err?.data?.message || err?.message || "Failed to add transaction.";
+  } finally {
+    subCategoryAddSaving.value = false;
+  }
 }
 
 function confirmDelete(tx) {
@@ -592,3 +1270,35 @@ watch(
   { immediate: true },
 );
 </script>
+
+<style scoped>
+.budget-ion-list {
+  --background: var(--fallback-b1, oklch(1 0 0));
+}
+.budget-category-header {
+  font-size: 0.75rem;
+  font-weight: 500;
+  min-height: 28px;
+  padding: 0.25rem 0.5rem;
+  display: flex;
+  align-items: center;
+  border-radius: 0.375rem;
+}
+.budget-category-income {
+  background: #166534;
+  color: #fff;
+}
+.budget-category-expense {
+  background: #991b1b;
+  color: #fff;
+}
+.budget-ion-list .budget-header-item,
+.budget-ion-list .budget-data-item {
+  --background: transparent;
+  --padding-start: 0.5rem;
+  --padding-end: 0.5rem;
+  --inner-padding-end: 0;
+  --min-height: 32px;
+  font-size: 0.75rem;
+}
+</style>

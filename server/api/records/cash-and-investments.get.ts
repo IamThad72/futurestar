@@ -1,38 +1,15 @@
-import { createError, getCookie } from "h3";
+import { createError } from "h3";
 import { createDbClient } from "../../utils/db";
-import { SESSION_COOKIE_NAME } from "../../utils/session";
+import { getSessionUserId } from "../../utils/auth";
 import { getUserGroupId } from "../../utils/group";
 
 export default defineEventHandler(async (event) => {
-  const sessionToken = getCookie(event, SESSION_COOKIE_NAME);
-
-  if (!sessionToken) {
-    throw createError({
-      statusCode: 401,
-      statusMessage: "You must be logged in to view records.",
-    });
-  }
+  const userId = await getSessionUserId(event);
 
   const client = createDbClient();
 
   try {
     await client.connect();
-    const sessionResult = await client.query(
-      `SELECT user_id
-       FROM app_sessions
-       WHERE session_token = $1 AND expires_at > NOW()`,
-      [sessionToken],
-    );
-
-    const userId = sessionResult.rows[0]?.user_id;
-
-    if (!userId) {
-      throw createError({
-        statusCode: 401,
-        statusMessage: "Session expired. Please log in again.",
-      });
-    }
-
     const groupId = await getUserGroupId(client, userId);
     const queryText = groupId
       ? `SELECT * FROM cash_and_investments WHERE user_id = $1 OR group_id = $2 OR user_id IN (SELECT user_id FROM group_members WHERE group_id = $2)`

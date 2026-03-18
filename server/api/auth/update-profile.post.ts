@@ -1,15 +1,12 @@
-import { createError, readBody, getCookie } from "h3";
+import { createError, readBody } from "h3";
 import { createDbClient } from "../../utils/db";
-import { SESSION_COOKIE_NAME } from "../../utils/session";
+import { getSessionUserId } from "../../utils/auth";
 
 const MAX_PHOTO_SIZE = 240;
 const MAX_DATA_LENGTH = 100000; // ~100KB for base64 240x240 jpeg
 
 export default defineEventHandler(async (event) => {
-  const sessionToken = getCookie(event, SESSION_COOKIE_NAME);
-  if (!sessionToken) {
-    throw createError({ statusCode: 401, statusMessage: "Not authenticated." });
-  }
+  const userId = await getSessionUserId(event);
 
   const body = await readBody(event);
   const profilePhoto = body?.profilePhoto; // base64 data URL
@@ -17,15 +14,6 @@ export default defineEventHandler(async (event) => {
   const client = createDbClient();
   try {
     await client.connect();
-
-    const sessionResult = await client.query(
-      `SELECT user_id FROM app_sessions WHERE session_token = $1 AND expires_at > NOW()`,
-      [sessionToken]
-    );
-    if (!sessionResult.rowCount) {
-      throw createError({ statusCode: 401, statusMessage: "Session expired." });
-    }
-    const userId = sessionResult.rows[0].user_id;
 
     // Allow empty string to remove photo
     const photoStr = profilePhoto === undefined || profilePhoto === null

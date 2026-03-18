@@ -48,6 +48,26 @@
                 v-model="form.type"
                 type="radio"
                 name="budget-item-type"
+                value="interest"
+                class="radio radio-primary"
+              />
+              <span>Interest</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input
+                v-model="form.type"
+                type="radio"
+                name="budget-item-type"
+                value="other"
+                class="radio radio-primary"
+              />
+              <span>Other</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input
+                v-model="form.type"
+                type="radio"
+                name="budget-item-type"
                 value="deduction"
                 class="radio radio-primary"
               />
@@ -92,7 +112,7 @@
                 v-model.trim="form.category"
                 class="input input-bordered w-full"
                 type="text"
-                :placeholder="form.type === 'tax' ? 'e.g. Federal, State, FICA' : form.type === 'deduction' ? 'e.g. 401k, Health Insurance' : form.type === 'savings' ? 'e.g. Emergency Fund, Vacation' : form.type === 'investment' ? 'e.g. Brokerage, IRA' : 'e.g. Housing, Transportation, Salary'"
+                :placeholder="form.type === 'tax' ? 'e.g. Federal, State, FICA' : form.type === 'deduction' ? 'e.g. 401k, Health Insurance' : form.type === 'interest' ? 'e.g. Savings, Dividends' : form.type === 'other' ? 'e.g. Rental, Side Gig, Bonus' : form.type === 'savings' ? 'e.g. Emergency Fund, Vacation' : form.type === 'investment' ? 'e.g. Brokerage, IRA' : 'e.g. Housing, Transportation, Salary'"
                 required
               />
             </label>
@@ -107,7 +127,7 @@
             </label>
           </div>
 
-          <label class="form-control w-full">
+          <label v-if="form.type !== 'savings' && form.type !== 'investment'" class="form-control w-full">
             <span class="label-text text-sm">Description</span>
             <input
               v-model.trim="form.description"
@@ -115,6 +135,16 @@
               type="text"
               placeholder="Optional notes"
             />
+          </label>
+          <label v-else class="form-control w-full">
+            <span class="label-text text-sm">Destination Account</span>
+            <select v-model="form.cash_investment_id" class="select select-bordered w-full">
+              <option value="">None</option>
+              <option v-for="acct in cashAccounts" :key="acct.ci_id" :value="String(acct.ci_id)">
+                {{ [acct.institution, acct.acct_type].filter(Boolean).join(" — ") || `Account #${acct.ci_id}` }}
+              </option>
+            </select>
+            <span class="label-text-alt text-base-content/60">Account to add this amount to</span>
           </label>
 
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -163,8 +193,12 @@
           <h2 class="text-lg font-semibold mb-4 flex flex-wrap items-center gap-x-4 gap-y-1">
             <span class="text-success">Income & Payroll</span>
             <span v-if="!loading" class="text-base font-normal text-success">
-              Net: ${{ formatAmount(netPay.monthly) }}/mo
-              <span class="text-base-content/70">(${{ formatAmount(netPay.annual) }}/yr)</span>
+              Total Income: ${{ formatAmount(totalIncome.monthly) }}/mo
+              <span class="text-base-content/70">(${{ formatAmount(totalIncome.annual) }}/yr)</span>
+            </span>
+            <span v-if="!loading" class="text-base font-normal text-primary">
+              Net Income: ${{ formatAmount(netIncome.monthly) }}/mo
+              <span class="text-base-content/70">(${{ formatAmount(netIncome.annual) }}/yr)</span>
             </span>
           </h2>
           <div v-if="loading" class="text-sm text-base-content/70">Loading...</div>
@@ -184,7 +218,7 @@
                   <div class="list-col-grow min-w-0">
                     <div>{{ item.sub_category || "—" }}</div>
                     <div class="text-xs opacity-60" :class="item.income_type === 'tax' || item.income_type === 'deduction' ? 'text-warning' : 'text-success'">
-                      {{ item.income_type === 'tax' || item.income_type === 'deduction' ? '-' : '' }}${{ formatAmount(item.monthly_amount) }}/mo
+                      {{ (item.income_type === 'tax' || item.income_type === 'deduction') ? '-' : '' }}${{ formatAmount(item.monthly_amount) }}/mo
                     </div>
                   </div>
                   <div class="flex gap-1 shrink-0">
@@ -259,6 +293,14 @@
                 <span>Gross Pay</span>
               </label>
               <label class="flex items-center gap-2 cursor-pointer">
+                <input v-model="editForm.income_type" type="radio" name="edit-income-type" value="interest" class="radio radio-primary" />
+                <span>Interest</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input v-model="editForm.income_type" type="radio" name="edit-income-type" value="other" class="radio radio-primary" />
+                <span>Other</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
                 <input v-model="editForm.income_type" type="radio" name="edit-income-type" value="tax" class="radio radio-primary" />
                 <span>Tax</span>
               </label>
@@ -301,13 +343,22 @@
                 />
               </label>
             </div>
-            <label class="form-control w-full">
+            <label v-if="editingItem._type !== 'expense' || (editForm.expense_type !== 'savings' && editForm.expense_type !== 'investment')" class="form-control w-full">
               <span class="label-text text-sm">Description</span>
               <input
                 v-model.trim="editForm.description"
                 class="input input-bordered w-full"
                 type="text"
               />
+            </label>
+            <label v-else class="form-control w-full">
+              <span class="label-text text-sm">Destination Account</span>
+              <select v-model="editForm.cash_investment_id" class="select select-bordered w-full">
+                <option value="">None</option>
+                <option v-for="acct in cashAccounts" :key="acct.ci_id" :value="String(acct.ci_id)">
+                  {{ [acct.institution, acct.acct_type].filter(Boolean).join(" — ") || `Account #${acct.ci_id}` }}
+                </option>
+              </select>
             </label>
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
               <label class="form-control w-full">
@@ -388,11 +439,14 @@ const editError = ref("");
 const editingItem = ref(null);
 const deletingItem = ref(null);
 
+const cashAccounts = ref([]);
+
 const form = ref({
   type: "income",
   category: "",
   sub_category: "",
   description: "",
+  cash_investment_id: "",
   monthly_amount: null,
   annual_amount: null,
 });
@@ -403,6 +457,7 @@ const editForm = ref({
   category: "",
   sub_category: "",
   description: "",
+  cash_investment_id: "",
   monthly_amount: null,
   annual_amount: null,
 });
@@ -411,6 +466,8 @@ const incomeByType = computed(() => {
   const income = budgets.value.income ?? [];
   return {
     gross: income.filter((i) => (i.income_type || "gross") === "gross"),
+    interest: income.filter((i) => i.income_type === "interest"),
+    other: income.filter((i) => i.income_type === "other"),
     tax: income.filter((i) => i.income_type === "tax"),
     deduction: income.filter((i) => i.income_type === "deduction"),
   };
@@ -425,6 +482,14 @@ const totals = computed(() => ({
     monthly: sumAmounts(incomeByType.value.gross, "monthly_amount"),
     annual: sumAmounts(incomeByType.value.gross, "annual_amount"),
   },
+  interest: {
+    monthly: sumAmounts(incomeByType.value.interest, "monthly_amount"),
+    annual: sumAmounts(incomeByType.value.interest, "annual_amount"),
+  },
+  other: {
+    monthly: sumAmounts(incomeByType.value.other, "monthly_amount"),
+    annual: sumAmounts(incomeByType.value.other, "annual_amount"),
+  },
   tax: {
     monthly: sumAmounts(incomeByType.value.tax, "monthly_amount"),
     annual: sumAmounts(incomeByType.value.tax, "annual_amount"),
@@ -435,10 +500,52 @@ const totals = computed(() => ({
   },
 }));
 
-const netPay = computed(() => ({
-  monthly: totals.value.gross.monthly - totals.value.tax.monthly - totals.value.deduction.monthly,
-  annual: totals.value.gross.annual - totals.value.tax.annual - totals.value.deduction.annual,
+/** Total Income = Gross Income + Interest + Other (excludes tax/deduction) */
+const totalIncome = computed(() => ({
+  monthly: totals.value.gross.monthly + totals.value.interest.monthly + totals.value.other.monthly,
+  annual: totals.value.gross.annual + totals.value.interest.annual + totals.value.other.annual,
 }));
+
+/** Match deduction by category/sub_category (case-insensitive) */
+function matchDeduction(items, patterns) {
+  const match = (text) => {
+    const t = (text || "").toLowerCase();
+    return patterns.some((p) => t.includes(p));
+  };
+  return (items ?? []).filter(
+    (i) => match(i.category) || match(i.sub_category),
+  );
+}
+
+/** Net Income = Income + Interest - Family Insurance - Supplemental Life Insurance - Savings - Taxes */
+const netIncome = computed(() => {
+  const deductions = incomeByType.value.deduction;
+  const familyInsurance = matchDeduction(deductions, ["family insurance", "family health", "health insurance"]);
+  const supplementalLife = matchDeduction(deductions, ["supplemental life", "supplemental life insurance"]);
+  const savingsItems = (budgets.value.expenses ?? []).filter((e) => e.expense_type === "savings");
+
+  const familyInsuranceMonthly = sumAmounts(familyInsurance, "monthly_amount");
+  const familyInsuranceAnnual = sumAmounts(familyInsurance, "annual_amount");
+  const supplementalLifeMonthly = sumAmounts(supplementalLife, "monthly_amount");
+  const supplementalLifeAnnual = sumAmounts(supplementalLife, "annual_amount");
+  const savingsMonthly = sumAmounts(savingsItems, "monthly_amount");
+  const savingsAnnual = sumAmounts(savingsItems, "annual_amount");
+
+  return {
+    monthly:
+      totalIncome.value.monthly -
+      familyInsuranceMonthly -
+      supplementalLifeMonthly -
+      savingsMonthly -
+      totals.value.tax.monthly,
+    annual:
+      totalIncome.value.annual -
+      familyInsuranceAnnual -
+      supplementalLifeAnnual -
+      savingsAnnual -
+      totals.value.tax.annual,
+  };
+});
 
 const totalExpenses = computed(() => {
   const items = budgets.value.expenses ?? [];
@@ -527,11 +634,16 @@ async function loadBudgets() {
   if (!auth.user) return;
   loading.value = true;
   try {
-    const data = await $fetch("/api/budget/list");
-    budgets.value = { income: data.income ?? [], expenses: data.expenses ?? [] };
+    const [budgetData, cashData] = await Promise.all([
+      $fetch("/api/budget/list"),
+      $fetch("/api/records/cash-and-investments"),
+    ]);
+    budgets.value = { income: budgetData.income ?? [], expenses: budgetData.expenses ?? [] };
+    cashAccounts.value = cashData.records ?? [];
   } catch (err) {
     console.error("Failed to load budgets", err);
     budgets.value = { income: [], expenses: [] };
+    cashAccounts.value = [];
   } finally {
     loading.value = false;
   }
@@ -551,12 +663,13 @@ async function submitBudget() {
     await $fetch("/api/budget/submit", {
       method: "POST",
       body: {
-        type: form.value.type === "income" || form.value.type === "tax" || form.value.type === "deduction" ? "income" : "expense",
-        income_type: form.value.type === "income" ? "gross" : form.value.type === "tax" ? "tax" : form.value.type === "deduction" ? "deduction" : undefined,
+        type: form.value.type === "income" || form.value.type === "tax" || form.value.type === "deduction" || form.value.type === "interest" || form.value.type === "other" ? "income" : "expense",
+        income_type: form.value.type === "income" ? "gross" : form.value.type === "tax" ? "tax" : form.value.type === "deduction" ? "deduction" : form.value.type === "interest" ? "interest" : form.value.type === "other" ? "other" : undefined,
         expense_type: form.value.type === "savings" ? "savings" : form.value.type === "investment" ? "investment" : form.value.type === "expense" ? "expense" : undefined,
         category: form.value.category,
         sub_category: form.value.sub_category || null,
-        description: form.value.description || null,
+        description: form.value.type === "savings" || form.value.type === "investment" ? null : form.value.description || null,
+        cash_investment_id: (form.value.type === "savings" || form.value.type === "investment") && form.value.cash_investment_id ? parseInt(String(form.value.cash_investment_id), 10) : null,
         monthly_amount: monthly != null && !isNaN(monthly) ? monthly : null,
         annual_amount: annual != null && !isNaN(annual) ? annual : null,
       },
@@ -566,6 +679,7 @@ async function submitBudget() {
       category: "",
       sub_category: "",
       description: "",
+      cash_investment_id: "",
       monthly_amount: null,
       annual_amount: null,
     };
@@ -585,6 +699,7 @@ function openEdit(item, type) {
     category: item.category,
     sub_category: item.sub_category || "",
     description: item.description || "",
+    cash_investment_id: item.cash_investment_id ? String(item.cash_investment_id) : "",
     monthly_amount: item.monthly_amount,
     annual_amount: item.annual_amount,
   };
@@ -616,7 +731,8 @@ async function saveEdit() {
         expense_type: item._type === "expense" ? editForm.value.expense_type : undefined,
         category: editForm.value.category,
         sub_category: editForm.value.sub_category || null,
-        description: editForm.value.description || null,
+        description: (item._type !== "expense" || (editForm.value.expense_type !== "savings" && editForm.value.expense_type !== "investment")) ? editForm.value.description || null : null,
+        cash_investment_id: item._type === "expense" && (editForm.value.expense_type === "savings" || editForm.value.expense_type === "investment") && editForm.value.cash_investment_id ? parseInt(String(editForm.value.cash_investment_id), 10) : null,
         monthly_amount: monthly != null && !isNaN(monthly) ? monthly : null,
         annual_amount: annual != null && !isNaN(annual) ? annual : null,
       },

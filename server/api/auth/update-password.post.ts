@@ -1,13 +1,10 @@
-import { createError, readBody, getCookie } from "h3";
+import { createError, readBody } from "h3";
 import { createDbClient } from "../../utils/db";
 import { hashPassword, verifyPassword } from "../../utils/password";
-import { SESSION_COOKIE_NAME } from "../../utils/session";
+import { getSessionUserId } from "../../utils/auth";
 
 export default defineEventHandler(async (event) => {
-  const sessionToken = getCookie(event, SESSION_COOKIE_NAME);
-  if (!sessionToken) {
-    throw createError({ statusCode: 401, statusMessage: "Not authenticated." });
-  }
+  const userId = await getSessionUserId(event);
 
   const body = await readBody(event);
   const currentPassword = String(body?.currentPassword ?? "");
@@ -31,21 +28,18 @@ export default defineEventHandler(async (event) => {
   try {
     await client.connect();
 
-    const sessionResult = await client.query(
-      `SELECT user_id FROM app_sessions WHERE session_token = $1 AND expires_at > NOW()`,
-      [sessionToken]
-    );
-    if (!sessionResult.rowCount) {
-      throw createError({ statusCode: 401, statusMessage: "Session expired." });
-    }
-    const userId = sessionResult.rows[0].user_id;
-
     const userResult = await client.query(
       `SELECT password_hash FROM app_users WHERE user_id = $1`,
       [userId]
     );
     const user = userResult.rows[0];
-    if (!user || !verifyPassword(currentPassword, user.password_hash)) {
+    if (!user?.password_hash) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Use your account settings to change password (Supabase account).",
+      });
+    }
+    if (!verifyPassword(currentPassword, user.password_hash)) {
       throw createError({
         statusCode: 400,
         statusMessage: "Current password is incorrect.",

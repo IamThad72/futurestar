@@ -1,17 +1,10 @@
-import { createError, getCookie, readBody } from "h3";
+import { createError, readBody } from "h3";
 import { createDbClient } from "../../utils/db";
-import { SESSION_COOKIE_NAME } from "../../utils/session";
+import { getSessionUserId } from "../../utils/auth";
 import { assertOwner, getRecordTypeConfig } from "../../utils/record-share";
 
 export default defineEventHandler(async (event) => {
-  const sessionToken = getCookie(event, SESSION_COOKIE_NAME);
-
-  if (!sessionToken) {
-    throw createError({
-      statusCode: 401,
-      statusMessage: "You must be logged in to revoke shares.",
-    });
-  }
+  const userId = await getSessionUserId(event);
 
   const body = await readBody(event);
   const recordType = String(body?.record_type ?? "").trim();
@@ -30,22 +23,6 @@ export default defineEventHandler(async (event) => {
 
   try {
     await client.connect();
-    const sessionResult = await client.query(
-      `SELECT user_id
-       FROM app_sessions
-       WHERE session_token = $1 AND expires_at > NOW()`,
-      [sessionToken],
-    );
-
-    const userId = sessionResult.rows[0]?.user_id;
-
-    if (!userId) {
-      throw createError({
-        statusCode: 401,
-        statusMessage: "Session expired. Please log in again.",
-      });
-    }
-
     await assertOwner(client, recordType, recordId, userId);
 
     const sharedUserResult = await client.query(

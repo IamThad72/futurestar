@@ -36,6 +36,7 @@ function loadEnv() {
 loadEnv();
 
 const migrations = [
+  "alter_app_users_add_supabase_user_id.sql",
   "create_expenses.sql",
   "create_income.sql",
   "alter_income_add_sub_category.sql",
@@ -43,23 +44,35 @@ const migrations = [
   "alter_income_add_income_type.sql",
   "alter_expenses_add_expense_type.sql",
   "create_budget_transactions.sql",
+  "alter_budget_transactions_add_cash_investment_id.sql",
+  "alter_expenses_add_cash_investment_id.sql",
 ];
 
 async function run() {
-  const { DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD, DB_SSL } = process.env;
-  if (!DB_HOST || !DB_PORT || !DB_NAME || !DB_USER) {
-    console.error("Missing DB env vars. Set DB_HOST, DB_PORT, DB_NAME, DB_USER (and DB_PASSWORD if needed).");
+  const { DATABASE_URL, DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD, DB_SSL } = process.env;
+
+  const clientConfig = DATABASE_URL
+    ? {
+        connectionString: DATABASE_URL,
+        ssl: DATABASE_URL.includes("supabase") ? { rejectUnauthorized: false } : false,
+      }
+    : DB_HOST && DB_PORT && DB_NAME && DB_USER
+      ? {
+          host: DB_HOST,
+          port: Number(DB_PORT),
+          database: DB_NAME,
+          user: DB_USER,
+          password: DB_PASSWORD,
+          ssl: DB_SSL === "true" ? { rejectUnauthorized: false } : false,
+        }
+      : null;
+
+  if (!clientConfig) {
+    console.error("Set DATABASE_URL or DB_HOST, DB_PORT, DB_NAME, DB_USER in .env");
     process.exit(1);
   }
 
-  const client = new Client({
-    host: DB_HOST,
-    port: Number(DB_PORT),
-    database: DB_NAME,
-    user: DB_USER,
-    password: DB_PASSWORD,
-    ssl: DB_SSL === "true" ? { rejectUnauthorized: false } : false,
-  });
+  const client = new Client(clientConfig);
 
   try {
     await client.connect();

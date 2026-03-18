@@ -1,16 +1,9 @@
-import { createError, getCookie, readBody } from "h3";
+import { createError, readBody } from "h3";
 import { createDbClient } from "../../../utils/db";
-import { SESSION_COOKIE_NAME } from "../../../utils/session";
+import { getSessionUserId } from "../../../utils/auth";
 
 export default defineEventHandler(async (event) => {
-  const sessionToken = getCookie(event, SESSION_COOKIE_NAME);
-
-  if (!sessionToken) {
-    throw createError({
-      statusCode: 401,
-      statusMessage: "You must be logged in to update a budget.",
-    });
-  }
+  const userId = await getSessionUserId(event);
 
   const id = getRouterParam(event, "id");
   if (!id || !/^\d+$/.test(id)) {
@@ -28,11 +21,11 @@ export default defineEventHandler(async (event) => {
   const monthlyAmount = body?.monthly_amount != null ? Number(body.monthly_amount) : null;
   const annualAmount = body?.annual_amount != null ? Number(body.annual_amount) : null;
 
-  const validIncomeTypes = ["gross", "tax", "deduction"];
+  const validIncomeTypes = ["gross", "tax", "deduction", "interest", "other"];
   if (incomeType !== null && !validIncomeTypes.includes(incomeType)) {
     throw createError({
       statusCode: 400,
-      statusMessage: "Income type must be 'gross', 'tax', or 'deduction'.",
+      statusMessage: "Income type must be 'gross', 'tax', 'deduction', 'interest', or 'other'.",
     });
   }
 
@@ -40,19 +33,6 @@ export default defineEventHandler(async (event) => {
 
   try {
     await client.connect();
-    const sessionResult = await client.query(
-      `SELECT user_id FROM app_sessions WHERE session_token = $1 AND expires_at > NOW()`,
-      [sessionToken],
-    );
-
-    const userId = sessionResult.rows[0]?.user_id;
-    if (!userId) {
-      throw createError({
-        statusCode: 401,
-        statusMessage: "Session expired. Please log in again.",
-      });
-    }
-
     const updates = [];
     const values = [];
     let paramIndex = 1;

@@ -1,16 +1,10 @@
-import { createError, getCookie, readBody } from "h3";
+import { createError, readBody } from "h3";
 import { createDbClient } from "../../utils/db";
-import { SESSION_COOKIE_NAME } from "../../utils/session";
+import { getSessionUserId } from "../../utils/auth";
+import { getUserGroupId } from "../../utils/group";
 
 export default defineEventHandler(async (event) => {
-  const sessionToken = getCookie(event, SESSION_COOKIE_NAME);
-
-  if (!sessionToken) {
-    throw createError({
-      statusCode: 401,
-      statusMessage: "You must be logged in to create a budget.",
-    });
-  }
+  const userId = await getSessionUserId(event);
 
   const body = await readBody(event);
   const type = String(body?.type ?? "").trim().toLowerCase();
@@ -19,14 +13,15 @@ export default defineEventHandler(async (event) => {
   const category = String(body?.category ?? "").trim();
   const subCategory = body?.sub_category != null ? String(body.sub_category).trim() : null;
   const description = body?.description != null ? String(body.description).trim() : null;
+  const cashInvestmentId = body?.cash_investment_id != null ? parseInt(String(body.cash_investment_id), 10) : null;
   const monthlyAmount = body?.monthly_amount != null ? Number(body.monthly_amount) : null;
   const annualAmount = body?.annual_amount != null ? Number(body.annual_amount) : null;
 
-  const validIncomeTypes = ["gross", "tax", "deduction"];
+  const validIncomeTypes = ["gross", "tax", "deduction", "interest", "other"];
   if (type === "income" && !validIncomeTypes.includes(incomeType)) {
     throw createError({
       statusCode: 400,
-      statusMessage: "Income type must be 'gross', 'tax', or 'deduction'.",
+      statusMessage: "Income type must be 'gross', 'tax', 'deduction', 'interest', or 'other'.",
     });
   }
 
@@ -56,22 +51,6 @@ export default defineEventHandler(async (event) => {
 
   try {
     await client.connect();
-    const sessionResult = await client.query(
-      `SELECT user_id
-       FROM app_sessions
-       WHERE session_token = $1 AND expires_at > NOW()`,
-      [sessionToken],
-    );
-
-    const userId = sessionResult.rows[0]?.user_id;
-
-    if (!userId) {
-      throw createError({
-        statusCode: 401,
-        statusMessage: "Session expired. Please log in again.",
-      });
-    }
-
     const monthly = monthlyAmount ?? (annualAmount != null ? annualAmount / 12 : null);
     const annual = annualAmount ?? (monthlyAmount != null ? monthlyAmount * 12 : null);
 
@@ -83,12 +62,31 @@ export default defineEventHandler(async (event) => {
         [userId, incomeType, category, subCategory || null, description || null, monthly, annual],
       );
     } else {
+      const effectiveCiId = cashInvestmentId != null && !isNaN(cashInvestmentId) && cashInvestmentId > 0 ? cashInvestmentId : null;
+
+      if (effectiveCiId != null && (expenseType === "savings" || expenseType === "investment")) {
+        const groupId = await getUserGroupId(client, userId);
+        const acctCheck = groupId
+          ? await client.query(
+              `SELECT 1 FROM cash_and_investments WHERE ci_id = $1 AND (user_id = $2 OR group_id = $3 OR user_id IN (SELECT user_id FROM group_members WHERE group_id = $3))`,
+              [effectiveCiId, userId, groupId],
+            )
+          : await client.query(`SELECT 1 FROM cash_and_investments WHERE ci_id = $1 AND user_id = $2`, [effectiveCiId, userId]);
+        if (acctCheck.rowCount === 0) {
+          throw createError({
+            statusCode: 400,
+            statusMessage: "Invalid destination account.",
+          });
+        }
+      }
+
       await client.query(
         `INSERT INTO expenses
-          (user_id, expense_type, expense_category, sub_category, expense_category_desc, monthly_budget_amt, annual_budget_amt)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [userId, expenseType, category, subCategory || null, description || null, monthly, annual],
+          (user_id, expense_type, expense_category, sub_category, expense_category_desc, monthly_budget_amt, annual_budget_amt, cash_investment_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [userId, expenseType, category, subCategory || null, description || null, monthly, annual, effectiveCiId ?? null],
       );
+      // Note: Budget plans do not modify actual account balances. Only transactions (via budget/transactions/submit) update cash_and_investments.value.
     }
 
     return { success: true };

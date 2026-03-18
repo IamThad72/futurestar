@@ -10,9 +10,12 @@ export default defineNuxtConfig({
     },
   },
   runtimeConfig: {
+    // Server-only (never exposed to client). Override via NUXT_MCP_BASE_URL, NUXT_MCP_TOKEN
+    mcpBaseUrl: "",
+    mcpToken: "",
     public: {
-      mcpBaseUrl: "https://usfoods.leanix.net/services/mcp-server/v1/mcp",
-      mcpToken: "LXT_xQn7EbGBDwf2xTRkS3djzvuVqbXZvqwYVYj3jBzD",
+      supabaseUrl: process.env.SUPABASE_URL,
+      supabasePublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY,
     },
   },
 

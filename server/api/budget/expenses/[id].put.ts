@@ -1,16 +1,9 @@
-import { createError, getCookie, readBody } from "h3";
+import { createError, readBody } from "h3";
 import { createDbClient } from "../../../utils/db";
-import { SESSION_COOKIE_NAME } from "../../../utils/session";
+import { getSessionUserId } from "../../../utils/auth";
 
 export default defineEventHandler(async (event) => {
-  const sessionToken = getCookie(event, SESSION_COOKIE_NAME);
-
-  if (!sessionToken) {
-    throw createError({
-      statusCode: 401,
-      statusMessage: "You must be logged in to update a budget.",
-    });
-  }
+  const userId = await getSessionUserId(event);
 
   const id = getRouterParam(event, "id");
   if (!id || !/^\d+$/.test(id)) {
@@ -24,6 +17,7 @@ export default defineEventHandler(async (event) => {
   const expenseType = body?.expense_type != null ? String(body.expense_type).trim().toLowerCase() : null;
   const category = body?.category != null ? String(body.category).trim() : null;
   const subCategory = body?.sub_category != null ? String(body.sub_category).trim() : null;
+  const cashInvestmentId = body?.cash_investment_id != null ? parseInt(String(body.cash_investment_id), 10) : null;
 
   const validExpenseTypes = ["expense", "savings", "investment"];
   if (expenseType !== null && !validExpenseTypes.includes(expenseType)) {
@@ -40,19 +34,6 @@ export default defineEventHandler(async (event) => {
 
   try {
     await client.connect();
-    const sessionResult = await client.query(
-      `SELECT user_id FROM app_sessions WHERE session_token = $1 AND expires_at > NOW()`,
-      [sessionToken],
-    );
-
-    const userId = sessionResult.rows[0]?.user_id;
-    if (!userId) {
-      throw createError({
-        statusCode: 401,
-        statusMessage: "Session expired. Please log in again.",
-      });
-    }
-
     const updates = [];
     const values = [];
     let paramIndex = 1;
@@ -80,6 +61,11 @@ export default defineEventHandler(async (event) => {
     if (annualAmount !== null) {
       updates.push(`annual_budget_amt = $${paramIndex++}`);
       values.push(annualAmount);
+    }
+    if (cashInvestmentId !== undefined) {
+      const effectiveCiId = cashInvestmentId != null && !isNaN(cashInvestmentId) && cashInvestmentId > 0 ? cashInvestmentId : null;
+      updates.push(`cash_investment_id = $${paramIndex++}`);
+      values.push(effectiveCiId);
     }
 
     if (updates.length === 0) {
