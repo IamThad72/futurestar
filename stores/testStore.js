@@ -19,9 +19,9 @@ export const useThemeStore = defineStore('theme', {
       "garden", "forest", "aqua", "lofi", "pastel", "fantasy",
       "wireframe", "black", "luxury", "dracula", "cmyk", "autumn",
       "business", "acid", "lemonade", "night", "coffee", "winter",
-      "dim", "nord", "sunset"
+      "dim", "nord", "sunset", "silk"
     ],
-    selectedTheme: "myTheme"
+    selectedTheme: "corporate"
   }),
   actions: {
     setTheme(newTheme) {

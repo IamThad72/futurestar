@@ -2,14 +2,15 @@
   <div class="h-screen flex flex-col">
      <!-- FIXED NAVBAR -->
      <!--Unathenticated Navbar-->
-     <HeadlessDisclosure  as="nav" class="bg-primary shadow" v-slot="{ open, close }">
+     <HeadlessDisclosure  as="nav" class="bg-primary" v-slot="{ open, close }">
       <div class="mx-auto max-w-full px-4 sm:px-6 lg:px-8">
         <div class="flex min-h-12 items-center justify-between">
           <div class="flex items-center">
             <!-- <div class="flex shrink-0 items-center">
               <img class="h-8 w-auto" src="/images/3SLogo3.png" alt="Your Company" />
             </div> -->
-            <NuxtLink to="/" class="flex shrink-0 items-center text-white font-bold text-lg hover:text-primary-content/80">
+            <NuxtLink to="/" class="flex shrink-0 items-center 
+            text-primary-content font-bold text-lg hover:text-primary-content/60">
               Future Star
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block size-6 ml-2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
@@ -30,7 +31,7 @@
           <div class="flex items-center gap-3">
             <div v-if="links.length" class="-mr-2 flex items-center md:hidden">
               <!-- Mobile menu button -->
-              <HeadlessDisclosureButton class="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-md p-2 text-primary-content hover:bg-secondary hover:text-primary-content focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-content">
+              <HeadlessDisclosureButton class="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-md p-2 text-primary-content hover:bg-primary/40 hover:text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-content">
                 <span class="absolute -inset-0.5"></span>
                 <span class="sr-only">Open main menu</span>
                 <Bars3Icon v-if="!open" class="block size-6" aria-hidden="true" />
@@ -39,7 +40,7 @@
             </div>
             <div v-if="auth.user" class="flex">
               <HeadlessMenu v-slot="{ close }" as="div" class="relative" @focusout="(e) => { if (!e.relatedTarget || !e.currentTarget.contains(e.relatedTarget)) close(); }">
-                <HeadlessMenuButton class="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-primary-content hover:bg-primary-focus">
+                <HeadlessMenuButton class="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-primary-content hover:bg-primary/40 hover:text-white">
                   <div class="avatar placeholder">
                     <div class="w-8 rounded-full bg-secondary text-secondary-content flex items-center justify-center overflow-hidden">
                       <img
@@ -59,7 +60,7 @@
                 <HeadlessMenuItems
                   class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-primary overflow-hidden shadow-lg border border-blue-900 focus:outline-none"
                 >
-                  <div class="flex justify-between items-center bg-white px-2 py-0.5">
+                  <div class="flex justify-between items-center bg-base-300 px-2 py-0.5">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 text-blue-600 shrink-0">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
                     </svg>
@@ -78,7 +79,7 @@
                   <HeadlessMenuItem v-slot="{ active }">
                     <button
                       type="button"
-                      :class="[active ? 'bg-secondary border-l-2 border-l-primary-content' : 'border-l-2 border-l-transparent', 'block w-full px-4 py-2 text-left text-sm font-medium text-primary-content hover:bg-secondary hover:text-primary-content hover:border-l-primary-content']"
+                      :class="[active ? 'bg-primary/40 border-l-2 border-l-primary-content' : 'border-l-2 border-l-transparent', 'block w-full px-4 py-2 text-left text-sm font-medium text-primary-content hover:bg-primary/40 hover:text-white hover:border-l-primary-content']"
                       @click="showAccountManagement = true"
                     >
                       Account Management
@@ -87,7 +88,7 @@
                   <HeadlessMenuItem v-slot="{ active }">
                     <button
                       type="button"
-                      :class="[active ? 'bg-secondary border-l-2 border-l-primary-content' : 'border-l-2 border-l-transparent', 'block w-full px-4 py-2 text-left text-sm font-medium text-primary-content hover:bg-secondary hover:text-primary-content hover:border-l-primary-content']"
+                      :class="[active ? 'bg-primary/40 border-l-2 border-l-primary-content' : 'border-l-2 border-l-transparent', 'block w-full px-4 py-2 text-left text-sm font-medium text-primary-content hover:bg-primary/40 hover:text-white hover:border-l-primary-content']"
                       @click="showLinkedAccounts = true"
                     >
                       Linked Accounts
@@ -96,7 +97,7 @@
                   <HeadlessMenuItem v-slot="{ active }">
                     <NuxtLink
                       to="/logout"
-                      :class="[active ? 'bg-secondary border-l-2 border-l-primary-content' : 'border-l-2 border-l-transparent', 'block w-full px-4 py-2 text-left text-sm font-medium text-primary-content hover:bg-secondary hover:text-primary-content hover:border-l-primary-content']"
+                      :class="[active ? 'bg-primary/40 border-l-2 border-l-primary-content' : 'border-l-2 border-l-transparent', 'block w-full px-4 py-2 text-left text-sm font-medium text-primary-content hover:bg-primary/40 hover:text-white hover:border-l-primary-content']"
                     >
                       Logout
                     </NuxtLink>
@@ -206,15 +207,15 @@ onMounted(() => {
 const getLinkClass = (path) => {
   return computed(() =>
     route.path === path
-      ? 'border-b-2 border-primary-content text-primary-content'
-      : 'border-b-2 border-transparent text-primary-content hover:border-primary-content/80 hover:text-primary-content/70'
+      ? 'border-b-2 border-primary-content text-primary-content hover:text-primary-content/80'
+      : 'border-b-2 border-transparent text-primary-content hover:text-primary-content/80 hover:bg-primary/40 hover:border-primary-content/80'
   ).value;
 };
 
 const getButtonClass = (path) => {
   return route.path === path
     ? 'border-l-4 border-r-4 border-secondary-content bg-secondary text-secondary-content'
-    : 'border-l-4 border-primary text-secondary-content hover:border-secondary-content hover:bg-secondary hover:text-secondary-content/70';
+    : 'border-l-4 border-primary text-secondary-content hover:border-secondary-content hover:bg-primary/40 hover:text-white';
 };
 const navigation = [
   {

@@ -4,7 +4,7 @@
       <h1 class="text-xl sm:text-2xl font-semibold">Cash Flow Tracker</h1>
     </header>
 
-    <div v-if="!auth.ready" class="rounded-lg border border-base-200 bg-base-100 p-4">
+    <div v-if="!auth.ready" class="rounded-lg border border-base-200 bg-base-300 p-4">
       <span class="text-sm text-base-content/70">Loading session...</span>
     </div>
 
@@ -20,7 +20,7 @@
       <div class="flex flex-wrap items-center gap-4">
         <div class="flex items-center gap-2">
           <label class="label-text text-sm">Month</label>
-          <select v-model="selectedMonth" class="select select-bordered select-sm w-36">
+          <select v-model="selectedMonth" class="select select-bordered select-sm w-28">
             <option v-for="m in 12" :key="m" :value="m">{{ monthNames[m - 1] }}</option>
           </select>
         </div>
@@ -30,8 +30,11 @@
             <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
           </select>
         </div>
-        <button type="button" class="btn btn-primary btn-sm" @click="showAddTransaction = true">
-          Add Transaction
+        <button type="button" class="btn btn-neutral btn-sm flex items-center gap-2 px-2 py-1 min-h-0 text-xs" @click="showAddTransaction = true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+            <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 9a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V15a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25V9Z" clip-rule="evenodd" />
+          </svg>
+          Add Entry
         </button>
         <input
           ref="csvFileInputRef"
@@ -40,84 +43,75 @@
           class="hidden"
           @change="onCsvFileSelected"
         />
-        <button type="button" class="btn btn-outline btn-sm" @click="csvFileInputRef?.click()">
-          Upload CSV
+        <button type="button" class="btn btn-warning btn-sm flex items-center gap-2 text-warning-content px-2 py-1 min-h-0 text-xs" @click="csvFileInputRef?.click()">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-[1.275rem]">
+            <path fill-rule="evenodd" d="M11.47 2.47a.75.75 0 0 1 1.06 0l4.5 4.5a.75.75 0 0 1-1.06 1.06l-3.22-3.22V16.5a.75.75 0 0 1-1.5 0V4.81L8.03 8.03a.75.75 0 0 1-1.06-1.06l4.5-4.5ZM3 15.75a.75.75 0 0 1 .75.75v2.25a1.5 1.5 0 0 0 1.5 1.5h13.5a1.5 1.5 0 0 0 1.5-1.5V16.5a.75.75 0 0 1 1.5 0v2.25a3 3 0 0 1-3 3H5.25a3 3 0 0 1-3-3V16.5a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
+          </svg>
+          CSV
         </button>
       </div>
 
       <!-- Budget vs Actual List -->
-      <div class="collapse collapse-arrow rounded-lg border border-base-200 bg-base-100 -mx-2 sm:-mx-4">
-        <input type="checkbox" />
-        <div class="collapse-title font-semibold text-lg min-h-0 py-2 px-4">
+      <div class="collapse collapse-arrow rounded-lg border border-base-100 bg-base-100 -mx-2 sm:-mx-4">
+        <input type="checkbox" checked />
+        <div class="collapse-title font-semibold text-lg min-h-0 py-2 px-4 text-base-content">
           Budget Details - {{ String(selectedMonth).padStart(2, '0') }}-{{ String(selectedYear).slice(-2) }}
         </div>
         <div class="collapse-content px-2 pt-2 pb-4">
-        <div v-if="loading" class="p-8 text-center text-base-content/70">Loading...</div>
-        <div v-else class="space-y-3">
-          <!-- Income lists -->
-          <template v-for="group in incomeGroupedByCategory" :key="`inc-${group.category}`">
-            <ion-list lines="full" class="budget-ion-list rounded-lg border border-base-200 text-xs">
-              <div class="budget-category-header budget-category-income">{{ group.category }}</div>
-              <ion-item lines="full" class="budget-header-item">
-                <div class="grid grid-cols-[1fr_auto_auto] gap-2 w-full text-[10px] font-medium text-base-content/60 uppercase tracking-wide">
+          <div v-if="loading" class="p-8 text-center text-neutral/70">Loading...</div>
+          <div v-else class="space-y-3">
+            <!-- Income lists -->
+            <template v-for="group in incomeGroupedByCategory" :key="`inc-${group.category}`">
+              <ul class="list bg-base-100 rounded-box border border-base-100 text-base-content text-xs">
+                <li class="bg-info text-primary-content px-3 py-2 text-sm font-medium">{{ group.category }}</li>
+                <li class="bg-base-100 grid grid-cols-[1fr_auto_auto] gap-2 px-3 py-1.5 text-[10px] font-medium text-base-content uppercase tracking-wide">
                   <span></span>
-                  <span class="text-right">Budget</span>
-                  <span class="text-right">Actual</span>
-                </div>
-              </ion-item>
-              <ion-item
-                v-for="item in group.items"
-                :key="`inc-${item.id}`"
-                button
-                detail="false"
-                class="budget-data-item"
-                @click="openSubCategoryModal(item, 'income', group)"
-              >
-                <div class="grid grid-cols-[1fr_auto_auto] gap-2 w-full items-center">
-                  <span class="text-black">
+                  <span class="text-right text-base-content">Budget</span>
+                  <span class="text-right text-base-content">Actual</span>
+                </li>
+                <li
+                  v-for="item in group.items"
+                  :key="`inc-${item.id}`"
+                  class="bg-base-100 grid grid-cols-[1fr_auto_auto] gap-2 items-center px-3 py-2 cursor-pointer rounded font-bold text-base-content"
+                  @click="openSubCategoryModal(item, 'income', group)"
+                >
+                  <span class="text-base-content">
                     {{ item.sub_category || "—" }}
                     <span :class="getVarianceClass(item.id, 'income', item.monthly_amount)">({{ formatVariance(item.id, 'income', item.monthly_amount) }})</span>
                   </span>
-                  <span class="text-right">${{ formatAmount(item.monthly_amount) }}</span>
-                  <span class="text-right">${{ formatAmount(getActualForItem(item.id, 'income')) }}</span>
-                </div>
-              </ion-item>
-            </ion-list>
-          </template>
-          <!-- Expense lists -->
-          <template v-for="group in expensesGroupedByCategory" :key="`exp-${group.category}`">
-            <ion-list lines="full" class="budget-ion-list rounded-lg border border-base-200 text-xs">
-              <div class="budget-category-header budget-category-expense">{{ group.category }}</div>
-              <ion-item lines="full" class="budget-header-item">
-                <div class="grid grid-cols-[1fr_auto_auto] gap-2 w-full text-[10px] font-medium text-base-content/60 uppercase tracking-wide">
+                  <span class="text-right text-success font-bold">${{ formatAmount(item.monthly_amount) }}</span>
+                  <span class="text-right text-secondary font-bold">${{ formatAmount(getActualForItem(item.id, 'income')) }}</span>
+                </li>
+              </ul>
+            </template>
+            <!-- Expense lists -->
+            <template v-for="group in expensesGroupedByCategory" :key="`exp-${group.category}`">
+              <ul class="list bg-base-100 rounded-box border border-base-100 text-base-content text-xs">
+                <li class="bg-info text-primary-content px-3 py-2 text-sm font-medium">{{ group.category }}</li>
+                <li class="bg-base-100 grid grid-cols-[1fr_auto_auto] gap-2 px-3 py-1.5 text-[10px] font-medium text-base-content uppercase tracking-wide">
                   <span></span>
-                  <span class="text-right">Budget</span>
-                  <span class="text-right">Actual</span>
-                </div>
-              </ion-item>
-              <ion-item
-                v-for="item in group.items"
-                :key="`exp-${item.id}`"
-                button
-                detail="false"
-                class="budget-data-item"
-                @click="openSubCategoryModal(item, 'expense', group)"
-              >
-                <div class="grid grid-cols-[1fr_auto_auto] gap-2 w-full items-center">
-                  <span class="text-black">
+                  <span class="text-right text-base-content">Budget</span>
+                  <span class="text-right text-base-content">Actual</span>
+                </li>
+                <li
+                  v-for="item in group.items"
+                  :key="`exp-${item.id}`"
+                  class="bg-base-100 grid grid-cols-[1fr_auto_auto] gap-2 items-center px-3 py-2 cursor-pointer rounded font-bold text-base-content"
+                  @click="openSubCategoryModal(item, 'expense', group)"
+                >
+                  <span class="text-base-content">
                     {{ item.sub_category || "—" }}
                     <span :class="getVarianceClass(item.id, 'expense', item.monthly_amount)">({{ formatVariance(item.id, 'expense', item.monthly_amount) }})</span>
                   </span>
-                  <span class="text-right">${{ formatAmount(item.monthly_amount) }}</span>
-                  <span class="text-right">${{ formatAmount(getActualForItem(item.id, 'expense')) }}</span>
-                </div>
-              </ion-item>
-            </ion-list>
-          </template>
-          <p v-if="!incomeGroupedByCategory.length && !expensesGroupedByCategory.length" class="text-center text-base-content/50 py-8">
-            No budget items yet. Add budget items in Cash Flow Management first.
-          </p>
-        </div>
+                  <span class="text-right text-success font-bold">${{ formatAmount(item.monthly_amount) }}</span>
+                  <span class="text-right text-secondary font-bold">${{ formatAmount(getActualForItem(item.id, 'expense')) }}</span>
+                </li>
+              </ul>
+            </template>
+            <p v-if="!incomeGroupedByCategory.length && !expensesGroupedByCategory.length" class="text-center text-neutral/50 py-8">
+              No budget items yet. Add budget items in Cash Flow Management first.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -277,7 +271,7 @@
                   <div class="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <span class="font-medium">{{ formatDate(tx.date) }}</span>
-                      <span class="ml-2" :class="tx.type === 'income' ? 'text-success' : 'text-error'">
+                      <span class="ml-2 font-bold" :class="tx.type === 'income' ? 'text-primary' : 'text-error'">
                         {{ tx.type === 'income' ? '' : '-' }}${{ formatAmount(tx.amount) }}
                       </span>
                       <div v-if="tx.description" class="text-sm text-base-content/60 mt-0.5">{{ tx.description }}</div>
@@ -360,84 +354,6 @@
               {{ deleting ? "Deleting..." : "Delete" }}
             </button>
           </div>
-        </div>
-        <form method="dialog" class="modal-backdrop">
-          <button>close</button>
-        </form>
-      </dialog>
-
-      <!-- Gross Income Breakdown Modal -->
-      <dialog ref="grossBreakdownModalRef" class="modal" @close="onGrossBreakdownModalClose">
-        <div class="modal-box">
-          <h3 class="font-semibold text-lg mb-4">Gross Income Breakdown</h3>
-          <p class="text-sm text-base-content/60 mb-4">
-            Enter the breakdown for this gross income transaction. All fields are optional.
-          </p>
-          <form @submit.prevent="submitGrossWithBreakdown" class="space-y-4">
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <label class="form-control w-full">
-                <span class="label-text text-sm">Family Insurance</span>
-                <input
-                  v-model.number="grossBreakdownForm.familyInsurance"
-                  class="input input-bordered w-full"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                />
-              </label>
-              <label class="form-control w-full">
-                <span class="label-text text-sm">Supplemental Insurance</span>
-                <input
-                  v-model.number="grossBreakdownForm.supplementalInsurance"
-                  class="input input-bordered w-full"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                />
-              </label>
-              <label class="form-control w-full">
-                <span class="label-text text-sm">Savings</span>
-                <input
-                  v-model.number="grossBreakdownForm.savings"
-                  class="input input-bordered w-full"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                />
-              </label>
-              <label class="form-control w-full">
-                <span class="label-text text-sm">Payroll</span>
-                <input
-                  v-model.number="grossBreakdownForm.payroll"
-                  class="input input-bordered w-full"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                />
-              </label>
-            </div>
-            <label v-if="showDestinationInGrossBreakdown" class="form-control w-full">
-              <span class="label-text text-sm">Savings Destination Account</span>
-              <select v-model="grossBreakdownForm.cashInvestmentId" class="select select-bordered w-full">
-                <option value="">None</option>
-                <option v-for="acct in cashAccounts" :key="acct.ci_id" :value="String(acct.ci_id)">
-                  {{ [acct.institution, acct.acct_type].filter(Boolean).join(" — ") || `Account #${acct.ci_id}` }}
-                </option>
-              </select>
-              <span class="label-text-alt text-base-content/60">Where the savings portion goes (e.g. 401k, savings account)</span>
-            </label>
-            <div v-if="grossBreakdownError" class="text-sm text-error">{{ grossBreakdownError }}</div>
-            <div class="modal-action">
-              <button type="button" class="btn btn-ghost" @click="grossBreakdownModalRef?.close()">Cancel</button>
-              <button type="submit" class="btn btn-primary" :disabled="txSubmitting">
-                {{ txSubmitting ? "Adding..." : "Add Transaction" }}
-              </button>
-            </div>
-          </form>
         </div>
         <form method="dialog" class="modal-backdrop">
           <button>close</button>
@@ -554,8 +470,6 @@ const deletingTx = ref(null);
 const csvRows = ref([]);
 const csvError = ref("");
 const csvSaving = ref(false);
-const grossBreakdownModalRef = ref(null);
-const grossBreakdownError = ref("");
 const showAddFormInSubCategory = ref(false);
 const subCategoryAddForm = ref({
   date: "",
@@ -565,14 +479,6 @@ const subCategoryAddForm = ref({
 });
 const subCategoryAddError = ref("");
 const subCategoryAddSaving = ref(false);
-
-const grossBreakdownForm = ref({
-  familyInsurance: null,
-  supplementalInsurance: null,
-  savings: null,
-  payroll: null,
-  cashInvestmentId: "",
-});
 
 const now = new Date();
 const currentYear = now.getFullYear();
@@ -631,20 +537,6 @@ const expensesGroupedByCategory = computed(() => {
     .map(([category, items]) => ({ category, items }));
 });
 
-/** Selected income budget item (when type is income) */
-const selectedIncomeItem = computed(() => {
-  if (txForm.value.type !== "income" || !txForm.value.budgetItemId) return null;
-  const id = parseInt(txForm.value.budgetItemId, 10);
-  const items = budgets.value.income ?? [];
-  return items.find((i) => i.id === id) ?? null;
-});
-
-/** Whether the selected budget item is gross income */
-const isGrossIncomeSelected = computed(() => {
-  const item = selectedIncomeItem.value;
-  return item && (item.income_type || "gross") === "gross";
-});
-
 /** Selected expense budget item (when type is expense) */
 const selectedExpenseItem = computed(() => {
   if (txForm.value.type !== "expense" || !txForm.value.budgetItemId) return null;
@@ -655,12 +547,6 @@ const selectedExpenseItem = computed(() => {
 
 /** Show destination account selector for income transactions */
 const showDestinationAccountSelector = computed(() => txForm.value.type === "income");
-
-/** Show destination account in gross breakdown when savings amount is entered */
-const showDestinationInGrossBreakdown = computed(() => {
-  const s = grossBreakdownForm.value.savings;
-  return s != null && !isNaN(s) && s > 0;
-});
 
 /** Whether selected budget item in sub-category modal is savings or investment */
 const isSubCategorySavingsOrInvestment = computed(() => {
@@ -706,8 +592,9 @@ function getVarianceClass(itemId, type, budgeted) {
   const actual = getActualForItem(itemId, type);
   const variance = type === "income" ? actual - (budgeted || 0) : (budgeted || 0) - actual;
   if (Math.abs(variance) < 0.01) return "text-base-content/60";
-  if (type === "income") return variance >= 0 ? "text-success" : "text-warning";
-  return variance >= 0 ? "text-success" : "text-error";
+  // More than budgeted (over) = error; under = secondary
+  const isOver = type === "income" ? variance > 0 : variance < 0;
+  return isOver ? "text-error" : "text-secondary";
 }
 
 function formatVariance(itemId, type, budgeted) {
@@ -1005,50 +892,14 @@ async function submitTransaction() {
     return;
   }
 
-  if (txForm.value.type === "income" && isGrossIncomeSelected.value) {
-    addDialogRef.value?.close();
-    grossBreakdownForm.value = {
-      familyInsurance: null,
-      supplementalInsurance: null,
-      savings: null,
-      payroll: null,
-      cashInvestmentId: "",
-    };
-    grossBreakdownError.value = "";
-    nextTick(() => grossBreakdownModalRef.value?.showModal());
-    return;
-  }
-
   await doSubmitTransaction();
 }
 
-async function doSubmitTransaction(breakdown = null) {
+async function doSubmitTransaction() {
   const id = txForm.value.budgetItemId;
   const amount = txForm.value.amount;
-  let description = txForm.value.description || null;
-  if (breakdown) {
-    const parts = [];
-    if (breakdown.familyInsurance != null && !isNaN(breakdown.familyInsurance) && breakdown.familyInsurance > 0) {
-      parts.push(`Family Insurance: $${formatAmount(breakdown.familyInsurance)}`);
-    }
-    if (breakdown.supplementalInsurance != null && !isNaN(breakdown.supplementalInsurance) && breakdown.supplementalInsurance > 0) {
-      parts.push(`Supplemental Insurance: $${formatAmount(breakdown.supplementalInsurance)}`);
-    }
-    if (breakdown.savings != null && !isNaN(breakdown.savings) && breakdown.savings > 0) {
-      parts.push(`Savings: $${formatAmount(breakdown.savings)}`);
-    }
-    if (breakdown.payroll != null && !isNaN(breakdown.payroll) && breakdown.payroll > 0) {
-      parts.push(`Payroll: $${formatAmount(breakdown.payroll)}`);
-    }
-    if (parts.length) {
-      const breakdownStr = `Breakdown: ${parts.join(", ")}`;
-      description = description ? `${description}. ${breakdownStr}` : breakdownStr;
-    }
-  }
-
-  const cashInvestmentId = breakdown?.cashInvestmentId
-    ? (breakdown.cashInvestmentId ? parseInt(String(breakdown.cashInvestmentId), 10) : null)
-    : (txForm.value.cashInvestmentId ? parseInt(String(txForm.value.cashInvestmentId), 10) : null);
+  const description = txForm.value.description || null;
+  const cashInvestmentId = txForm.value.cashInvestmentId ? parseInt(String(txForm.value.cashInvestmentId), 10) : null;
   const effectiveCiId = cashInvestmentId && !isNaN(cashInvestmentId) && cashInvestmentId > 0 ? cashInvestmentId : null;
 
   txSubmitting.value = true;
@@ -1059,27 +910,15 @@ async function doSubmitTransaction(breakdown = null) {
         : { type: "expense", expense_id: parseInt(id, 10), transaction_date: txForm.value.date, amount, description, cash_investment_id: effectiveCiId };
     await $fetch("/api/budget/transactions/submit", { method: "POST", body });
     addDialogRef.value?.close();
-    grossBreakdownModalRef.value?.close();
     await loadData();
     if (selectedBudgetItem.value) {
       nextTick(() => subCategoryModalRef.value?.showModal());
     }
   } catch (err) {
-    grossBreakdownError.value = err?.data?.message || err?.message || "Failed to add transaction.";
     txError.value = err?.data?.message || err?.message || "Failed to add transaction.";
   } finally {
     txSubmitting.value = false;
   }
-}
-
-async function submitGrossWithBreakdown() {
-  grossBreakdownError.value = "";
-  await doSubmitTransaction(grossBreakdownForm.value);
-}
-
-function onGrossBreakdownModalClose() {
-  grossBreakdownError.value = "";
-  nextTick(() => addDialogRef.value?.showModal());
 }
 
 function openSubCategoryModal(item, type, group) {
@@ -1271,34 +1110,3 @@ watch(
 );
 </script>
 
-<style scoped>
-.budget-ion-list {
-  --background: var(--fallback-b1, oklch(1 0 0));
-}
-.budget-category-header {
-  font-size: 0.75rem;
-  font-weight: 500;
-  min-height: 28px;
-  padding: 0.25rem 0.5rem;
-  display: flex;
-  align-items: center;
-  border-radius: 0.375rem;
-}
-.budget-category-income {
-  background: #166534;
-  color: #fff;
-}
-.budget-category-expense {
-  background: #991b1b;
-  color: #fff;
-}
-.budget-ion-list .budget-header-item,
-.budget-ion-list .budget-data-item {
-  --background: transparent;
-  --padding-start: 0.5rem;
-  --padding-end: 0.5rem;
-  --inner-padding-end: 0;
-  --min-height: 32px;
-  font-size: 0.75rem;
-}
-</style>

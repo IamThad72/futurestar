@@ -7,7 +7,7 @@
       </p>
     </header>
 
-    <div v-if="!auth.ready" class="rounded-lg border border-base-200 bg-base-100 p-4">
+    <div v-if="!auth.ready" class="rounded-lg border border-base-200 bg-base-300 p-4">
       <span class="text-sm text-base-content/70">Loading session...</span>
     </div>
 
@@ -594,7 +594,7 @@
     </form>
 
       <!-- Records table for selected category -->
-      <div v-if="selectedCategory" class="estate-records-panel rounded-lg border border-base-200 bg-base-100 overflow-hidden flex flex-col">
+      <div v-if="selectedCategory" class="estate-records-panel rounded-lg border border-base-200 bg-base-300 overflow-hidden flex flex-col">
         <h2 class="border-b border-base-200 bg-base-200/50 px-4 py-3 text-sm font-semibold shrink-0">
           {{ selectedCategory }} Records
         </h2>
@@ -645,7 +645,7 @@
             <div v-for="r in categoryRecords" :key="r.dbt_id" class="estate-record-card rounded-lg border border-base-200 bg-base-100 p-3 space-y-1.5 text-sm">
               <div class="flex justify-between items-start gap-2">
                 <span class="font-semibold">{{ r.institution }}</span>
-                <span class="font-medium shrink-0">{{ formatMoney(r.loan_ammount) }}</span>
+                <span class="font-bold shrink-0">{{ formatMoney(r.loan_ammount) }}</span>
               </div>
               <div class="text-base-content/80"><span class="font-medium">Loan #:</span> {{ r.loan_number }}</div>
               <div class="text-base-content/80"><span class="font-medium">Type:</span> <span class="capitalize">{{ r.loan_type }}</span></div>
@@ -671,7 +671,7 @@
             <div v-for="r in categoryRecords" :key="r.ins_id" class="estate-record-card rounded-lg border border-base-200 bg-base-100 p-3 space-y-1.5 text-sm">
               <div class="flex justify-between items-start gap-2">
                 <span class="font-semibold">{{ r.policy_holder }}</span>
-                <span class="font-medium shrink-0">{{ formatMoney(r.policy_amt) }}</span>
+                <span class="font-bold shrink-0 text-secondary">{{ formatMoney(r.policy_amt) }}</span>
               </div>
               <div class="text-base-content/80"><span class="font-medium">Policy #:</span> {{ r.polocy_number }}</div>
               <div class="text-base-content/80"><span class="font-medium">Entity:</span> {{ r.entity_covered }}</div>

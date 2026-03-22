@@ -1,7 +1,7 @@
 import { ref, onMounted } from 'vue';
 
 export function useTheme() {
-  const theme = ref('light'); // Default theme
+  const theme = ref('corporate'); // Default theme
 
   // Function to set the theme
   const setTheme = (newTheme) => {

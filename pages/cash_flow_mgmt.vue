@@ -1,10 +1,10 @@
 <template>
   <section class="mx-auto w-full max-w-7xl space-y-4 sm:space-y-6 p-4 sm:p-6 overflow-x-hidden min-w-0">
     <header>
-      <h1 class="text-xl sm:text-2xl font-semibold">Cash Flow Management</h1>
+      <h1 class="text-xl sm:text-2xl font-semibold text-base-content">Cash Flow Management</h1>
     </header>
 
-    <div v-if="!auth.ready" class="rounded-lg border border-base-200 bg-base-100 p-4">
+    <div v-if="!auth.ready" class="rounded-lg border border-base-200 bg-base-300 p-4">
       <span class="text-sm text-base-content/70">Loading session...</span>
     </div>
 
@@ -17,95 +17,20 @@
 
     <div v-else class="space-y-6">
       <!-- Add Budget Form -->
-      <div class="collapse collapse-arrow rounded-lg border border-base-200 bg-base-100">
+      <div class="collapse collapse-arrow rounded-lg border border-base-200 bg-base-200">
         <input type="checkbox" />
-        <div class="collapse-title font-semibold text-lg min-h-0 py-4">Add Budget Item</div>
-        <div class="collapse-content">
+        <div class="collapse-title font-semibold text-lg min-h-0 py-4 text-primary">Add Budget Item</div>
+        <div class="collapse-content bg-base-200">
         <form @submit.prevent="submitBudget" class="space-y-4 pt-2 pb-4 px-1">
-          <div class="flex flex-wrap gap-4">
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input
-                v-model="form.type"
-                type="radio"
-                name="budget-item-type"
-                value="income"
-                class="radio radio-primary"
-              />
-              <span>Income</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input
-                v-model="form.type"
-                type="radio"
-                name="budget-item-type"
-                value="tax"
-                class="radio radio-primary"
-              />
-              <span>Tax</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input
-                v-model="form.type"
-                type="radio"
-                name="budget-item-type"
-                value="interest"
-                class="radio radio-primary"
-              />
-              <span>Interest</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input
-                v-model="form.type"
-                type="radio"
-                name="budget-item-type"
-                value="other"
-                class="radio radio-primary"
-              />
-              <span>Other</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input
-                v-model="form.type"
-                type="radio"
-                name="budget-item-type"
-                value="deduction"
-                class="radio radio-primary"
-              />
-              <span>Deduction</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input
-                v-model="form.type"
-                type="radio"
-                name="budget-item-type"
-                value="savings"
-                class="radio radio-primary"
-              />
-              <span>Savings</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input
-                v-model="form.type"
-                type="radio"
-                name="budget-item-type"
-                value="investment"
-                class="radio radio-primary"
-              />
-              <span>Investment</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input
-                v-model="form.type"
-                type="radio"
-                name="budget-item-type"
-                value="expense"
-                class="radio radio-primary"
-              />
-              <span>Expense</span>
-            </label>
-          </div>
-
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <label class="form-control w-full">
+              <span class="label-text text-sm">Type</span>
+              <select v-model="form.type" class="select select-bordered w-full">
+                <option v-for="opt in budgetTypeOptions" :key="opt.value" :value="opt.value">
+                  {{ opt.label }}
+                </option>
+              </select>
+            </label>
             <label class="form-control w-full">
               <span class="label-text text-sm">Category <span class="text-error">*</span></span>
               <input
@@ -116,6 +41,9 @@
                 required
               />
             </label>
+          </div>
+
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <label class="form-control w-full">
               <span class="label-text text-sm">Sub-category</span>
               <input
@@ -125,27 +53,26 @@
                 placeholder="e.g. Rent, Utilities"
               />
             </label>
+            <label v-if="form.type !== 'savings' && form.type !== 'investment'" class="form-control w-full">
+              <span class="label-text text-sm">Description</span>
+              <input
+                v-model.trim="form.description"
+                class="input input-bordered w-full"
+                type="text"
+                placeholder="Optional notes"
+              />
+            </label>
+            <label v-else class="form-control w-full">
+              <span class="label-text text-sm">Destination Account</span>
+              <select v-model="form.cash_investment_id" class="select select-bordered w-full">
+                <option value="">None</option>
+                <option v-for="acct in cashAccounts" :key="acct.ci_id" :value="String(acct.ci_id)">
+                  {{ [acct.institution, acct.acct_type].filter(Boolean).join(" — ") || `Account #${acct.ci_id}` }}
+                </option>
+              </select>
+              <span class="label-text-alt text-base-content/60">Account to add this amount to</span>
+            </label>
           </div>
-
-          <label v-if="form.type !== 'savings' && form.type !== 'investment'" class="form-control w-full">
-            <span class="label-text text-sm">Description</span>
-            <input
-              v-model.trim="form.description"
-              class="input input-bordered w-full"
-              type="text"
-              placeholder="Optional notes"
-            />
-          </label>
-          <label v-else class="form-control w-full">
-            <span class="label-text text-sm">Destination Account</span>
-            <select v-model="form.cash_investment_id" class="select select-bordered w-full">
-              <option value="">None</option>
-              <option v-for="acct in cashAccounts" :key="acct.ci_id" :value="String(acct.ci_id)">
-                {{ [acct.institution, acct.acct_type].filter(Boolean).join(" — ") || `Account #${acct.ci_id}` }}
-              </option>
-            </select>
-            <span class="label-text-alt text-base-content/60">Account to add this amount to</span>
-          </label>
 
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <label class="form-control w-full">
@@ -175,13 +102,21 @@
           </div>
 
           <div v-if="submitError" class="text-sm text-error">{{ submitError }}</div>
-          <button
-            type="submit"
-            class="btn btn-primary"
-            :disabled="submitting"
-          >
-            {{ submitting ? "Adding..." : "Add Budget Item" }}
-          </button>
+          <div class="flex justify-center">
+            <button
+              type="submit"
+              class="btn btn-primary gap-2"
+              :disabled="submitting"
+            >
+              <template v-if="submitting">Adding...</template>
+              <template v-else>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                </svg>
+                Item
+              </template>
+            </button>
+          </div>
         </form>
         </div>
       </div>
@@ -189,18 +124,20 @@
       <!-- Budget Summary -->
       <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <!-- Income & Payroll -->
-        <div class="rounded-lg border border-base-200 bg-base-100 p-6 space-y-4">
-          <h2 class="text-lg font-semibold mb-4 flex flex-wrap items-center gap-x-4 gap-y-1">
-            <span class="text-success">Income & Payroll</span>
-            <span v-if="!loading" class="text-base font-normal text-success">
-              Total Income: ${{ formatAmount(totalIncome.monthly) }}/mo
-              <span class="text-base-content/70">(${{ formatAmount(totalIncome.annual) }}/yr)</span>
-            </span>
-            <span v-if="!loading" class="text-base font-normal text-primary">
-              Net Income: ${{ formatAmount(netIncome.monthly) }}/mo
-              <span class="text-base-content/70">(${{ formatAmount(netIncome.annual) }}/yr)</span>
-            </span>
-          </h2>
+        <div class="collapse collapse-arrow rounded-lg border border-base-200 bg-base-200">
+          <input type="checkbox" checked />
+          <div class="collapse-title min-h-0 py-4">
+            <h2 class="text-lg font-semibold flex flex-wrap items-center gap-x-4 gap-y-1">
+              <span class="text-success">Income & Payroll</span>
+              <span v-if="!loading" class="text-xs font-normal text-base-content">
+                Total Income: ${{ formatAmount(totalIncome.monthly) }}/mo
+              </span>
+              <span v-if="!loading" class="text-xs font-normal text-base-content">
+                Net Income: ${{ formatAmount(netIncome.monthly) }}/mo
+              </span>
+            </h2>
+          </div>
+          <div class="collapse-content px-6 pb-6 bg-base-200">
           <div v-if="loading" class="text-sm text-base-content/70">Loading...</div>
           <template v-else>
             <div v-if="incomeGroupedByCategory.length" class="space-y-4">
@@ -209,15 +146,15 @@
                 :key="`income-cat-${group.category}`"
                 class="list bg-base-100 rounded-box border border-base-200 shadow-sm"
               >
-                <li class="p-3 pb-1 text-sm font-medium text-base-content/80">{{ group.category }}</li>
+                <li class="p-3 pb-1 text-sm font-medium text-base-content bg-base-100">{{ group.category }}</li>
                 <li
                   v-for="item in group.items"
                   :key="`income-${item.id}`"
-                  class="list-row items-center gap-2 px-3 py-2"
+                  class="list-row items-center gap-2 px-3 py-2 bg-base-100"
                 >
                   <div class="list-col-grow min-w-0">
-                    <div>{{ item.sub_category || "—" }}</div>
-                    <div class="text-xs opacity-60" :class="item.income_type === 'tax' || item.income_type === 'deduction' ? 'text-warning' : 'text-success'">
+                    <div class="text-secondary">{{ item.sub_category || "—" }}</div>
+                    <div class="text-xs opacity-60 font-bold" :class="item.income_type === 'tax' || item.income_type === 'deduction' ? 'text-secondary' : 'text-primary'">
                       {{ (item.income_type === 'tax' || item.income_type === 'deduction') ? '-' : '' }}${{ formatAmount(item.monthly_amount) }}/mo
                     </div>
                   </div>
@@ -234,17 +171,21 @@
             </div>
             <p v-else class="text-sm text-base-content/50 italic">No income items yet. Add one above.</p>
           </template>
+          </div>
         </div>
 
         <!-- Expenses -->
-        <div class="rounded-lg border border-base-200 bg-base-100 p-6">
-          <h2 class="text-lg font-semibold mb-4 flex flex-wrap items-center gap-x-4 gap-y-1">
-            <span class="text-error">Expenses</span>
-            <span v-if="!loading" class="text-base font-normal text-error">
-              Total: ${{ formatAmount(totalExpenses.monthly) }}/mo
-              <span class="text-base-content/70">(${{ formatAmount(totalExpenses.annual) }}/yr)</span>
-            </span>
-          </h2>
+        <div class="collapse collapse-arrow rounded-lg border border-base-200 bg-base-200">
+          <input type="checkbox" checked />
+          <div class="collapse-title min-h-0 py-4">
+            <h2 class="text-lg font-semibold flex flex-wrap items-center gap-x-4 gap-y-1">
+              <span class="text-error">Expenses</span>
+              <span v-if="!loading" class="text-xs font-normal text-base-content">
+                Total: ${{ formatAmount(totalExpenses.monthly) }}/mo
+              </span>
+            </h2>
+          </div>
+          <div class="collapse-content px-6 pb-6 bg-base-200">
           <div v-if="loading" class="text-sm text-base-content/70">Loading...</div>
           <div v-else-if="!expensesGroupedByCategory.length" class="text-sm text-base-content/60 italic">
             No expense categories yet. Add one above.
@@ -255,15 +196,15 @@
               :key="`expense-cat-${group.category}`"
               class="list bg-base-100 rounded-box border border-base-200 shadow-sm"
             >
-              <li class="p-3 pb-1 text-sm font-medium text-base-content/80">{{ group.category }}</li>
+              <li class="p-3 pb-1 text-sm font-medium text-base-content bg-base-100">{{ group.category }}</li>
               <li
                 v-for="item in group.items"
                 :key="`expense-${item.id}`"
-                class="list-row items-center gap-2 px-3 py-2"
+                class="list-row items-center gap-2 px-3 py-2 bg-base-100"
               >
                 <div class="list-col-grow min-w-0">
-                  <div>{{ item.sub_category || "—" }}</div>
-                  <div class="text-xs opacity-60" :class="item.expense_type === 'savings' ? 'text-info' : item.expense_type === 'investment' ? 'text-secondary' : 'text-error'">
+                  <div class="text-secondary">{{ item.sub_category || "—" }}</div>
+                  <div class="text-xs opacity-60 font-bold" :class="item.expense_type === 'savings' ? 'text-secondary' : item.expense_type === 'investment' ? 'text-secondary' : 'text-error'">
                     ${{ formatAmount(item.monthly_amount) }}/mo
                   </div>
                 </div>
@@ -278,6 +219,7 @@
               </li>
             </ul>
           </div>
+          </div>
         </div>
       </div>
 
@@ -286,45 +228,25 @@
         <div class="modal-box">
           <h3 class="font-semibold text-lg mb-4">Edit Budget Item</h3>
           <form v-if="editingItem" @submit.prevent="saveEdit" class="space-y-4">
-            <div v-if="editingItem._type === 'income'" class="flex flex-wrap gap-4">
-              <span class="label-text text-sm self-center">Income type:</span>
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input v-model="editForm.income_type" type="radio" name="edit-income-type" value="gross" class="radio radio-primary" />
-                <span>Gross Pay</span>
-              </label>
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input v-model="editForm.income_type" type="radio" name="edit-income-type" value="interest" class="radio radio-primary" />
-                <span>Interest</span>
-              </label>
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input v-model="editForm.income_type" type="radio" name="edit-income-type" value="other" class="radio radio-primary" />
-                <span>Other</span>
-              </label>
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input v-model="editForm.income_type" type="radio" name="edit-income-type" value="tax" class="radio radio-primary" />
-                <span>Tax</span>
-              </label>
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input v-model="editForm.income_type" type="radio" name="edit-income-type" value="deduction" class="radio radio-primary" />
-                <span>Deduction</span>
-              </label>
-            </div>
-            <div v-else-if="editingItem._type === 'expense'" class="flex flex-wrap gap-4">
-              <span class="label-text text-sm self-center">Type:</span>
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input v-model="editForm.expense_type" type="radio" name="edit-expense-type" value="expense" class="radio radio-primary" />
-                <span>Expense</span>
-              </label>
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input v-model="editForm.expense_type" type="radio" name="edit-expense-type" value="savings" class="radio radio-primary" />
-                <span>Savings</span>
-              </label>
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input v-model="editForm.expense_type" type="radio" name="edit-expense-type" value="investment" class="radio radio-primary" />
-                <span>Investment</span>
-              </label>
-            </div>
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <label v-if="editingItem._type === 'income'" class="form-control w-full">
+                <span class="label-text text-sm">Income type</span>
+                <select v-model="editForm.income_type" class="select select-bordered w-full">
+                  <option value="deduction">Deduction</option>
+                  <option value="gross">Gross Pay</option>
+                  <option value="interest">Interest</option>
+                  <option value="other">Other</option>
+                  <option value="tax">Tax</option>
+                </select>
+              </label>
+              <label v-else-if="editingItem._type === 'expense'" class="form-control w-full">
+                <span class="label-text text-sm">Type</span>
+                <select v-model="editForm.expense_type" class="select select-bordered w-full">
+                  <option value="expense">Expense</option>
+                  <option value="investment">Investment</option>
+                  <option value="savings">Savings</option>
+                </select>
+              </label>
               <label class="form-control w-full">
                 <span class="label-text text-sm">Category</span>
                 <input
@@ -334,6 +256,8 @@
                   required
                 />
               </label>
+            </div>
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
               <label class="form-control w-full">
                 <span class="label-text text-sm">Sub-category</span>
                 <input
@@ -342,24 +266,24 @@
                   type="text"
                 />
               </label>
+              <label v-if="editingItem._type !== 'expense' || (editForm.expense_type !== 'savings' && editForm.expense_type !== 'investment')" class="form-control w-full">
+                <span class="label-text text-sm">Description</span>
+                <input
+                  v-model.trim="editForm.description"
+                  class="input input-bordered w-full"
+                  type="text"
+                />
+              </label>
+              <label v-else class="form-control w-full">
+                <span class="label-text text-sm">Destination Account</span>
+                <select v-model="editForm.cash_investment_id" class="select select-bordered w-full">
+                  <option value="">None</option>
+                  <option v-for="acct in cashAccounts" :key="acct.ci_id" :value="String(acct.ci_id)">
+                    {{ [acct.institution, acct.acct_type].filter(Boolean).join(" — ") || `Account #${acct.ci_id}` }}
+                  </option>
+                </select>
+              </label>
             </div>
-            <label v-if="editingItem._type !== 'expense' || (editForm.expense_type !== 'savings' && editForm.expense_type !== 'investment')" class="form-control w-full">
-              <span class="label-text text-sm">Description</span>
-              <input
-                v-model.trim="editForm.description"
-                class="input input-bordered w-full"
-                type="text"
-              />
-            </label>
-            <label v-else class="form-control w-full">
-              <span class="label-text text-sm">Destination Account</span>
-              <select v-model="editForm.cash_investment_id" class="select select-bordered w-full">
-                <option value="">None</option>
-                <option v-for="acct in cashAccounts" :key="acct.ci_id" :value="String(acct.ci_id)">
-                  {{ [acct.institution, acct.acct_type].filter(Boolean).join(" — ") || `Account #${acct.ci_id}` }}
-                </option>
-              </select>
-            </label>
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
               <label class="form-control w-full">
                 <span class="label-text text-sm">Monthly Amount</span>
@@ -461,6 +385,17 @@ const editForm = ref({
   monthly_amount: null,
   annual_amount: null,
 });
+
+const budgetTypeOptions = [
+  { value: "deduction", label: "Deduction" },
+  { value: "expense", label: "Expense" },
+  { value: "income", label: "Income" },
+  { value: "interest", label: "Interest" },
+  { value: "investment", label: "Investment" },
+  { value: "other", label: "Other" },
+  { value: "savings", label: "Savings" },
+  { value: "tax", label: "Tax" },
+];
 
 const incomeByType = computed(() => {
   const income = budgets.value.income ?? [];

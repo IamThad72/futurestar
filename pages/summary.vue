@@ -7,7 +7,7 @@
       </p>
     </header>
 
-    <div v-if="!auth.ready" class="rounded-lg border border-base-200 bg-base-100 p-4">
+    <div v-if="!auth.ready" class="rounded-lg border border-base-200 bg-base-300 p-4">
       <span class="text-sm text-base-content/70">Loading session...</span>
     </div>
 
@@ -23,37 +23,36 @@
 
       <div v-else class="space-y-8">
         <!-- Net Wealth -->
-        <div class="rounded-lg border border-base-200 bg-base-100 overflow-hidden">
-          <h2 class="table-category-title border-b border-base-200 bg-primary/20 px-4 py-3 text-sm font-semibold flex justify-between items-center">
+        <div class="rounded-lg border border-base-200 bg-base-300 overflow-hidden">
+          <h2 class="table-category-title border-b border-base-200 bg-accent px-4 py-3 text-sm font-semibold flex justify-between items-center text-secondary-content">
             <span>Net Wealth</span>
-            <span class="font-bold text-blue-600">{{ formatMoney(netWealth) }}</span>
+            <span class="font-bold text-secondary-content">{{ formatMoney(netWealth) }}</span>
           </h2>
           <div class="overflow-x-auto">
             <ion-grid class="ion-no-padding summary-grid summary-grid-2 summary-grid-mobile">
-              <ion-row class="summary-grid-header">
-                <ion-col class="cursor-pointer select-none hover:bg-base-200/50" @click="setSort('netWealth', 'category')">
-                  Category {{ sortState.netWealth.key === 'category' ? (sortState.netWealth.dir === 'asc' ? '▲' : '▼') : '' }}
-                </ion-col>
-                <ion-col class="cursor-pointer select-none hover:bg-base-200/50 summary-net-wealth-total" @click="setSort('netWealth', 'total')">
-                  Total {{ sortState.netWealth.key === 'total' ? (sortState.netWealth.dir === 'asc' ? '▲' : '▼') : '' }}
-                </ion-col>
-              </ion-row>
-              <ion-row v-for="row in sortedNetWealth" :key="row.category" class="summary-grid-row">
+              <ion-row v-for="(row, i) in netWealthRows" :key="row.category" :class="['summary-grid-row', 'bg-base-100']">
                 <ion-col>{{ row.category }}</ion-col>
-                <ion-col class="summary-net-wealth-total">{{ formatMoney(row.total) }}</ion-col>
+                <ion-col></ion-col>
+                <ion-col></ion-col>
+                <ion-col></ion-col>
+                <ion-col></ion-col>
+                <ion-col></ion-col>
+                <ion-col></ion-col>
+                <ion-col></ion-col>
+                <ion-col class="summary-net-wealth-total text-center">{{ formatMoney(row.total) }}</ion-col>
               </ion-row>
             </ion-grid>
           </div>
         </div>
 
         <!-- Asset Inventory -->
-        <div class="rounded-lg border border-base-200 bg-base-100 overflow-hidden">
-          <h2 class="table-category-title border-b border-base-200 bg-secondary/20 px-4 py-3 text-sm font-semibold flex justify-between items-center flex-wrap gap-2">
+        <div class="rounded-lg border border-base-200 bg-base-300 overflow-hidden">
+          <h2 class="table-category-title border-b border-base-200 bg-info/40 px-4 py-3 text-sm font-semibold flex justify-between items-center flex-wrap gap-2 text-secondary-content">
             <span class="flex items-center gap-2">
               <button type="button" class="p-0 border-0 bg-transparent cursor-pointer" @click="openAddModal('asset')" title="Add Asset"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg></button>
               <span>Asset Inventory</span>
             </span>
-            <span class="font-normal text-base-content/80">{{ formatMoney(totalAssetInventory) }}</span>
+            <span class="font-bold text-secondary-content">{{ formatMoney(totalAssetInventory) }}</span>
           </h2>
           <!-- Mobile card layout -->
           <div class="md:hidden summary-section-scroll overflow-y-auto space-y-2 p-3">
@@ -62,10 +61,9 @@
               <div class="flex-1 min-w-0 space-y-1.5">
                 <div class="flex justify-between items-start gap-2">
                   <span class="font-semibold truncate flex-1">{{ r.title }}</span>
-                  <span class="font-medium shrink-0">{{ formatMoney(r.value) }}</span>
+                  <span class="font-bold shrink-0">{{ formatMoney(r.value) }}</span>
                 </div>
                 <div class="text-base-content/80"><span class="font-medium">Classification:</span> {{ r.asset_classification ?? r.classification_type ?? '—' }}</div>
-                <div v-if="r.description" class="text-base-content/70 truncate"><span class="font-medium">Description:</span> {{ r.description }}</div>
                 <div v-if="r.location" class="text-base-content/70"><span class="font-medium">Location:</span> {{ r.location }}</div>
               </div>
             </div>
@@ -73,22 +71,21 @@
           </div>
           <!-- Desktop grid -->
           <div class="hidden md:block summary-section-scroll overflow-x-auto overflow-y-auto">
-            <ion-grid class="ion-no-padding summary-grid summary-grid-7">
-              <ion-row class="summary-grid-header">
+            <ion-grid class="ion-no-padding summary-grid summary-grid-6">
+              <ion-row class="summary-grid-header bg-base-200/80">
                 <ion-col class="summary-edit-col"></ion-col>
-                <ion-col v-for="col in [{k:'title',l:'Title'},{k:'classification',l:'Classification'},{k:'description',l:'Description'},{k:'value',l:'Value'},{k:'location',l:'Location'}]" :key="col.k" class="cursor-pointer select-none hover:bg-base-200/50" @click="setSort('assetInventory', col.k)">{{ col.l }} {{ sortState.assetInventory.key === col.k ? (sortState.assetInventory.dir === 'asc' ? '▲' : '▼') : '' }}</ion-col>
+                <ion-col v-for="col in [{k:'title',l:'Title'},{k:'classification',l:'Classification'},{k:'value',l:'Value'},{k:'location',l:'Location'}]" :key="col.k" class="cursor-pointer select-none hover:bg-base-200/50" @click="setSort('assetInventory', col.k)">{{ col.l }} {{ sortState.assetInventory.key === col.k ? (sortState.assetInventory.dir === 'asc' ? '▲' : '▼') : '' }}</ion-col>
               </ion-row>
-              <ion-row v-for="r in sortedAssetInventory" :key="r.ai_id" class="summary-grid-row">
+              <ion-row v-for="(r, i) in sortedAssetInventory" :key="r.ai_id" :class="['summary-grid-row', 'bg-base-100']">
                 <ion-col class="summary-edit-col">
                   <button type="button" class="p-0 border-0 bg-transparent cursor-pointer" @click="openEditModal('asset_inventory', r)" title="Update"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg></button>
                 </ion-col>
                 <ion-col>{{ r.title }}</ion-col>
                 <ion-col class="capitalize">{{ r.asset_classification ?? r.classification_type ?? '—' }}</ion-col>
-                <ion-col class="max-w-xs truncate">{{ r.description }}</ion-col>
-                <ion-col>{{ formatMoney(r.value) }}</ion-col>
+                <ion-col class="font-bold">{{ formatMoney(r.value) }}</ion-col>
                 <ion-col>{{ r.location }}</ion-col>
               </ion-row>
-              <ion-row v-if="assetInventory.length === 0" class="summary-grid-row">
+              <ion-row v-if="assetInventory.length === 0" class="summary-grid-row bg-base-100">
                 <ion-col :size="12" class="text-base-content/60">No records</ion-col>
               </ion-row>
             </ion-grid>
@@ -96,21 +93,21 @@
         </div>
 
         <!-- Asset Vehicles -->
-        <div class="rounded-lg border border-base-200 bg-base-100 overflow-hidden">
-          <h2 class="table-category-title border-b border-base-200 bg-accent/20 px-4 py-3 text-sm font-semibold flex justify-between items-center flex-wrap gap-2">
+        <div class="rounded-lg border border-base-200 bg-base-300 overflow-hidden">
+          <h2 class="table-category-title border-b border-base-200 bg-info/40 px-4 py-3 text-sm font-semibold flex justify-between items-center flex-wrap gap-2 text-secondary-content">
             <span class="flex items-center gap-2">
               <button type="button" class="p-0 border-0 bg-transparent cursor-pointer" @click="openAddModal('vehicle')" title="Add Vehicle"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg></button>
               <span>Asset Vehicles</span>
             </span>
-            <span class="font-normal text-base-content/80">{{ formatMoney(totalAssetVehicles) }}</span>
+            <span class="font-bold text-secondary-content">{{ formatMoney(totalAssetVehicles) }}</span>
           </h2>
           <div class="md:hidden summary-section-scroll overflow-y-auto space-y-2 p-3">
-            <div v-for="r in sortedAssetVehicles" :key="r.vh_id" class="rounded-lg border border-base-200 bg-base-100 p-3 flex items-start gap-2 text-sm">
+            <div v-for="r in sortedAssetVehicles" :key="r.vh_id" class="rounded-lg border border-base-200 bg-base-300 p-3 flex items-start gap-2 text-sm">
               <button type="button" class="p-0 border-0 bg-transparent cursor-pointer shrink-0 mt-0.5" @click="openEditModal('asset_vehicles', r)" title="Update"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg></button>
               <div class="flex-1 min-w-0 space-y-1.5">
                 <div class="flex justify-between items-start gap-2">
                   <span class="font-semibold">{{ r.year }} {{ r.make }} {{ r.model }}</span>
-                  <span class="font-medium shrink-0">{{ formatMoney(r.value) }}</span>
+                  <span class="font-bold shrink-0">{{ formatMoney(r.value) }}</span>
                 </div>
                 <div v-if="r.vin" class="text-base-content/70 text-xs"><span class="font-medium">VIN:</span> {{ r.vin }}</div>
                 <div class="text-base-content/80"><span class="font-medium">Trust:</span> {{ r.trust_designated ? 'Y' : 'N' }}</div>
@@ -119,23 +116,22 @@
             <p v-if="assetVehicles.length === 0" class="text-base-content/60 text-sm py-2">No records</p>
           </div>
           <div class="hidden md:block summary-section-scroll overflow-x-auto overflow-y-auto">
-            <ion-grid class="ion-no-padding summary-grid summary-grid-7">
-              <ion-row class="summary-grid-header">
+            <ion-grid class="ion-no-padding summary-grid summary-grid-6">
+              <ion-row class="summary-grid-header bg-base-200/80">
                 <ion-col class="summary-edit-col"></ion-col>
-                <ion-col v-for="col in [{k:'year',l:'Year'},{k:'make',l:'Make'},{k:'model',l:'Model'},{k:'vin',l:'VIN'},{k:'value',l:'Value'},{k:'trust_designated',l:'Trust'}]" :key="col.k" class="cursor-pointer select-none hover:bg-base-200/50" @click="setSort('assetVehicles', col.k)">{{ col.l }} {{ sortState.assetVehicles.key === col.k ? (sortState.assetVehicles.dir === 'asc' ? '▲' : '▼') : '' }}</ion-col>
+                <ion-col v-for="col in [{k:'make',l:'Make'},{k:'model',l:'Model'},{k:'vin',l:'VIN'},{k:'value',l:'Value'},{k:'trust_designated',l:'Trust'}]" :key="col.k" class="cursor-pointer select-none hover:bg-base-200/50" @click="setSort('assetVehicles', col.k)">{{ col.l }} {{ sortState.assetVehicles.key === col.k ? (sortState.assetVehicles.dir === 'asc' ? '▲' : '▼') : '' }}</ion-col>
               </ion-row>
-              <ion-row v-for="r in sortedAssetVehicles" :key="r.vh_id" class="summary-grid-row">
+              <ion-row v-for="(r, i) in sortedAssetVehicles" :key="r.vh_id" :class="['summary-grid-row', 'bg-base-100']">
                 <ion-col class="summary-edit-col">
                   <button type="button" class="p-0 border-0 bg-transparent cursor-pointer" @click="openEditModal('asset_vehicles', r)" title="Update"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg></button>
                 </ion-col>
-                <ion-col>{{ r.year }}</ion-col>
                 <ion-col>{{ r.make }}</ion-col>
                 <ion-col>{{ r.model }}</ion-col>
                 <ion-col>{{ r.vin }}</ion-col>
-                <ion-col>{{ formatMoney(r.value) }}</ion-col>
+                <ion-col class="font-bold">{{ formatMoney(r.value) }}</ion-col>
                 <ion-col>{{ r.trust_designated ? 'Y' : 'N' }}</ion-col>
               </ion-row>
-              <ion-row v-if="assetVehicles.length === 0" class="summary-grid-row">
+              <ion-row v-if="assetVehicles.length === 0" class="summary-grid-row bg-base-100">
                 <ion-col :size="12" class="text-base-content/60">No records</ion-col>
               </ion-row>
             </ion-grid>
@@ -143,13 +139,13 @@
         </div>
 
         <!-- Cash and Investments -->
-        <div class="rounded-lg border border-base-200 bg-base-100 overflow-hidden">
-          <h2 class="table-category-title border-b border-base-200 bg-info/20 px-4 py-3 text-sm font-semibold flex justify-between items-center flex-wrap gap-2">
+        <div class="rounded-lg border border-base-200 bg-base-300 overflow-hidden">
+          <h2 class="table-category-title border-b border-base-200 bg-info/40 px-4 py-3 text-sm font-semibold flex justify-between items-center flex-wrap gap-2 text-secondary-content">
             <span class="flex items-center gap-2">
               <button type="button" class="p-0 border-0 bg-transparent cursor-pointer" @click="openAddModal('cash')" title="Add Cash/Investment"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg></button>
               <span>Cash and Investments</span>
             </span>
-            <span class="font-normal text-base-content/80">{{ formatMoney(totalCashAndInvestments) }}</span>
+            <span class="font-bold text-secondary-content">{{ formatMoney(totalCashAndInvestments) }}</span>
           </h2>
           <div class="md:hidden summary-section-scroll overflow-y-auto space-y-2 p-3">
             <div v-for="(r, i) in sortedCashAndInvestments" :key="r.ci_id ?? 'cai-' + i" class="rounded-lg border border-base-200 bg-base-100 p-3 flex items-start gap-2 text-sm">
@@ -158,9 +154,8 @@
                 <div class="flex justify-between items-start gap-2">
                   <a v-if="r.institution_url && r.institution_url.trim()" :href="r.institution_url" target="_blank" rel="noopener noreferrer" class="font-semibold link link-primary">{{ r.institution }}</a>
                   <span v-else class="font-semibold">{{ r.institution }}</span>
-                  <span class="font-medium shrink-0">{{ formatMoney(r.value) }}</span>
+                  <span class="font-bold shrink-0">{{ formatMoney(r.value) }}</span>
                 </div>
-                <div class="text-base-content/80"><span class="font-medium">Category:</span> <span class="capitalize">{{ r.asset_category }}</span></div>
                 <div class="text-base-content/80"><span class="font-medium">Type:</span> <span class="capitalize">{{ r.acct_type }}</span></div>
                 <div v-if="r.acct_number" class="text-base-content/70 text-xs"><span class="font-medium">Account #:</span> {{ r.acct_number }}</div>
                 <div class="text-base-content/80"><span class="font-medium">Trust:</span> {{ r.trust_designated ? 'Y' : 'N' }}</div>
@@ -169,26 +164,25 @@
             <p v-if="sortedCashAndInvestments.length === 0" class="text-base-content/60 text-sm py-2">No records</p>
           </div>
           <div class="hidden md:block summary-section-scroll overflow-x-auto overflow-y-auto">
-            <ion-grid class="ion-no-padding summary-grid summary-grid-7">
-              <ion-row class="summary-grid-header">
+            <ion-grid class="ion-no-padding summary-grid summary-grid-6">
+              <ion-row class="summary-grid-header bg-base-200/80">
                 <ion-col class="summary-edit-col"></ion-col>
-                <ion-col v-for="col in [{k:'asset_category',l:'Category'},{k:'acct_type',l:'Type'},{k:'institution',l:'Institution'},{k:'acct_number',l:'Account #'},{k:'value',l:'Value'},{k:'trust_designated',l:'Trust'}]" :key="col.k" class="cursor-pointer select-none hover:bg-base-200/50" @click="setSort('cashAndInvestments', col.k)">{{ col.l }} {{ sortState.cashAndInvestments.key === col.k ? (sortState.cashAndInvestments.dir === 'asc' ? '▲' : '▼') : '' }}</ion-col>
+                <ion-col v-for="col in [{k:'acct_type',l:'Type'},{k:'institution',l:'Institution'},{k:'acct_number',l:'Account #'},{k:'value',l:'Value'},{k:'trust_designated',l:'Trust'}]" :key="col.k" class="cursor-pointer select-none hover:bg-base-200/50" @click="setSort('cashAndInvestments', col.k)">{{ col.l }} {{ sortState.cashAndInvestments.key === col.k ? (sortState.cashAndInvestments.dir === 'asc' ? '▲' : '▼') : '' }}</ion-col>
               </ion-row>
-              <ion-row v-for="(r, i) in sortedCashAndInvestments" :key="r.ci_id ?? 'cai-' + i" class="summary-grid-row">
+              <ion-row v-for="(r, i) in sortedCashAndInvestments" :key="r.ci_id ?? 'cai-' + i" :class="['summary-grid-row', 'bg-base-100']">
                 <ion-col class="summary-edit-col">
                   <button type="button" class="p-0 border-0 bg-transparent cursor-pointer" @click="openEditModal('cash_and_investments', r)" title="Update"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg></button>
                 </ion-col>
-                <ion-col class="capitalize">{{ r.asset_category }}</ion-col>
                 <ion-col class="capitalize">{{ r.acct_type }}</ion-col>
                 <ion-col>
                   <a v-if="r.institution_url && r.institution_url.trim()" :href="r.institution_url" target="_blank" rel="noopener noreferrer" class="link link-primary">{{ r.institution }}</a>
                   <template v-else>{{ r.institution }}</template>
                 </ion-col>
                 <ion-col>{{ r.acct_number }}</ion-col>
-                <ion-col>{{ formatMoney(r.value) }}</ion-col>
+                <ion-col class="font-bold">{{ formatMoney(r.value) }}</ion-col>
                 <ion-col>{{ r.trust_designated ? 'Y' : 'N' }}</ion-col>
               </ion-row>
-              <ion-row v-if="sortedCashAndInvestments.length === 0" class="summary-grid-row">
+              <ion-row v-if="sortedCashAndInvestments.length === 0" class="summary-grid-row bg-base-100">
                 <ion-col :size="12" class="text-base-content/60">No records</ion-col>
               </ion-row>
             </ion-grid>
@@ -196,13 +190,13 @@
         </div>
 
         <!-- Debt -->
-        <div class="rounded-lg border border-base-200 bg-base-100 overflow-hidden">
-          <h2 class="table-category-title border-b border-base-200 bg-warning/20 px-4 py-3 text-sm font-semibold flex justify-between items-center flex-wrap gap-2">
+        <div class="rounded-lg border border-base-200 bg-base-300 overflow-hidden">
+          <h2 class="table-category-title border-b border-base-200 bg-info/40 px-4 py-3 text-sm font-semibold flex justify-between items-center flex-wrap gap-2 text-secondary-content">
             <span class="flex items-center gap-2">
               <button type="button" class="p-0 border-0 bg-transparent cursor-pointer" @click="openAddModal('debt')" title="Add Debt"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg></button>
               <span>Debt</span>
             </span>
-            <span class="font-normal text-base-content/80">{{ formatMoney(totalDebtTable) }}</span>
+            <span class="font-bold text-secondary-content">{{ formatMoney(totalDebtTable) }}</span>
           </h2>
           <div class="md:hidden summary-section-scroll overflow-y-auto space-y-2 p-3">
             <div v-for="r in sortedDebt" :key="r.dbt_id" class="rounded-lg border border-base-200 bg-base-100 p-3 flex items-start gap-2 text-sm">
@@ -211,23 +205,22 @@
                 <div class="flex justify-between items-start gap-2">
                   <a v-if="r.address_url && r.address_url.trim()" :href="r.address_url" target="_blank" rel="noopener noreferrer" class="font-semibold link link-primary">{{ r.institution }}</a>
                   <span v-else class="font-semibold">{{ r.institution }}</span>
-                  <span class="font-medium shrink-0">{{ formatMoney(r.loan_ammount) }}</span>
+                  <span class="font-bold shrink-0">{{ formatMoney(r.loan_ammount) }}</span>
                 </div>
                 <div class="text-base-content/80"><span class="font-medium">Loan #:</span> {{ r.loan_number }}</div>
                 <div class="text-base-content/80"><span class="font-medium">Type:</span> <span class="capitalize">{{ r.loan_type }}</span></div>
                 <div v-if="getLinkedAssetLabel(r)" class="text-base-content/70"><span class="font-medium">Linked:</span> {{ getLinkedAssetLabel(r) }}</div>
-                <div v-if="r.borrower" class="text-base-content/70"><span class="font-medium">Borrower:</span> {{ r.borrower }}</div>
               </div>
             </div>
             <p v-if="debt.length === 0" class="text-base-content/60 text-sm py-2">No records</p>
           </div>
           <div class="hidden md:block summary-section-scroll overflow-x-auto overflow-y-auto">
-            <ion-grid class="ion-no-padding summary-grid summary-grid-8">
-              <ion-row class="summary-grid-header">
+            <ion-grid class="ion-no-padding summary-grid summary-grid-7">
+              <ion-row class="summary-grid-header bg-base-200/80">
                 <ion-col class="summary-edit-col"></ion-col>
-                <ion-col v-for="col in [{k:'institution',l:'Institution'},{k:'loan_number',l:'Loan #'},{k:'loan_type',l:'Loan Type'},{k:'loan_ammount',l:'Loan Amount'},{k:'linked_asset',l:'Linked Asset'},{k:'borrower',l:'Borrower'},{k:'customer_support_no',l:'Support #'}]" :key="col.k" class="cursor-pointer select-none hover:bg-base-200/50" @click="setSort('debt', col.k)">{{ col.l }} {{ sortState.debt.key === col.k ? (sortState.debt.dir === 'asc' ? '▲' : '▼') : '' }}</ion-col>
+                <ion-col v-for="col in [{k:'institution',l:'Institution'},{k:'loan_number',l:'Loan #'},{k:'loan_type',l:'Loan Type'},{k:'loan_ammount',l:'Loan Amount'},{k:'linked_asset',l:'Linked Asset'},{k:'customer_support_no',l:'Support #'}]" :key="col.k" class="cursor-pointer select-none hover:bg-base-200/50" @click="setSort('debt', col.k)">{{ col.l }} {{ sortState.debt.key === col.k ? (sortState.debt.dir === 'asc' ? '▲' : '▼') : '' }}</ion-col>
               </ion-row>
-              <ion-row v-for="r in sortedDebt" :key="r.dbt_id" class="summary-grid-row">
+              <ion-row v-for="(r, i) in sortedDebt" :key="r.dbt_id" :class="['summary-grid-row', 'bg-base-100']">
                 <ion-col class="summary-edit-col">
                   <button type="button" class="p-0 border-0 bg-transparent cursor-pointer" @click="openEditModal('debt', r)" title="Update"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg></button>
                 </ion-col>
@@ -237,12 +230,11 @@
                 </ion-col>
                 <ion-col>{{ r.loan_number }}</ion-col>
                 <ion-col class="capitalize">{{ r.loan_type }}</ion-col>
-                <ion-col>{{ formatMoney(r.loan_ammount) }}</ion-col>
+                <ion-col class="font-bold">{{ formatMoney(r.loan_ammount) }}</ion-col>
                 <ion-col>{{ getLinkedAssetLabel(r) }}</ion-col>
-                <ion-col>{{ r.borrower }}</ion-col>
                 <ion-col>{{ r.customer_support_no }}</ion-col>
               </ion-row>
-              <ion-row v-if="debt.length === 0" class="summary-grid-row">
+              <ion-row v-if="debt.length === 0" class="summary-grid-row bg-base-100">
                 <ion-col :size="12" class="text-base-content/60">No records</ion-col>
               </ion-row>
             </ion-grid>
@@ -250,13 +242,13 @@
         </div>
 
         <!-- Real Estate -->
-        <div class="rounded-lg border border-base-200 bg-base-100 overflow-hidden">
-          <h2 class="table-category-title border-b border-base-200 bg-success/20 px-4 py-3 text-sm font-semibold flex justify-between items-center flex-wrap gap-2">
+        <div class="rounded-lg border border-base-200 bg-base-300 overflow-hidden">
+          <h2 class="table-category-title border-b border-base-200 bg-info/40 px-4 py-3 text-sm font-semibold flex justify-between items-center flex-wrap gap-2 text-secondary-content">
             <span class="flex items-center gap-2">
               <button type="button" class="p-0 border-0 bg-transparent cursor-pointer" @click="openAddModal('real_estate')" title="Add Real Estate"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg></button>
               <span>Real Estate</span>
             </span>
-            <span class="font-normal text-base-content/80">{{ formatMoney(totalRealEstateValue) }}</span>
+            <span class="font-bold text-secondary-content">{{ formatMoney(totalRealEstateValue) }}</span>
           </h2>
           <div class="md:hidden summary-section-scroll overflow-y-auto space-y-2 p-3">
             <div v-for="r in sortedRealEstate" :key="r.re_id" class="rounded-lg border border-base-200 bg-base-100 p-3 flex items-start gap-2 text-sm">
@@ -264,7 +256,7 @@
               <div class="flex-1 min-w-0 space-y-1.5">
                 <div class="flex justify-between items-start gap-2">
                   <span class="font-semibold">{{ [r.number, r.street].filter(Boolean).join(' ') || '—' }}, {{ r.city }}</span>
-                  <span class="font-medium shrink-0">{{ formatMoney(r.value) }}</span>
+                  <span class="font-bold shrink-0">{{ formatMoney(r.value) }}</span>
                 </div>
                 <div class="text-base-content/80"><span class="font-medium">State:</span> {{ r.state }} <span class="font-medium">Zip:</span> {{ r.zipcode }}</div>
                 <div class="text-base-content/80"><span class="font-medium">Trust:</span> {{ r.trust_designated ? 'Y' : 'N' }}</div>
@@ -274,11 +266,11 @@
           </div>
           <div class="hidden md:block summary-section-scroll overflow-x-auto overflow-y-auto">
             <ion-grid class="ion-no-padding summary-grid summary-grid-7">
-              <ion-row class="summary-grid-header">
+              <ion-row class="summary-grid-header bg-base-200/80">
                 <ion-col class="summary-edit-col"></ion-col>
                 <ion-col v-for="col in [{k:'address',l:'Address'},{k:'city',l:'City'},{k:'state',l:'State'},{k:'zipcode',l:'Zip'},{k:'value',l:'Value'},{k:'trust_designated',l:'Trust'}]" :key="col.k" class="cursor-pointer select-none hover:bg-base-200/50" @click="setSort('realEstate', col.k)">{{ col.l }} {{ sortState.realEstate.key === col.k ? (sortState.realEstate.dir === 'asc' ? '▲' : '▼') : '' }}</ion-col>
               </ion-row>
-              <ion-row v-for="r in sortedRealEstate" :key="r.re_id" class="summary-grid-row">
+              <ion-row v-for="(r, i) in sortedRealEstate" :key="r.re_id" :class="['summary-grid-row', 'bg-base-100']">
                 <ion-col class="summary-edit-col">
                   <button type="button" class="p-0 border-0 bg-transparent cursor-pointer" @click="openEditModal('real_estate', r)" title="Update"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg></button>
                 </ion-col>
@@ -286,10 +278,10 @@
                 <ion-col>{{ r.city }}</ion-col>
                 <ion-col>{{ r.state }}</ion-col>
                 <ion-col>{{ r.zipcode }}</ion-col>
-                <ion-col>{{ formatMoney(r.value) }}</ion-col>
+                <ion-col class="font-bold">{{ formatMoney(r.value) }}</ion-col>
                 <ion-col>{{ r.trust_designated ? 'Y' : 'N' }}</ion-col>
               </ion-row>
-              <ion-row v-if="realEstate.length === 0" class="summary-grid-row">
+              <ion-row v-if="realEstate.length === 0" class="summary-grid-row bg-base-100">
                 <ion-col :size="12" class="text-base-content/60">No records</ion-col>
               </ion-row>
             </ion-grid>
@@ -297,8 +289,8 @@
         </div>
 
         <!-- Insurance -->
-        <div class="rounded-lg border border-base-200 bg-base-100 overflow-hidden">
-          <h2 class="table-category-title border-b border-base-200 bg-neutral/20 px-4 py-3 text-sm font-semibold flex justify-between items-center flex-wrap gap-2">
+        <div class="rounded-lg border border-base-200 bg-base-300 overflow-hidden">
+          <h2 class="table-category-title border-b border-base-200 bg-info/40 px-4 py-3 text-sm font-semibold flex justify-between items-center flex-wrap gap-2 text-secondary-content">
             <span class="flex items-center gap-2">
               <button type="button" class="p-0 border-0 bg-transparent cursor-pointer" @click="openAddModal('insurance')" title="Add Insurance"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg></button>
               <span>Insurance</span>
@@ -311,7 +303,7 @@
                 <div class="flex justify-between items-start gap-2">
                   <a v-if="r.institution_url && r.institution_url.trim()" :href="r.institution_url" target="_blank" rel="noopener noreferrer" class="font-semibold link link-primary">{{ r.policy_holder }}</a>
                   <span v-else class="font-semibold">{{ r.policy_holder }}</span>
-                  <span class="font-medium shrink-0">{{ formatMoney(r.policy_amt) }}</span>
+                  <span class="font-bold shrink-0 text-secondary">{{ formatMoney(r.policy_amt) }}</span>
                 </div>
                 <div class="text-base-content/80"><span class="font-medium">Policy #:</span> {{ r.polocy_number }}</div>
                 <div class="text-base-content/80"><span class="font-medium">Entity:</span> {{ r.entity_covered }}</div>
@@ -322,11 +314,11 @@
           </div>
           <div class="hidden md:block summary-section-scroll overflow-x-auto overflow-y-auto">
             <ion-grid class="ion-no-padding summary-grid summary-grid-6">
-              <ion-row class="summary-grid-header">
+              <ion-row class="summary-grid-header bg-base-200/80">
                 <ion-col class="summary-edit-col"></ion-col>
                 <ion-col v-for="col in [{k:'policy_holder',l:'Policy Holder'},{k:'polocy_number',l:'Policy #'},{k:'entity_covered',l:'Entity Covered'},{k:'policy_amt',l:'Amount'},{k:'intent',l:'Intent'}]" :key="col.k" class="cursor-pointer select-none hover:bg-base-200/50" @click="setSort('insurance', col.k)">{{ col.l }} {{ sortState.insurance.key === col.k ? (sortState.insurance.dir === 'asc' ? '▲' : '▼') : '' }}</ion-col>
               </ion-row>
-              <ion-row v-for="r in sortedInsurance" :key="r.ins_id" class="summary-grid-row">
+              <ion-row v-for="(r, i) in sortedInsurance" :key="r.ins_id" :class="['summary-grid-row', 'bg-base-100']">
                 <ion-col class="summary-edit-col">
                   <button type="button" class="p-0 border-0 bg-transparent cursor-pointer" @click="openEditModal('insurance', r)" title="Update"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg></button>
                 </ion-col>
@@ -336,10 +328,10 @@
                 </ion-col>
                 <ion-col>{{ r.polocy_number }}</ion-col>
                 <ion-col>{{ r.entity_covered }}</ion-col>
-                <ion-col>{{ formatMoney(r.policy_amt) }}</ion-col>
+                <ion-col class="text-secondary font-bold">{{ formatMoney(r.policy_amt) }}</ion-col>
                 <ion-col class="capitalize">{{ r.intent }}</ion-col>
               </ion-row>
-              <ion-row v-if="insurance.length === 0" class="summary-grid-row">
+              <ion-row v-if="insurance.length === 0" class="summary-grid-row bg-base-100">
                 <ion-col :size="12" class="text-base-content/60">No records</ion-col>
               </ion-row>
             </ion-grid>
@@ -746,9 +738,8 @@ function getLinkedAssetLabel(r) {
 }
 
 const sortState = reactive({
-  netWealth: { key: 'category', dir: 'asc' },
   assetInventory: { key: 'title', dir: 'asc' },
-  assetVehicles: { key: 'year', dir: 'desc' },
+  assetVehicles: { key: 'make', dir: 'asc' },
   cashAndInvestments: { key: 'institution', dir: 'asc' },
   debt: { key: 'institution', dir: 'asc' },
   realEstate: { key: 'city', dir: 'asc' },
@@ -836,16 +827,10 @@ const sortedInsurance = computed(() => {
   return arr;
 });
 
-const sortedNetWealth = computed(() => {
-  const rows = [
-    { category: 'Assets', total: totalAssets.value },
-    { category: 'Debt', total: totalDebt.value },
-  ];
-  const { key, dir } = sortState.netWealth;
-  const getVal = (r, k) => k === 'total' ? r.total : r.category;
-  rows.sort((a, b) => sortCompare(a, b, key, dir, getVal));
-  return rows;
-});
+const netWealthRows = computed(() => [
+  { category: 'Assets', total: totalAssets.value },
+  { category: 'Debt', total: totalDebt.value },
+]);
 
 const totalAssets = computed(() => {
   const sum = (arr, key) => arr.reduce((a, r) => a + (toNumber(r[key]) || 0), 0);
@@ -1411,14 +1396,10 @@ watch(() => auth.user, (user) => {
   border-bottom: none;
 }
 .summary-grid-header {
-  background: color-mix(in srgb, var(--color-base-200, #dadede) 40%, transparent);
   font-weight: 600;
 }
 .summary-grid-header ion-col {
   padding: 0.25rem 0.5rem;
-}
-.summary-grid-row:nth-child(even) {
-  background: color-mix(in srgb, var(--color-base-200, #dadede) 15%, transparent);
 }
 .summary-grid-row ion-col {
   padding: 0.25rem 0.5rem;

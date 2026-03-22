@@ -15,7 +15,7 @@ onMounted(() => {
     v-if="!auth.user"
     class="mx-auto flex min-h-[60vh] max-w-4xl items-center justify-center py-4 sm:py-6 px-2 sm:px-3"
   >
-    <div class="rounded-2xl border border-base-200 bg-base-100 p-6 sm:p-10 text-center shadow">
+    <div class="rounded-2xl border border-base-200 bg-base-300 p-6 sm:p-10 text-center shadow">
       <h1 class="text-2xl sm:text-4xl font-semibold text-primary">My Estate Plan</h1>
       <p class="mt-3 text-base text-base-content/70">
         Build, organize, and manage your estate details in one place.
@@ -61,7 +61,7 @@ onMounted(() => {
     </div>
 
     <!-- Tab content (blank) -->
-    <div class="rounded-b-lg border border-base-200 bg-base-100 overflow-hidden border-t-0 -mt-px min-h-[12rem]">
+    <div class="rounded-b-lg border border-base-200 bg-base-300 overflow-hidden border-t-0 -mt-px min-h-[12rem]">
       <div v-show="activeTab === 'estate'" class="p-6"></div>
       <div v-show="activeTab === 'cashflow'" class="p-6"></div>
     </div>

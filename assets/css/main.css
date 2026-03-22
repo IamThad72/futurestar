@@ -2,7 +2,7 @@
 
 @plugin "daisyui" {
   /* list the built-in themes you want available */
-  themes: light --default, dark --prefersdark, cupcake, bumblebee, emerald, corporate, synthwave, retro, cyberpunk, valentine, halloween, garden, forest, aqua, lofi, pastel, fantasy, wireframe, black, luxury, dracula, cmyk, autumn, business, acid, lemonade, night, coffee, winter, dim, nord, sunset;
+  themes: light --default, dark --prefersdark, cupcake, bumblebee, emerald, corporate, synthwave, retro, cyberpunk, valentine, halloween, garden, forest, aqua, lofi, pastel, fantasy, wireframe, black, luxury, dracula, cmyk, autumn, business, acid, lemonade, night, coffee, winter, dim, nord, sunset, silk;
 }
 
 /* your custom theme */
@@ -40,6 +40,18 @@
 
   --color-error: #dc2626;
   --color-error-content: #16090a;
+}
+
+/* Slightly round all heading corners */
+h1, h2, h3, h4, h5, h6,
+.collapse-title,
+.table-category-title {
+  border-radius: 0.25rem;
+}
+
+/* Override DaisyUI modal/card backgrounds to use base-100 */
+.modal-box {
+  background-color: var(--color-base-100);
 }
 
 /* Safe area for notched devices (use with viewport-fit=cover) */

@@ -16,7 +16,7 @@
         </div> -->
         <div class="pt-1 pl-1 pb-4 flex items-start justify-start w-[158px] lg:w-[154px]">
           <div class="avatar indicator">
-            <span class="ml-1 font-semibold indicator-item badge badge-md badge-primary badge-outline indicator-bottom indicator-end mb-2 p-1 border-2 bg-white">{{entity.position}}</span>
+            <span class="ml-1 font-semibold indicator-item badge badge-md badge-primary badge-outline indicator-bottom indicator-end mb-2 p-1 border-2 bg-base-300">{{entity.position}}</span>
             <div class="pt-1 pl-1 pb-1 flex items-start justify-start w-20 h-20 lg:h-20 lg:w-20">
               <img 
                 class="shrink-0 rounded-full " 
