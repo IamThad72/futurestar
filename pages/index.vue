@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const auth = useAuthStore();
-const activeTab = ref<'estate' | 'cashflow'>('estate');
+const activeTab = ref<'estate' | 'budget'>('estate');
 
 onMounted(() => {
   if (!auth.ready) {
@@ -53,17 +53,17 @@ onMounted(() => {
         role="tab"
         type="button"
         class="tab flex-1 sm:flex-none"
-        :class="{ 'tab-active': activeTab === 'cashflow' }"
-        @click="activeTab = 'cashflow'"
+        :class="{ 'tab-active': activeTab === 'budget' }"
+        @click="activeTab = 'budget'"
       >
-        Cash Flow
+        Budget
       </button>
     </div>
 
     <!-- Tab content (blank) -->
     <div class="rounded-b-lg border border-base-200 bg-base-300 overflow-hidden border-t-0 -mt-px min-h-[12rem]">
       <div v-show="activeTab === 'estate'" class="p-6"></div>
-      <div v-show="activeTab === 'cashflow'" class="p-6"></div>
+      <div v-show="activeTab === 'budget'" class="p-6"></div>
     </div>
   </section>
 </template>

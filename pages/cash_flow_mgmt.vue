@@ -1,7 +1,7 @@
 <template>
   <section class="mx-auto w-full max-w-7xl space-y-4 sm:space-y-6 p-4 sm:p-6 overflow-x-hidden min-w-0">
     <header>
-      <h1 class="text-xl sm:text-2xl font-semibold text-base-content">Cash Flow Management</h1>
+      <h1 class="text-xl sm:text-2xl font-semibold text-base-content">Budget Setup</h1>
     </header>
 
     <div v-if="!auth.ready" class="rounded-lg border border-base-200 bg-base-300 p-4">

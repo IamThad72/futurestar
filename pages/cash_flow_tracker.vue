@@ -1,7 +1,7 @@
 <template>
   <section class="mx-auto w-full max-w-screen-2xl space-y-4 sm:space-y-6 p-4 sm:p-6 overflow-x-hidden min-w-0">
     <header>
-      <h1 class="text-xl sm:text-2xl font-semibold">Cash Flow Tracker</h1>
+      <h1 class="text-xl sm:text-2xl font-semibold">Budget Tracker</h1>
     </header>
 
     <div v-if="!auth.ready" class="rounded-lg border border-base-200 bg-base-300 p-4">
@@ -109,7 +109,7 @@
               </ul>
             </template>
             <p v-if="!incomeGroupedByCategory.length && !expensesGroupedByCategory.length" class="text-center text-neutral/50 py-8">
-              No budget items yet. Add budget items in Cash Flow Management first.
+              No budget items yet. Add budget items in Budget Setup first.
             </p>
           </div>
         </div>

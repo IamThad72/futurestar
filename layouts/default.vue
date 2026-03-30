@@ -10,7 +10,7 @@
               <img class="h-8 w-auto" src="/images/3SLogo3.png" alt="Your Company" />
             </div> -->
             <NuxtLink to="/" class="flex shrink-0 items-center 
-            text-primary-content font-bold text-lg hover:text-primary-content/60">
+            text-primary-content font-bold text-lg md:text-sm hover:text-primary-content/60">
               Future Star
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block size-6 ml-2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
@@ -22,7 +22,7 @@
                 :key="link.name"
                 :to="link.path"
                 :class="getLinkClass(link.path)"
-                class="inline-flex items-center px-1 pt-1 font-medium"
+                class="inline-flex items-center px-1 pt-1 font-medium md:text-sm"
               >
                 {{ link.name }}
               </NuxtLink>
@@ -54,7 +54,7 @@
                       </svg>
                     </div>
                   </div>
-                  <span class="hidden md:inline text-sm font-medium">{{ userEmail }}</span>
+                  <span class="hidden md:inline text-sm md:text-xs font-medium">{{ userEmail }}</span>
                   <svg class="hidden md:block size-4" fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
                 </HeadlessMenuButton>
                 <HeadlessMenuItems
@@ -186,9 +186,8 @@ const links = computed(() => {
   if (auth.user) {
     return [
       { name: 'Estate Management', path: '/estate_mgmt' },
-      { name: 'Estate Summary', path: '/summary' },
-      { name: 'Cash Flow Mgmt', path: '/cash_flow_mgmt' },
-      { name: 'Cash Flow Tracker', path: '/cash_flow_tracker' },
+      { name: 'Budget Setup', path: '/cash_flow_mgmt' },
+      { name: 'Budget Tracker', path: '/cash_flow_tracker' },
     ];
   }
   return [
