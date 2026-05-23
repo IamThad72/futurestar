@@ -1,5 +1,7 @@
 {
   "name": "futurestar",
-  "integrations": {},
+  "integrations": {
+    "capacitor": {}
+  },
   "type": "vue"
 }

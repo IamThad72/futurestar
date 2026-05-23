@@ -1,7 +1,7 @@
 import { createError, readBody } from "h3";
 import { createDbClient } from "../../utils/db";
 import { getSessionUserId } from "../../utils/auth";
-import { assertGroupOwner } from "../../utils/group";
+import { assertGroupOwner, backfillGroupIdForUser } from "../../utils/group";
 
 export default defineEventHandler(async (event) => {
   const userId = await getSessionUserId(event);
@@ -62,6 +62,8 @@ export default defineEventHandler(async (event) => {
        ON CONFLICT (group_id, user_id) DO NOTHING`,
       [membership.group_id, memberUserId, "member"],
     );
+
+    await backfillGroupIdForUser(client, membership.group_id, memberUserId);
 
     return { success: true };
   } catch (error) {

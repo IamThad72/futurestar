@@ -2,6 +2,7 @@ import { createError, readBody } from "h3";
 import { createDbClient } from "../../utils/db";
 import { getSessionUserId } from "../../utils/auth";
 import { getUserGroupId } from "../../utils/group";
+import { parseOptionalBoolean, parseOptionalDate, parseOptionalInt, parseOptionalNumber } from "../../utils/debtFields";
 
 export default defineEventHandler(async (event) => {
   const userId = await getSessionUserId(event);
@@ -16,6 +17,11 @@ export default defineEventHandler(async (event) => {
   const loanAmmount = body?.loan_ammount != null && body?.loan_ammount !== "" ? body.loan_ammount : null;
   const linkedAssetType = String(body?.linked_asset_type ?? "").trim() || null;
   const linkedAssetId = body?.linked_asset_id != null && body?.linked_asset_id !== "" ? Number(body.linked_asset_id) : null;
+  const isRevolving = parseOptionalBoolean(body?.is_revolving);
+  const interestRateAnnual = parseOptionalNumber(body?.interest_rate_annual);
+  const termMonths = parseOptionalInt(body?.term_months);
+  const scheduledMonthlyPayment = parseOptionalNumber(body?.scheduled_monthly_payment);
+  const loanStartDate = parseOptionalDate(body?.loan_start_date);
 
   if (!institution) {
     throw createError({
@@ -32,8 +38,8 @@ export default defineEventHandler(async (event) => {
 
     await client.query(
       `INSERT INTO debt
-        (institution, loan_number, loan_type, customer_support_no, address_url, borrower, loan_ammount, linked_asset_type, linked_asset_id, user_id, group_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        (institution, loan_number, loan_type, customer_support_no, address_url, borrower, loan_ammount, linked_asset_type, linked_asset_id, user_id, group_id, is_revolving, interest_rate_annual, term_months, scheduled_monthly_payment, loan_start_date)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, COALESCE($12, TRUE), $13, $14, $15, $16::date)`,
       [
         institution,
         loanNumber,
@@ -46,6 +52,11 @@ export default defineEventHandler(async (event) => {
         linkedAssetId,
         userId,
         groupId,
+        isRevolving,
+        interestRateAnnual,
+        termMonths,
+        scheduledMonthlyPayment,
+        loanStartDate,
       ],
     );
 

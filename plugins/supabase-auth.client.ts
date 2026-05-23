@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { ofetch } from "ofetch";
+import { getNativeApiBase, isApiPath, resolveNativeApiUrl } from "~/utils/native-api-base";
 
 export default defineNuxtPlugin((nuxtApp) => {
   const config = useRuntimeConfig().public;
@@ -11,17 +12,25 @@ export default defineNuxtPlugin((nuxtApp) => {
   }
 
   const supabase = createClient(supabaseUrl, supabaseKey);
+  const nativeApiBase = getNativeApiBase(config.apiBase);
 
   // Add Supabase JWT to all /api/ requests so server can resolve app_user
   const apiFetch = ofetch.create({
+    baseURL: nativeApiBase || undefined,
     onRequest: async (ctx) => {
-      const url =
+      const rawUrl =
         typeof ctx.request === "string"
           ? ctx.request
           : ctx.request instanceof Request
             ? ctx.request.url
             : String(ctx.request);
-      if (!url.startsWith("/api/") && !url.includes("/api/")) return;
+
+      const url = resolveNativeApiUrl(rawUrl, config.apiBase);
+      if (url !== rawUrl) {
+        ctx.request = url;
+      }
+
+      if (!isApiPath(url)) return;
 
       const {
         data: { session },
@@ -45,7 +54,7 @@ export default defineNuxtPlugin((nuxtApp) => {
         : input instanceof Request
           ? input.url
           : String(input);
-    if (url.startsWith("/api/") || url.includes("/api/")) {
+    if (isApiPath(url)) {
       return apiFetch(input as any, init);
     }
     return originalFetch(input as any, init);

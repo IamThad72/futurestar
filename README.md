@@ -73,3 +73,10 @@ bun run preview
 ```
 
 Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+
+## iOS & Android
+
+Native apps use **Ionic + Capacitor** with the [@nuxtjs/ionic](https://ionic.nuxtjs.org/) module.
+
+- **Development (emulator):** [docs/MOBILE.md](docs/MOBILE.md) — `npm run cap:sync:dev`, `NUXT_PUBLIC_API_BASE=http://10.0.2.2:3000`
+- **Store release:** [docs/STORE_DEPLOYMENT.md](docs/STORE_DEPLOYMENT.md) — `npm run cap:sync` (HTTPS API required)

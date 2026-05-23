@@ -1,7 +1,11 @@
 <template>
   <div v-if="modelValue" class="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4">
     <div class="absolute inset-0 bg-black/50" @click="close"></div>
-    <div class="relative w-full h-full sm:w-auto sm:h-auto sm:max-w-[46.2rem] sm:max-h-[90vh] overflow-y-auto overscroll-contain bg-base-100 p-4 pt-6 pb-safe-content sm:p-6 shadow-lg sm:rounded-lg">
+    <div
+      class="relative w-full h-full sm:w-auto sm:h-auto sm:max-w-[46.2rem] sm:max-h-[90vh] overflow-y-auto overscroll-contain bg-base-100 p-4 pt-6 pb-safe-content sm:p-6 shadow-lg sm:rounded-lg"
+      role="dialog"
+      aria-modal="true"
+    >
       <div class="flex items-center justify-between">
         <div>
           <h2 class="text-lg font-semibold">Linked Accounts</h2>

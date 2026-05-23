@@ -25,3 +25,12 @@ logs
 
 # Database dumps (may contain sensitive data)
 db-dump-*.sql
+
+# Capacitor / native build artifacts (never commit)
+android/.gradle/
+android/**/build/
+android/local.properties
+ios/App/App/public/
+ios/App/Pods/
+ios/DerivedData/
+*.xcuserstate

@@ -61,3 +61,390 @@ h1, h2, h3, h4, h5, h6,
 .pb-safe-content {
   padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0));
 }
+
+/* ion-app is a flex column so layout can fill the viewport */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+ion-app.app-shell {
+  touch-action: manipulation;
+}
+
+ion-app.app-shell a,
+ion-app.app-shell button {
+  touch-action: manipulation;
+}
+
+.app-shell__main {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-shell__main > * {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-shell nav.app-navbar {
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--color-primary-content) 12%, transparent);
+}
+
+/* Top navbar: ion-app sets text-base-content; corporate theme link styles override text-white */
+nav.app-navbar {
+  color: #ffffff !important;
+}
+
+nav.app-navbar a,
+nav.app-navbar button:not(.app-user-menu__item),
+nav.app-navbar .router-link-active,
+nav.app-navbar .router-link-exact-active {
+  color: #ffffff !important;
+}
+
+nav.app-navbar a:hover,
+nav.app-navbar a:focus-visible,
+nav.app-navbar button:not(.app-user-menu__item):hover,
+nav.app-navbar button:not(.app-user-menu__item):focus-visible {
+  color: #ffffff !important;
+}
+
+nav.app-navbar svg {
+  color: inherit;
+}
+
+/* Profile avatar dropdown */
+.app-user-menu {
+  overflow: hidden;
+  border-radius: 0.375rem;
+  background-color: #ffffff;
+  padding: 0.25rem 0;
+  box-shadow:
+    0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1),
+    0 0 0 1px rgb(0 0 0 / 0.05);
+}
+
+:root[data-theme="dark"] .app-user-menu,
+.dark .app-user-menu {
+  background-color: rgb(31 41 55);
+  box-shadow:
+    0 10px 15px -3px rgb(0 0 0 / 0.25),
+    0 0 0 1px rgb(255 255 255 / 0.1);
+}
+
+.app-user-menu .app-user-menu__item {
+  display: block;
+  width: 100%;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  color: rgb(55 65 81) !important;
+  background-color: transparent;
+}
+
+.app-user-menu .app-user-menu__item:hover,
+.app-user-menu .app-user-menu__item--active {
+  color: rgb(17 24 39) !important;
+  background-color: rgb(243 244 246) !important;
+}
+
+:root[data-theme="dark"] .app-user-menu .app-user-menu__item,
+.dark .app-user-menu .app-user-menu__item {
+  color: rgb(209 213 219) !important;
+}
+
+:root[data-theme="dark"] .app-user-menu .app-user-menu__item:hover,
+:root[data-theme="dark"] .app-user-menu .app-user-menu__item--active,
+.dark .app-user-menu .app-user-menu__item:hover,
+.dark .app-user-menu .app-user-menu__item--active {
+  color: #ffffff !important;
+  background-color: rgb(255 255 255 / 0.05) !important;
+}
+
+/* Dropdown can render inside nav; keep navbar rules from overriding menu items */
+nav.app-navbar .app-user-menu .app-user-menu__item,
+nav.app-navbar .app-user-menu .app-user-menu__item:hover,
+nav.app-navbar .app-user-menu .app-user-menu__item:focus-visible {
+  color: rgb(55 65 81) !important;
+}
+
+nav.app-navbar .app-user-menu .app-user-menu__item:hover,
+nav.app-navbar .app-user-menu .app-user-menu__item--active {
+  color: rgb(17 24 39) !important;
+  background-color: rgb(243 244 246) !important;
+}
+
+/* Budget row action menu (Edit / Delete on cash flow mgmt) */
+.budget-row-menu {
+  border-radius: 0.5rem;
+  background-color: #ffffff;
+  box-shadow:
+    0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1),
+    0 0 0 1px rgb(17 24 39 / 0.05);
+}
+
+:root[data-theme="dark"] .budget-row-menu,
+.dark .budget-row-menu {
+  background-color: rgb(31 41 55);
+  box-shadow:
+    0 10px 15px -3px rgb(0 0 0 / 0.25),
+    0 0 0 1px rgb(255 255 255 / 0.1);
+}
+
+.budget-row-menu__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.375rem;
+}
+
+.budget-row-menu__item {
+  display: block;
+  width: 100%;
+  margin: 0;
+  border: none;
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+  text-align: left;
+  background-color: transparent;
+  color: rgb(17 24 39);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+:root[data-theme="dark"] .budget-row-menu__item,
+.dark .budget-row-menu__item {
+  color: #ffffff;
+}
+
+.budget-row-menu__item--active {
+  background-color: rgb(249 250 251);
+}
+
+:root[data-theme="dark"] .budget-row-menu__item--active,
+.dark .budget-row-menu__item--active {
+  background-color: rgb(255 255 255 / 0.08);
+}
+
+.budget-row-menu__item--danger {
+  color: rgb(220 38 38);
+}
+
+:root[data-theme="dark"] .budget-row-menu__item--danger,
+.dark .budget-row-menu__item--danger {
+  color: rgb(248 113 113);
+}
+
+.budget-row-menu__item--danger.budget-row-menu__item--active {
+  background-color: rgb(254 242 242);
+}
+
+:root[data-theme="dark"] .budget-row-menu__item--danger.budget-row-menu__item--active,
+.dark .budget-row-menu__item--danger.budget-row-menu__item--active {
+  background-color: rgb(127 29 29 / 0.25);
+}
+
+.budget-row-menu__trigger {
+  min-height: unset !important;
+  min-width: unset !important;
+}
+
+/* Auth forms — native submit buttons need daisyUI btn styling inside Ionic */
+ion-app .auth-form button.btn:not(.btn-square):not(.btn-xs) {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 9999px !important;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+ion-app .auth-form button.btn-primary:not(.btn-outline) {
+  border: none !important;
+  background-color: var(--color-primary, #1e3a8a) !important;
+  color: #ffffff !important;
+}
+
+ion-app .auth-form button.btn-primary:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-primary, #1e3a8a) 88%, #000) !important;
+  color: #ffffff !important;
+}
+
+ion-app .auth-form button.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+ion-app .auth-form button.btn:focus-visible {
+  outline: 2px solid var(--color-primary, #1e3a8a);
+  outline-offset: 2px;
+}
+
+/* Estate Management: Add / Manage Categories — Tailwind on native buttons is overridden by Ionic */
+ion-app button.estate-action-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.375rem !important;
+  margin: 0;
+  border: none !important;
+  border-radius: 9999px !important;
+  background-color: var(--color-primary, #1e3a8a) !important;
+  color: #ffffff !important;
+  padding: 0.3rem 1.5rem !important;
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  line-height: 1.25rem !important;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+ion-app button.estate-action-btn:hover {
+  background-color: color-mix(in srgb, var(--color-primary, #1e3a8a) 88%, #000) !important;
+  color: #ffffff !important;
+}
+
+@media (min-width: 768px) {
+  ion-app button.estate-action-btn {
+    padding: 0.375rem 2rem !important;
+    font-size: 0.875rem !important;
+    gap: 0.5rem !important;
+  }
+}
+
+ion-app button.estate-action-btn:focus-visible {
+  outline: 2px solid var(--color-primary, #1e3a8a);
+  outline-offset: 2px;
+}
+
+/* Modal footer / action buttons — match estate-action-btn padding and pill shape */
+ion-app .modal-box button.btn:not(.btn-square):not(.btn-xs),
+ion-app [role="dialog"] button.btn:not(.btn-square):not(.btn-xs) {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.375rem !important;
+  min-height: unset !important;
+  height: auto !important;
+  border-radius: 9999px !important;
+  padding: 0.3rem 1.5rem !important;
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  line-height: 1.25rem !important;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+@media (min-width: 768px) {
+  ion-app .modal-box button.btn:not(.btn-square):not(.btn-xs),
+  ion-app [role="dialog"] button.btn:not(.btn-square):not(.btn-xs) {
+    padding: 0.375rem 2rem !important;
+    font-size: 0.875rem !important;
+    gap: 0.5rem !important;
+  }
+}
+
+ion-app .modal-action {
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+ion-app .modal-box button.btn-primary:not(.btn-outline),
+ion-app .modal-box button.btn.btn-primary,
+ion-app [role="dialog"] button.btn-primary:not(.btn-outline),
+ion-app [role="dialog"] button.btn.btn-primary {
+  border: none !important;
+  background-color: var(--color-primary, #1e3a8a) !important;
+  color: #ffffff !important;
+}
+
+ion-app .modal-box button.btn-primary:hover:not(:disabled),
+ion-app [role="dialog"] button.btn-primary:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-primary, #1e3a8a) 88%, #000) !important;
+  color: #ffffff !important;
+}
+
+ion-app .modal-box button.btn-error:not(.btn-outline),
+ion-app [role="dialog"] button.btn-error:not(.btn-outline) {
+  border: none !important;
+  background-color: var(--color-error, #dc2626) !important;
+  color: #ffffff !important;
+}
+
+ion-app .modal-box button.btn-error:not(.btn-outline):hover:not(:disabled),
+ion-app [role="dialog"] button.btn-error:not(.btn-outline):hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-error, #dc2626) 88%, #000) !important;
+  color: #ffffff !important;
+}
+
+ion-app .modal-box button.btn-ghost,
+ion-app .modal-box button.btn-outline:not(.btn-error),
+ion-app .modal-box button.btn:not(.btn-primary):not(.btn-error):not(.btn-square):not(.btn-xs),
+ion-app [role="dialog"] button.btn-ghost,
+ion-app [role="dialog"] button.btn-outline:not(.btn-error),
+ion-app [role="dialog"] button.btn:not(.btn-primary):not(.btn-error):not(.btn-square):not(.btn-xs) {
+  background-color: transparent !important;
+  border: 1px solid color-mix(in srgb, var(--color-base-content, #151616) 22%, transparent) !important;
+  color: var(--color-base-content, #151616) !important;
+}
+
+ion-app .modal-box button.btn-ghost:hover:not(:disabled),
+ion-app .modal-box button.btn-outline:not(.btn-error):hover:not(:disabled),
+ion-app .modal-box button.btn:not(.btn-primary):not(.btn-error):not(.btn-square):not(.btn-xs):hover:not(:disabled),
+ion-app [role="dialog"] button.btn-ghost:hover:not(:disabled),
+ion-app [role="dialog"] button.btn-outline:not(.btn-error):hover:not(:disabled),
+ion-app [role="dialog"] button.btn:not(.btn-primary):not(.btn-error):not(.btn-square):not(.btn-xs):hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-base-content, #151616) 6%, transparent) !important;
+}
+
+ion-app .modal-box button.btn-error.btn-outline,
+ion-app [role="dialog"] button.btn-error.btn-outline {
+  background-color: transparent !important;
+  border: 1px solid var(--color-error, #dc2626) !important;
+  color: var(--color-error, #dc2626) !important;
+}
+
+ion-app .modal-box button.btn-error.btn-outline:hover:not(:disabled),
+ion-app [role="dialog"] button.btn-error.btn-outline:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-error, #dc2626) 10%, transparent) !important;
+}
+
+ion-app .modal-box button.btn:disabled,
+ion-app [role="dialog"] button.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+ion-app .modal-box button.btn:focus-visible,
+ion-app [role="dialog"] button.btn:focus-visible {
+  outline: 2px solid var(--color-primary, #1e3a8a);
+  outline-offset: 2px;
+}

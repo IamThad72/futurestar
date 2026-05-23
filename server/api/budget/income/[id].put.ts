@@ -1,6 +1,7 @@
 import { createError, readBody } from "h3";
 import { createDbClient } from "../../../utils/db";
 import { getSessionUserId } from "../../../utils/auth";
+import { getUserGroupId, groupAccessClauseAt, soloUserClauseAt } from "../../../utils/group";
 
 export default defineEventHandler(async (event) => {
   const userId = await getSessionUserId(event);
@@ -33,6 +34,8 @@ export default defineEventHandler(async (event) => {
 
   try {
     await client.connect();
+    const groupId = await getUserGroupId(client, userId);
+
     const updates = [];
     const values = [];
     let paramIndex = 1;
@@ -66,9 +69,19 @@ export default defineEventHandler(async (event) => {
       return { success: true };
     }
 
-    values.push(id, userId);
+    const idParam = paramIndex++;
+    values.push(id);
+    const accessClause = groupId
+      ? groupAccessClauseAt("", paramIndex, paramIndex + 1)
+      : soloUserClauseAt("", paramIndex);
+    if (groupId) {
+      values.push(userId, groupId);
+    } else {
+      values.push(userId);
+    }
+
     const result = await client.query(
-      `UPDATE income SET ${updates.join(", ")} WHERE income_id = $${paramIndex} AND user_id = $${paramIndex + 1} RETURNING income_id`,
+      `UPDATE income SET ${updates.join(", ")} WHERE income_id = $${idParam} AND ${accessClause} RETURNING income_id`,
       values,
     );
 

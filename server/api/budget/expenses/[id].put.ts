@@ -1,6 +1,8 @@
 import { createError, readBody } from "h3";
 import { createDbClient } from "../../../utils/db";
 import { getSessionUserId } from "../../../utils/auth";
+import { getUserGroupId, groupAccessClauseAt, soloUserClauseAt } from "../../../utils/group";
+import { budgetExpenseNeedsDebtLink } from "../../../../utils/budgetDebt";
 
 export default defineEventHandler(async (event) => {
   const userId = await getSessionUserId(event);
@@ -18,6 +20,18 @@ export default defineEventHandler(async (event) => {
   const category = body?.category != null ? String(body.category).trim() : null;
   const subCategory = body?.sub_category != null ? String(body.sub_category).trim() : null;
   const cashInvestmentId = body?.cash_investment_id != null ? parseInt(String(body.cash_investment_id), 10) : null;
+  const fromCashInvestmentId =
+    body?.from_cash_investment_id !== undefined
+      ? body.from_cash_investment_id == null || body.from_cash_investment_id === ""
+        ? null
+        : parseInt(String(body.from_cash_investment_id), 10)
+      : undefined;
+  const debtIdProvided = body?.debt_id !== undefined;
+  const debtIdParsed = debtIdProvided
+    ? body.debt_id == null || body.debt_id === ""
+      ? null
+      : parseInt(String(body.debt_id), 10)
+    : undefined;
 
   const validExpenseTypes = ["expense", "savings", "investment"];
   if (expenseType !== null && !validExpenseTypes.includes(expenseType)) {
@@ -34,6 +48,10 @@ export default defineEventHandler(async (event) => {
 
   try {
     await client.connect();
+    const groupId = await getUserGroupId(client, userId);
+    const readAccessClause = groupId ? groupAccessClauseAt("", 2, 3) : soloUserClauseAt("", 2);
+    const readParams = groupId ? [id, userId, groupId] : [id, userId];
+
     const updates = [];
     const values = [];
     let paramIndex = 1;
@@ -67,14 +85,87 @@ export default defineEventHandler(async (event) => {
       updates.push(`cash_investment_id = $${paramIndex++}`);
       values.push(effectiveCiId);
     }
+    if (fromCashInvestmentId !== undefined) {
+      const effectiveFromId =
+        fromCashInvestmentId != null && !isNaN(fromCashInvestmentId) && fromCashInvestmentId > 0 ? fromCashInvestmentId : null;
+      updates.push(`from_cash_investment_id = $${paramIndex++}`);
+      values.push(effectiveFromId);
+    }
+    if (debtIdParsed !== undefined) {
+      const effectiveDebtId =
+        debtIdParsed != null && !isNaN(debtIdParsed) && debtIdParsed > 0 ? debtIdParsed : null;
+      updates.push(`debt_id = $${paramIndex++}`);
+      values.push(effectiveDebtId);
+    }
 
     if (updates.length === 0) {
       return { success: true };
     }
 
-    values.push(id, userId);
+    const currentRow = await client.query(
+      `SELECT expense_type, expense_category, sub_category, expense_category_desc, debt_id
+       FROM expenses WHERE expense_id = $1 AND ${readAccessClause}`,
+      readParams,
+    );
+    if (currentRow.rowCount === 0) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: "Budget not found.",
+      });
+    }
+    const row = currentRow.rows[0];
+    const mergedExpenseType = expenseType ?? row.expense_type ?? "expense";
+    const mergedCategory = category ?? row.expense_category;
+    const mergedSub = subCategory !== null ? subCategory : row.sub_category;
+    const mergedDesc = description !== null ? description : row.expense_category_desc;
+    const mergedDebtId = debtIdParsed !== undefined ? debtIdParsed : row.debt_id;
+
+    if (mergedExpenseType !== "expense" && mergedDebtId != null && !isNaN(mergedDebtId) && mergedDebtId > 0) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Debt link applies to expense budget lines only.",
+      });
+    }
+
+    if (
+      mergedExpenseType === "expense" &&
+      budgetExpenseNeedsDebtLink(mergedCategory, mergedSub, mergedDesc) &&
+      (mergedDebtId == null || isNaN(mergedDebtId) || mergedDebtId <= 0)
+    ) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Select the Estate Management debt record for this expense line.",
+      });
+    }
+
+    if (mergedDebtId != null && !isNaN(mergedDebtId) && mergedDebtId > 0) {
+      const debtCheck = groupId
+        ? await client.query(
+            `SELECT 1 FROM debt WHERE dbt_id = $1 AND ${groupAccessClauseAt("", 2, 3)}`,
+            [mergedDebtId, userId, groupId],
+          )
+        : await client.query(`SELECT 1 FROM debt WHERE dbt_id = $1 AND user_id = $2`, [mergedDebtId, userId]);
+      if (debtCheck.rowCount === 0) {
+        throw createError({
+          statusCode: 400,
+          statusMessage: "Invalid debt record.",
+        });
+      }
+    }
+
+    const idParam = paramIndex++;
+    values.push(id);
+    const writeAccessClause = groupId
+      ? groupAccessClauseAt("", paramIndex, paramIndex + 1)
+      : soloUserClauseAt("", paramIndex);
+    if (groupId) {
+      values.push(userId, groupId);
+    } else {
+      values.push(userId);
+    }
+
     const result = await client.query(
-      `UPDATE expenses SET ${updates.join(", ")} WHERE expense_id = $${paramIndex} AND user_id = $${paramIndex + 1} RETURNING expense_id`,
+      `UPDATE expenses SET ${updates.join(", ")} WHERE expense_id = $${idParam} AND ${writeAccessClause} RETURNING expense_id`,
       values,
     );
 

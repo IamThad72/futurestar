@@ -1,6 +1,7 @@
 import { createError } from "h3";
 import { createDbClient } from "../../../utils/db";
 import { getSessionUserId } from "../../../utils/auth";
+import { getUserGroupId, groupAccessClauseAt, soloUserClauseAt } from "../../../utils/group";
 
 export default defineEventHandler(async (event) => {
   const userId = await getSessionUserId(event);
@@ -17,9 +18,13 @@ export default defineEventHandler(async (event) => {
 
   try {
     await client.connect();
+    const groupId = await getUserGroupId(client, userId);
+    const accessClause = groupId ? groupAccessClauseAt("", 2, 3) : soloUserClauseAt("", 2);
+    const params = groupId ? [id, userId, groupId] : [id, userId];
+
     const result = await client.query(
-      `DELETE FROM income WHERE income_id = $1 AND user_id = $2 RETURNING income_id`,
-      [id, userId],
+      `DELETE FROM income WHERE income_id = $1 AND ${accessClause} RETURNING income_id`,
+      params,
     );
 
     if (result.rowCount === 0) {

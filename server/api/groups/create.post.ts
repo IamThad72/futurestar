@@ -1,7 +1,7 @@
 import { createError, readBody } from "h3";
 import { createDbClient } from "../../utils/db";
 import { getSessionUserId } from "../../utils/auth";
-import { getUserGroupMembership } from "../../utils/group";
+import { backfillGroupIdForUser, getUserGroupMembership } from "../../utils/group";
 
 export default defineEventHandler(async (event) => {
   const userId = await getSessionUserId(event);
@@ -60,22 +60,8 @@ export default defineEventHandler(async (event) => {
       [groupId, userId, "owner", secondUserId, "member"],
     );
 
-    // Backfill group_id on owner's existing records so linked member can see them
-    const tables = [
-      "asset_inventory",
-      "asset_vehicles",
-      "cash_and_investments",
-      "debt",
-      "insurance",
-      "real_estate",
-      "estate_entries",
-    ];
-    for (const table of tables) {
-      await client.query(
-        `UPDATE ${table} SET group_id = $1 WHERE user_id = $2 AND group_id IS NULL`,
-        [groupId, userId],
-      );
-    }
+    // Backfill group_id on owner's existing records so linked members can see them
+    await backfillGroupIdForUser(client, groupId, userId);
 
     return { success: true, group_id: groupId };
   } catch (error) {

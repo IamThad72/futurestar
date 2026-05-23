@@ -8,14 +8,9 @@
 </template>
 
 <script setup>
-const router = useRouter();
-const auth = useAuthStore();
+const { signOut } = useSignOut();
 
 onMounted(async () => {
-  try {
-    await auth.logout();
-  } finally {
-    await router.push("/login");
-  }
+  await signOut();
 });
 </script>

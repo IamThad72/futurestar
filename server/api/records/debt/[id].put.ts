@@ -2,6 +2,7 @@ import { createError, readBody } from "h3";
 import { createDbClient } from "../../../utils/db";
 import { getSessionUserId } from "../../../utils/auth";
 import { getUserGroupId } from "../../../utils/group";
+import { parseOptionalBoolean, parseOptionalDate, parseOptionalInt, parseOptionalNumber } from "../../../utils/debtFields";
 
 export default defineEventHandler(async (event) => {
   const userId = await getSessionUserId(event);
@@ -24,19 +25,59 @@ export default defineEventHandler(async (event) => {
     : null;
   const linkedAssetType = String(body?.linked_asset_type ?? "").trim() || null;
   const linkedAssetId = body?.linked_asset_id != null && body?.linked_asset_id !== "" ? Number(body.linked_asset_id) : null;
+  const isRevolving = parseOptionalBoolean(body?.is_revolving);
+  const interestRateAnnual = parseOptionalNumber(body?.interest_rate_annual);
+  const termMonths = parseOptionalInt(body?.term_months);
+  const scheduledMonthlyPayment = parseOptionalNumber(body?.scheduled_monthly_payment);
+  const loanStartDate = parseOptionalDate(body?.loan_start_date);
 
   const client = createDbClient();
   try {
     await client.connect();
     const groupId = await getUserGroupId(client, userId);
     const params = groupId
-      ? [institution, loanNumber, loanType, customerSupportNo, addressUrl, borrower, loanAmmount, linkedAssetType, linkedAssetId, id, userId, groupId]
-      : [institution, loanNumber, loanType, customerSupportNo, addressUrl, borrower, loanAmmount, linkedAssetType, linkedAssetId, id, userId];
+      ? [
+          institution,
+          loanNumber,
+          loanType,
+          customerSupportNo,
+          addressUrl,
+          borrower,
+          loanAmmount,
+          linkedAssetType,
+          linkedAssetId,
+          isRevolving,
+          interestRateAnnual,
+          termMonths,
+          scheduledMonthlyPayment,
+          loanStartDate,
+          id,
+          userId,
+          groupId,
+        ]
+      : [
+          institution,
+          loanNumber,
+          loanType,
+          customerSupportNo,
+          addressUrl,
+          borrower,
+          loanAmmount,
+          linkedAssetType,
+          linkedAssetId,
+          isRevolving,
+          interestRateAnnual,
+          termMonths,
+          scheduledMonthlyPayment,
+          loanStartDate,
+          id,
+          userId,
+        ];
 
     const result = await client.query(
       groupId
-        ? `UPDATE debt SET institution = $1, loan_number = $2, loan_type = $3, customer_support_no = $4, address_url = $5, borrower = $6, loan_ammount = $7, linked_asset_type = $8, linked_asset_id = $9 WHERE dbt_id = $10 AND (user_id = $11 OR group_id = $12)`
-        : `UPDATE debt SET institution = $1, loan_number = $2, loan_type = $3, customer_support_no = $4, address_url = $5, borrower = $6, loan_ammount = $7, linked_asset_type = $8, linked_asset_id = $9 WHERE dbt_id = $10 AND user_id = $11`,
+        ? `UPDATE debt SET institution = $1, loan_number = $2, loan_type = $3, customer_support_no = $4, address_url = $5, borrower = $6, loan_ammount = $7, linked_asset_type = $8, linked_asset_id = $9, is_revolving = COALESCE($10, is_revolving), interest_rate_annual = $11, term_months = $12, scheduled_monthly_payment = $13, loan_start_date = $14::date WHERE dbt_id = $15 AND (user_id = $16 OR group_id = $17)`
+        : `UPDATE debt SET institution = $1, loan_number = $2, loan_type = $3, customer_support_no = $4, address_url = $5, borrower = $6, loan_ammount = $7, linked_asset_type = $8, linked_asset_id = $9, is_revolving = COALESCE($10, is_revolving), interest_rate_annual = $11, term_months = $12, scheduled_monthly_payment = $13, loan_start_date = $14::date WHERE dbt_id = $15 AND user_id = $16`,
       params,
     );
 

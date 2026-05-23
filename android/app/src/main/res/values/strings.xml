@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Future Star</string>
+    <string name="title_activity_main">Future Star</string>
+    <string name="package_name">com.futurestar.myfin</string>
+    <string name="custom_url_scheme">com.futurestar.myfin</string>
+</resources>

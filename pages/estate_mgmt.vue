@@ -1,352 +1,287 @@
 <template>
-  <section class="mx-auto w-full max-w-5xl space-y-6 sm:space-y-8 p-4 sm:p-6">
-    <header class="space-y-2">
-      <div class="flex flex-wrap items-start justify-between gap-3">
-        <h1 class="text-xl sm:text-2xl font-semibold">Estate Management</h1>
-        <button
-          v-if="auth.user"
-          type="button"
-          class="btn btn-outline btn-sm shrink-0 sm:btn-md"
-          @click="openManageAssetCategoriesModal"
-        >
-          Manage Asset Categories
-        </button>
-      </div>
-      <p class="text-sm text-base-content/70">
-        Overview of your estate records across all categories.
-      </p>
-    </header>
+  <main>
 
-    <div v-if="!auth.ready" class="rounded-lg border border-base-200 bg-base-300 p-4">
-      <span class="text-sm text-base-content/70">Loading session...</span>
+    <div v-if="!auth.ready" class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <p class="text-sm text-gray-500 dark:text-gray-400">Loading session...</p>
     </div>
 
     <div
       v-else-if="!auth.user"
-      class="rounded-lg border border-warning/30 bg-warning/10 p-4 text-sm text-warning-content"
+      class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
     >
       You must be logged in to use estate management.
     </div>
 
     <template v-else>
-      <div v-if="loading" class="text-sm text-base-content/70">Loading...</div>
+      <div class="relative isolate overflow-hidden">
+        <header class="pb-4 pt-6 sm:pb-6">
+          <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-6 px-4 sm:flex-nowrap sm:px-6 lg:px-8">
+            <h1 class="text-sm font-semibold text-gray-900 md:text-base dark:text-white">Estate Management</h1>
+            <button
+              v-if="auth.user"
+              type="button"
+              class="estate-action-btn ml-auto"
+              @click="openManageAssetCategoriesModal"
+            >
+              Manage Asset Categories
+            </button>
+          </div>
+        </header>
+        <div class="border-b border-gray-900/10 lg:border-t lg:border-t-gray-900/5 dark:border-white/10 dark:lg:border-t-white/5">
+          <dl class="mx-auto grid max-w-7xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 lg:px-2 xl:px-0">
+            <div
+              v-for="(stat, statIdx) in estateStats"
+              :key="stat.name"
+              :class="[
+                statIdx % 2 === 1 ? 'sm:border-l' : statIdx === 2 ? 'lg:border-l' : '',
+                'flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-gray-900/5 px-4 py-6 sm:px-6 md:gap-x-4 md:gap-y-2 md:py-10 lg:border-t-0 xl:px-8 dark:border-white/5',
+              ]"
+            >
+              <dt class="text-xs font-medium text-gray-500 md:text-sm dark:text-gray-400">{{ stat.name }}</dt>
+              <dd class="w-full flex-none text-xl font-medium tracking-tight text-gray-900 tabular-nums md:text-3xl dark:text-white">{{ stat.value }}</dd>
+            </div>
+          </dl>
+        </div>
+        <div
+          class="absolute left-0 top-full -z-10 mt-96 origin-top-left translate-y-40 -rotate-90 transform-gpu opacity-20 blur-3xl sm:left-1/2 sm:-ml-96 sm:-mt-10 sm:translate-y-0 sm:rotate-0 sm:opacity-50 dark:opacity-10 dark:sm:opacity-30"
+          aria-hidden="true"
+        >
+          <div
+            class="aspect-[1154/678] w-[72.125rem] bg-gradient-to-br from-[#FF80B5] to-[#9089FC]"
+            style="clip-path: polygon(100% 38.5%, 82.6% 100%, 60.2% 37.7%, 52.4% 32.1%, 47.5% 41.8%, 45.2% 65.6%, 27.5% 23.4%, 0.1% 35.3%, 17.9% 0%, 27.7% 23.4%, 76.2% 2.5%, 74.2% 56%, 100% 38.5%)"
+          ></div>
+        </div>
+      </div>
 
-      <div v-else class="space-y-8">
-        <!-- Net Wealth -->
-        <div class="rounded-lg border border-base-200 bg-base-300 overflow-hidden">
-          <h2 class="table-category-title border-b border-base-200 bg-accent px-4 py-3 text-sm font-semibold flex justify-between items-center text-secondary-content">
-            <span>Net Wealth</span>
-            <span class="font-bold text-secondary-content">{{ formatMoney(netWealth) }}</span>
-          </h2>
+      <div v-if="loading" class="mx-auto max-w-7xl px-4 py-8 text-xs text-gray-500 sm:px-6 md:py-12 md:text-sm lg:px-8 dark:text-gray-400">Loading records...</div>
+
+      <div v-else class="space-y-10 py-8 md:space-y-16 md:py-16 xl:space-y-20">
+        <EstateSection title="Asset Inventory" :total="formatMoney(totalAssetInventory)" @add="openAddModal('asset')">
           <div class="overflow-x-auto">
-            <ion-grid class="ion-no-padding summary-grid summary-grid-2 summary-grid-mobile">
-              <ion-row v-for="(row, i) in netWealthRows" :key="row.category" :class="['summary-grid-row', 'bg-base-100']">
-                <ion-col>{{ row.category }}</ion-col>
-                <ion-col></ion-col>
-                <ion-col></ion-col>
-                <ion-col></ion-col>
-                <ion-col></ion-col>
-                <ion-col></ion-col>
-                <ion-col></ion-col>
-                <ion-col></ion-col>
-                <ion-col class="summary-net-wealth-total text-center">{{ formatMoney(row.total) }}</ion-col>
-              </ion-row>
-            </ion-grid>
+            <table class="w-full min-w-0 text-left text-xs md:text-sm md:min-w-[40rem]">
+              <thead>
+                <tr class="border-b border-gray-200 text-[10px] font-semibold uppercase tracking-wide text-gray-500 md:text-xs dark:border-white/10 dark:text-gray-400">
+                  <th class="w-10"></th>
+                  <th
+                    v-for="col in assetInventoryColumns"
+                    :key="col.k"
+                    :class="estateColHeaderClass(col)"
+                    @click="setSort('assetInventory', col.k)"
+                  >
+                    {{ col.l }} {{ sortState.assetInventory.key === col.k ? (sortState.assetInventory.dir === 'asc' ? '▲' : '▼') : '' }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="r in sortedAssetInventory" :key="r.ai_id" class="border-b border-gray-100 text-gray-900 dark:border-white/5 dark:text-white">
+                  <td class="w-8 py-2 pr-1 md:w-10 md:py-3 md:pr-2">
+                    <button type="button" class="text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400" @click="openEditModal('asset_inventory', r)" title="Update">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 md:size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>
+                    </button>
+                  </td>
+                  <td class="py-2 pr-2 md:py-3 md:pr-4 font-medium">{{ r.title }}</td>
+                  <td class="py-2 pr-2 md:py-3 md:pr-4 capitalize text-gray-600 dark:text-gray-300">{{ r.asset_classification ?? r.classification_type ?? '—' }}</td>
+                  <td class="py-2 pr-2 md:py-3 md:pr-4 font-semibold tabular-nums">{{ formatMoney(r.value) }}</td>
+                  <td class="hidden py-2 pr-2 md:py-3 md:pr-4 md:table-cell">{{ r.location }}</td>
+                </tr>
+                <tr v-if="assetInventory.length === 0" class="border-b border-gray-100 text-gray-900 dark:border-white/5 dark:text-white">
+                  <td colspan="5" class="py-6 text-center text-xs text-gray-500 md:py-8 md:text-sm dark:text-gray-400">No records</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-        </div>
-
-        <!-- Asset Inventory -->
-        <div class="rounded-lg border border-base-200 bg-base-300 overflow-hidden">
-          <h2 class="table-category-title border-b border-base-200 bg-info/40 px-4 py-3 text-sm font-semibold flex justify-between items-center flex-wrap gap-2 text-secondary-content">
-            <span class="flex items-center gap-2">
-              <button type="button" class="p-0 border-0 bg-transparent cursor-pointer" @click="openAddModal('asset')" title="Add Asset"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg></button>
-              <span>Asset Inventory</span>
-            </span>
-            <span class="font-bold text-secondary-content">{{ formatMoney(totalAssetInventory) }}</span>
-          </h2>
-          <!-- Mobile card layout -->
-          <div class="md:hidden summary-section-scroll overflow-y-auto space-y-2 p-3">
-            <div v-for="r in sortedAssetInventory" :key="r.ai_id" class="rounded-lg border border-base-200 bg-base-100 p-3 flex items-start gap-2 text-sm">
-              <button type="button" class="p-0 border-0 bg-transparent cursor-pointer shrink-0 mt-0.5" @click="openEditModal('asset_inventory', r)" title="Update"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg></button>
-              <div class="flex-1 min-w-0 space-y-1.5">
-                <div class="flex justify-between items-start gap-2">
-                  <span class="font-semibold truncate flex-1">{{ r.title }}</span>
-                  <span class="font-bold shrink-0">{{ formatMoney(r.value) }}</span>
-                </div>
-                <div class="text-base-content/80"><span class="font-medium">Classification:</span> {{ r.asset_classification ?? r.classification_type ?? '—' }}</div>
-                <div v-if="r.location" class="text-base-content/70"><span class="font-medium">Location:</span> {{ r.location }}</div>
-              </div>
-            </div>
-            <p v-if="assetInventory.length === 0" class="text-base-content/60 text-sm py-2">No records</p>
+        </EstateSection>
+        <EstateSection title="Asset Vehicles" :total="formatMoney(totalAssetVehicles)" @add="openAddModal('vehicle')">
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-0 text-left text-xs md:text-sm md:min-w-[40rem]">
+              <thead>
+                <tr class="border-b border-gray-200 text-[10px] font-semibold uppercase tracking-wide text-gray-500 md:text-xs dark:border-white/10 dark:text-gray-400">
+                  <th class="w-10"></th>
+                  <th
+                    v-for="col in assetVehicleColumns"
+                    :key="col.k"
+                    :class="estateColHeaderClass(col)"
+                    @click="setSort('assetVehicles', col.k)"
+                  >
+                    {{ col.l }} {{ sortState.assetVehicles.key === col.k ? (sortState.assetVehicles.dir === 'asc' ? '▲' : '▼') : '' }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="r in sortedAssetVehicles" :key="r.vh_id" class="border-b border-gray-100 text-gray-900 dark:border-white/5 dark:text-white">
+                  <td class="w-8 py-2 pr-1 md:w-10 md:py-3 md:pr-2">
+                    <button type="button" class="text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400" @click="openEditModal('asset_vehicles', r)" title="Update">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 md:size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>
+                    </button>
+                  </td>
+                  <td class="py-2 pr-2 md:py-3 md:pr-4">{{ r.make }}</td>
+                  <td class="py-2 pr-2 md:py-3 md:pr-4">{{ r.model }}</td>
+                  <td class="hidden py-2 pr-2 md:py-3 md:pr-4 md:table-cell">{{ r.vin }}</td>
+                  <td class="py-2 pr-2 md:py-3 md:pr-4 font-semibold tabular-nums">{{ formatMoney(r.value) }}</td>
+                  <td class="hidden py-2 pr-2 md:py-3 md:pr-4 md:table-cell">{{ r.trust_designated ? 'Y' : 'N' }}</td>
+                </tr>
+                <tr v-if="assetVehicles.length === 0" class="border-b border-gray-100 text-gray-900 dark:border-white/5 dark:text-white">
+                  <td colspan="6" class="py-6 text-center text-xs text-gray-500 md:py-8 md:text-sm dark:text-gray-400">No records</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-          <!-- Desktop grid -->
-          <div class="hidden md:block summary-section-scroll overflow-x-auto overflow-y-auto">
-            <ion-grid class="ion-no-padding summary-grid summary-grid-6">
-              <ion-row class="summary-grid-header bg-base-200/80">
-                <ion-col class="summary-edit-col"></ion-col>
-                <ion-col v-for="col in [{k:'title',l:'Title'},{k:'classification',l:'Classification'},{k:'value',l:'Value'},{k:'location',l:'Location'}]" :key="col.k" class="cursor-pointer select-none hover:bg-base-200/50" @click="setSort('assetInventory', col.k)">{{ col.l }} {{ sortState.assetInventory.key === col.k ? (sortState.assetInventory.dir === 'asc' ? '▲' : '▼') : '' }}</ion-col>
-              </ion-row>
-              <ion-row v-for="(r, i) in sortedAssetInventory" :key="r.ai_id" :class="['summary-grid-row', 'bg-base-100']">
-                <ion-col class="summary-edit-col">
-                  <button type="button" class="p-0 border-0 bg-transparent cursor-pointer" @click="openEditModal('asset_inventory', r)" title="Update"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg></button>
-                </ion-col>
-                <ion-col>{{ r.title }}</ion-col>
-                <ion-col class="capitalize">{{ r.asset_classification ?? r.classification_type ?? '—' }}</ion-col>
-                <ion-col class="font-bold">{{ formatMoney(r.value) }}</ion-col>
-                <ion-col>{{ r.location }}</ion-col>
-              </ion-row>
-              <ion-row v-if="assetInventory.length === 0" class="summary-grid-row bg-base-100">
-                <ion-col :size="12" class="text-base-content/60">No records</ion-col>
-              </ion-row>
-            </ion-grid>
+        </EstateSection>
+        <EstateSection title="Cash and Investments" :total="formatMoney(totalCashAndInvestments)" @add="openAddModal('cash')">
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-0 text-left text-xs md:text-sm md:min-w-[40rem]">
+              <thead>
+                <tr class="border-b border-gray-200 text-[10px] font-semibold uppercase tracking-wide text-gray-500 md:text-xs dark:border-white/10 dark:text-gray-400">
+                  <th class="w-10"></th>
+                  <th
+                    v-for="col in cashColumns"
+                    :key="col.k"
+                    :class="estateColHeaderClass(col)"
+                    @click="setSort('cashAndInvestments', col.k)"
+                  >
+                    {{ col.l }} {{ sortState.cashAndInvestments.key === col.k ? (sortState.cashAndInvestments.dir === 'asc' ? '▲' : '▼') : '' }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(r, i) in sortedCashAndInvestments" :key="r.ci_id ?? 'cai-' + i" class="border-b border-gray-100 text-gray-900 dark:border-white/5 dark:text-white">
+                  <td class="w-8 py-2 pr-1 md:w-10 md:py-3 md:pr-2">
+                    <button type="button" class="text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400" @click="openEditModal('cash_and_investments', r)" title="Update">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 md:size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>
+                    </button>
+                  </td>
+                  <td class="py-2 pr-2 md:py-3 md:pr-4 capitalize">{{ r.acct_type }}</td>
+                  <td class="py-2 pr-2 md:py-3 md:pr-4">
+                    <a v-if="r.institution_url && r.institution_url.trim()" :href="r.institution_url" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">{{ r.institution }}</a>
+                    <template v-else>{{ r.institution }}</template>
+                  </td>
+                  <td class="hidden py-2 pr-2 md:py-3 md:pr-4 md:table-cell">{{ r.acct_number }}</td>
+                  <td class="py-2 pr-2 md:py-3 md:pr-4 font-semibold tabular-nums">{{ formatMoney(r.value) }}</td>
+                  <td class="hidden py-2 pr-2 md:py-3 md:pr-4 md:table-cell">{{ r.trust_designated ? 'Y' : 'N' }}</td>
+                </tr>
+                <tr v-if="sortedCashAndInvestments.length === 0" class="border-b border-gray-100 text-gray-900 dark:border-white/5 dark:text-white">
+                  <td colspan="6" class="py-6 text-center text-xs text-gray-500 md:py-8 md:text-sm dark:text-gray-400">No records</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-        </div>
-
-        <!-- Asset Vehicles -->
-        <div class="rounded-lg border border-base-200 bg-base-300 overflow-hidden">
-          <h2 class="table-category-title border-b border-base-200 bg-info/40 px-4 py-3 text-sm font-semibold flex justify-between items-center flex-wrap gap-2 text-secondary-content">
-            <span class="flex items-center gap-2">
-              <button type="button" class="p-0 border-0 bg-transparent cursor-pointer" @click="openAddModal('vehicle')" title="Add Vehicle"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg></button>
-              <span>Asset Vehicles</span>
-            </span>
-            <span class="font-bold text-secondary-content">{{ formatMoney(totalAssetVehicles) }}</span>
-          </h2>
-          <div class="md:hidden summary-section-scroll overflow-y-auto space-y-2 p-3">
-            <div v-for="r in sortedAssetVehicles" :key="r.vh_id" class="rounded-lg border border-base-200 bg-base-300 p-3 flex items-start gap-2 text-sm">
-              <button type="button" class="p-0 border-0 bg-transparent cursor-pointer shrink-0 mt-0.5" @click="openEditModal('asset_vehicles', r)" title="Update"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg></button>
-              <div class="flex-1 min-w-0 space-y-1.5">
-                <div class="flex justify-between items-start gap-2">
-                  <span class="font-semibold">{{ r.year }} {{ r.make }} {{ r.model }}</span>
-                  <span class="font-bold shrink-0">{{ formatMoney(r.value) }}</span>
-                </div>
-                <div v-if="r.vin" class="text-base-content/70 text-xs"><span class="font-medium">VIN:</span> {{ r.vin }}</div>
-                <div class="text-base-content/80"><span class="font-medium">Trust:</span> {{ r.trust_designated ? 'Y' : 'N' }}</div>
-              </div>
-            </div>
-            <p v-if="assetVehicles.length === 0" class="text-base-content/60 text-sm py-2">No records</p>
+        </EstateSection>
+        <EstateSection title="Debt" :total="formatMoney(totalDebtTable)" @add="openAddModal('debt')">
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-0 text-left text-xs md:text-sm md:min-w-[40rem]">
+              <thead>
+                <tr class="border-b border-gray-200 text-[10px] font-semibold uppercase tracking-wide text-gray-500 md:text-xs dark:border-white/10 dark:text-gray-400">
+                  <th class="w-10"></th>
+                  <th
+                    v-for="col in debtColumns"
+                    :key="col.k"
+                    :class="estateColHeaderClass(col)"
+                    @click="setSort('debt', col.k)"
+                  >
+                    {{ col.l }} {{ sortState.debt.key === col.k ? (sortState.debt.dir === 'asc' ? '▲' : '▼') : '' }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="r in sortedDebt" :key="r.dbt_id" class="border-b border-gray-100 text-gray-900 dark:border-white/5 dark:text-white">
+                  <td class="w-8 py-2 pr-1 md:w-10 md:py-3 md:pr-2">
+                    <button type="button" class="text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400" @click="openEditModal('debt', r)" title="Update">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 md:size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>
+                    </button>
+                  </td>
+                  <td class="py-2 pr-2 md:py-3 md:pr-4">
+                    <a v-if="r.address_url && r.address_url.trim()" :href="r.address_url" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">{{ r.institution }}</a>
+                    <template v-else>{{ r.institution }}</template>
+                  </td>
+                  <td class="hidden py-2 pr-2 md:py-3 md:pr-4 md:table-cell">{{ r.loan_number }}</td>
+                  <td class="py-2 pr-2 md:py-3 md:pr-4 capitalize">{{ r.loan_type }}</td>
+                  <td class="py-2 pr-2 md:py-3 md:pr-4 font-semibold tabular-nums">{{ formatMoney(r.loan_ammount) }}</td>
+                  <td class="hidden py-2 pr-2 md:py-3 md:pr-4 md:table-cell">{{ getLinkedAssetLabel(r) }}</td>
+                  <td class="hidden py-2 pr-2 md:py-3 md:pr-4 md:table-cell">{{ r.customer_support_no }}</td>
+                </tr>
+                <tr v-if="debt.length === 0" class="border-b border-gray-100 text-gray-900 dark:border-white/5 dark:text-white">
+                  <td colspan="7" class="py-6 text-center text-xs text-gray-500 md:py-8 md:text-sm dark:text-gray-400">No records</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-          <div class="hidden md:block summary-section-scroll overflow-x-auto overflow-y-auto">
-            <ion-grid class="ion-no-padding summary-grid summary-grid-6">
-              <ion-row class="summary-grid-header bg-base-200/80">
-                <ion-col class="summary-edit-col"></ion-col>
-                <ion-col v-for="col in [{k:'make',l:'Make'},{k:'model',l:'Model'},{k:'vin',l:'VIN'},{k:'value',l:'Value'},{k:'trust_designated',l:'Trust'}]" :key="col.k" class="cursor-pointer select-none hover:bg-base-200/50" @click="setSort('assetVehicles', col.k)">{{ col.l }} {{ sortState.assetVehicles.key === col.k ? (sortState.assetVehicles.dir === 'asc' ? '▲' : '▼') : '' }}</ion-col>
-              </ion-row>
-              <ion-row v-for="(r, i) in sortedAssetVehicles" :key="r.vh_id" :class="['summary-grid-row', 'bg-base-100']">
-                <ion-col class="summary-edit-col">
-                  <button type="button" class="p-0 border-0 bg-transparent cursor-pointer" @click="openEditModal('asset_vehicles', r)" title="Update"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg></button>
-                </ion-col>
-                <ion-col>{{ r.make }}</ion-col>
-                <ion-col>{{ r.model }}</ion-col>
-                <ion-col>{{ r.vin }}</ion-col>
-                <ion-col class="font-bold">{{ formatMoney(r.value) }}</ion-col>
-                <ion-col>{{ r.trust_designated ? 'Y' : 'N' }}</ion-col>
-              </ion-row>
-              <ion-row v-if="assetVehicles.length === 0" class="summary-grid-row bg-base-100">
-                <ion-col :size="12" class="text-base-content/60">No records</ion-col>
-              </ion-row>
-            </ion-grid>
+        </EstateSection>
+        <EstateSection title="Real Estate" :total="formatMoney(totalRealEstateValue)" @add="openAddModal('real_estate')">
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-0 text-left text-xs md:text-sm md:min-w-[40rem]">
+              <thead>
+                <tr class="border-b border-gray-200 text-[10px] font-semibold uppercase tracking-wide text-gray-500 md:text-xs dark:border-white/10 dark:text-gray-400">
+                  <th class="w-10"></th>
+                  <th
+                    v-for="col in realEstateColumns"
+                    :key="col.k"
+                    :class="estateColHeaderClass(col)"
+                    @click="setSort('realEstate', col.k)"
+                  >
+                    {{ col.l }} {{ sortState.realEstate.key === col.k ? (sortState.realEstate.dir === 'asc' ? '▲' : '▼') : '' }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="r in sortedRealEstate" :key="r.re_id" class="border-b border-gray-100 text-gray-900 dark:border-white/5 dark:text-white">
+                  <td class="w-8 py-2 pr-1 md:w-10 md:py-3 md:pr-2">
+                    <button type="button" class="text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400" @click="openEditModal('real_estate', r)" title="Update">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 md:size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>
+                    </button>
+                  </td>
+                  <td class="py-2 pr-2 md:py-3 md:pr-4">{{ [r.number, r.street].filter(Boolean).join(' ') || '—' }}</td>
+                  <td class="hidden py-2 pr-2 md:py-3 md:pr-4 md:table-cell">{{ r.city }}</td>
+                  <td class="hidden py-2 pr-2 md:py-3 md:pr-4 md:table-cell">{{ r.state }}</td>
+                  <td class="py-2 pr-2 md:py-3 md:pr-4">{{ r.zipcode }}</td>
+                  <td class="py-2 pr-2 md:py-3 md:pr-4 font-semibold tabular-nums">{{ formatMoney(r.value) }}</td>
+                  <td class="hidden py-2 pr-2 md:py-3 md:pr-4 md:table-cell">{{ r.trust_designated ? 'Y' : 'N' }}</td>
+                </tr>
+                <tr v-if="realEstate.length === 0" class="border-b border-gray-100 text-gray-900 dark:border-white/5 dark:text-white">
+                  <td colspan="7" class="py-6 text-center text-xs text-gray-500 md:py-8 md:text-sm dark:text-gray-400">No records</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-        </div>
-
-        <!-- Cash and Investments -->
-        <div class="rounded-lg border border-base-200 bg-base-300 overflow-hidden">
-          <h2 class="table-category-title border-b border-base-200 bg-info/40 px-4 py-3 text-sm font-semibold flex justify-between items-center flex-wrap gap-2 text-secondary-content">
-            <span class="flex items-center gap-2">
-              <button type="button" class="p-0 border-0 bg-transparent cursor-pointer" @click="openAddModal('cash')" title="Add Cash/Investment"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg></button>
-              <span>Cash and Investments</span>
-            </span>
-            <span class="font-bold text-secondary-content">{{ formatMoney(totalCashAndInvestments) }}</span>
-          </h2>
-          <div class="md:hidden summary-section-scroll overflow-y-auto space-y-2 p-3">
-            <div v-for="(r, i) in sortedCashAndInvestments" :key="r.ci_id ?? 'cai-' + i" class="rounded-lg border border-base-200 bg-base-100 p-3 flex items-start gap-2 text-sm">
-              <button type="button" class="p-0 border-0 bg-transparent cursor-pointer shrink-0 mt-0.5" @click="openEditModal('cash_and_investments', r)" title="Update"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg></button>
-              <div class="flex-1 min-w-0 space-y-1.5">
-                <div class="flex justify-between items-start gap-2">
-                  <a v-if="r.institution_url && r.institution_url.trim()" :href="r.institution_url" target="_blank" rel="noopener noreferrer" class="font-semibold link link-primary">{{ r.institution }}</a>
-                  <span v-else class="font-semibold">{{ r.institution }}</span>
-                  <span class="font-bold shrink-0">{{ formatMoney(r.value) }}</span>
-                </div>
-                <div class="text-base-content/80"><span class="font-medium">Type:</span> <span class="capitalize">{{ r.acct_type }}</span></div>
-                <div v-if="r.acct_number" class="text-base-content/70 text-xs"><span class="font-medium">Account #:</span> {{ r.acct_number }}</div>
-                <div class="text-base-content/80"><span class="font-medium">Trust:</span> {{ r.trust_designated ? 'Y' : 'N' }}</div>
-              </div>
-            </div>
-            <p v-if="sortedCashAndInvestments.length === 0" class="text-base-content/60 text-sm py-2">No records</p>
+        </EstateSection>
+        <EstateSection title="Insurance" @add="openAddModal('insurance')">
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-0 text-left text-xs md:text-sm md:min-w-[40rem]">
+              <thead>
+                <tr class="border-b border-gray-200 text-[10px] font-semibold uppercase tracking-wide text-gray-500 md:text-xs dark:border-white/10 dark:text-gray-400">
+                  <th class="w-10"></th>
+                  <th
+                    v-for="col in insuranceColumns"
+                    :key="col.k"
+                    :class="estateColHeaderClass(col)"
+                    @click="setSort('insurance', col.k)"
+                  >
+                    {{ col.l }} {{ sortState.insurance.key === col.k ? (sortState.insurance.dir === 'asc' ? '▲' : '▼') : '' }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="r in sortedInsurance" :key="r.ins_id" class="border-b border-gray-100 text-gray-900 dark:border-white/5 dark:text-white">
+                  <td class="w-8 py-2 pr-1 md:w-10 md:py-3 md:pr-2">
+                    <button type="button" class="text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400" @click="openEditModal('insurance', r)" title="Update">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 md:size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>
+                    </button>
+                  </td>
+                  <td class="py-2 pr-2 md:py-3 md:pr-4">
+                    <a v-if="r.institution_url && r.institution_url.trim()" :href="r.institution_url" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">{{ r.policy_holder }}</a>
+                    <template v-else>{{ r.policy_holder }}</template>
+                  </td>
+                  <td class="hidden py-2 pr-2 md:py-3 md:pr-4 md:table-cell">{{ r.polocy_number }}</td>
+                  <td class="py-2 pr-2 md:py-3 md:pr-4">{{ r.entity_covered }}</td>
+                  <td class="py-2 pr-2 md:py-3 md:pr-4 font-semibold tabular-nums">{{ formatMoney(r.policy_amt) }}</td>
+                  <td class="hidden py-2 pr-2 md:py-3 md:pr-4 capitalize md:table-cell">{{ r.intent }}</td>
+                </tr>
+                <tr v-if="insurance.length === 0" class="border-b border-gray-100 text-gray-900 dark:border-white/5 dark:text-white">
+                  <td colspan="6" class="py-6 text-center text-xs text-gray-500 md:py-8 md:text-sm dark:text-gray-400">No records</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-          <div class="hidden md:block summary-section-scroll overflow-x-auto overflow-y-auto">
-            <ion-grid class="ion-no-padding summary-grid summary-grid-6">
-              <ion-row class="summary-grid-header bg-base-200/80">
-                <ion-col class="summary-edit-col"></ion-col>
-                <ion-col v-for="col in [{k:'acct_type',l:'Type'},{k:'institution',l:'Institution'},{k:'acct_number',l:'Account #'},{k:'value',l:'Value'},{k:'trust_designated',l:'Trust'}]" :key="col.k" class="cursor-pointer select-none hover:bg-base-200/50" @click="setSort('cashAndInvestments', col.k)">{{ col.l }} {{ sortState.cashAndInvestments.key === col.k ? (sortState.cashAndInvestments.dir === 'asc' ? '▲' : '▼') : '' }}</ion-col>
-              </ion-row>
-              <ion-row v-for="(r, i) in sortedCashAndInvestments" :key="r.ci_id ?? 'cai-' + i" :class="['summary-grid-row', 'bg-base-100']">
-                <ion-col class="summary-edit-col">
-                  <button type="button" class="p-0 border-0 bg-transparent cursor-pointer" @click="openEditModal('cash_and_investments', r)" title="Update"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg></button>
-                </ion-col>
-                <ion-col class="capitalize">{{ r.acct_type }}</ion-col>
-                <ion-col>
-                  <a v-if="r.institution_url && r.institution_url.trim()" :href="r.institution_url" target="_blank" rel="noopener noreferrer" class="link link-primary">{{ r.institution }}</a>
-                  <template v-else>{{ r.institution }}</template>
-                </ion-col>
-                <ion-col>{{ r.acct_number }}</ion-col>
-                <ion-col class="font-bold">{{ formatMoney(r.value) }}</ion-col>
-                <ion-col>{{ r.trust_designated ? 'Y' : 'N' }}</ion-col>
-              </ion-row>
-              <ion-row v-if="sortedCashAndInvestments.length === 0" class="summary-grid-row bg-base-100">
-                <ion-col :size="12" class="text-base-content/60">No records</ion-col>
-              </ion-row>
-            </ion-grid>
-          </div>
-        </div>
-
-        <!-- Debt -->
-        <div class="rounded-lg border border-base-200 bg-base-300 overflow-hidden">
-          <h2 class="table-category-title border-b border-base-200 bg-info/40 px-4 py-3 text-sm font-semibold flex justify-between items-center flex-wrap gap-2 text-secondary-content">
-            <span class="flex items-center gap-2">
-              <button type="button" class="p-0 border-0 bg-transparent cursor-pointer" @click="openAddModal('debt')" title="Add Debt"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg></button>
-              <span>Debt</span>
-            </span>
-            <span class="font-bold text-secondary-content">{{ formatMoney(totalDebtTable) }}</span>
-          </h2>
-          <div class="md:hidden summary-section-scroll overflow-y-auto space-y-2 p-3">
-            <div v-for="r in sortedDebt" :key="r.dbt_id" class="rounded-lg border border-base-200 bg-base-100 p-3 flex items-start gap-2 text-sm">
-              <button type="button" class="p-0 border-0 bg-transparent cursor-pointer shrink-0 mt-0.5" @click="openEditModal('debt', r)" title="Update"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg></button>
-              <div class="flex-1 min-w-0 space-y-1.5">
-                <div class="flex justify-between items-start gap-2">
-                  <a v-if="r.address_url && r.address_url.trim()" :href="r.address_url" target="_blank" rel="noopener noreferrer" class="font-semibold link link-primary">{{ r.institution }}</a>
-                  <span v-else class="font-semibold">{{ r.institution }}</span>
-                  <span class="font-bold shrink-0">{{ formatMoney(r.loan_ammount) }}</span>
-                </div>
-                <div class="text-base-content/80"><span class="font-medium">Loan #:</span> {{ r.loan_number }}</div>
-                <div class="text-base-content/80"><span class="font-medium">Type:</span> <span class="capitalize">{{ r.loan_type }}</span></div>
-                <div v-if="getLinkedAssetLabel(r)" class="text-base-content/70"><span class="font-medium">Linked:</span> {{ getLinkedAssetLabel(r) }}</div>
-              </div>
-            </div>
-            <p v-if="debt.length === 0" class="text-base-content/60 text-sm py-2">No records</p>
-          </div>
-          <div class="hidden md:block summary-section-scroll overflow-x-auto overflow-y-auto">
-            <ion-grid class="ion-no-padding summary-grid summary-grid-7">
-              <ion-row class="summary-grid-header bg-base-200/80">
-                <ion-col class="summary-edit-col"></ion-col>
-                <ion-col v-for="col in [{k:'institution',l:'Institution'},{k:'loan_number',l:'Loan #'},{k:'loan_type',l:'Loan Type'},{k:'loan_ammount',l:'Loan Amount'},{k:'linked_asset',l:'Linked Asset'},{k:'customer_support_no',l:'Support #'}]" :key="col.k" class="cursor-pointer select-none hover:bg-base-200/50" @click="setSort('debt', col.k)">{{ col.l }} {{ sortState.debt.key === col.k ? (sortState.debt.dir === 'asc' ? '▲' : '▼') : '' }}</ion-col>
-              </ion-row>
-              <ion-row v-for="(r, i) in sortedDebt" :key="r.dbt_id" :class="['summary-grid-row', 'bg-base-100']">
-                <ion-col class="summary-edit-col">
-                  <button type="button" class="p-0 border-0 bg-transparent cursor-pointer" @click="openEditModal('debt', r)" title="Update"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg></button>
-                </ion-col>
-                <ion-col>
-                  <a v-if="r.address_url && r.address_url.trim()" :href="r.address_url" target="_blank" rel="noopener noreferrer" class="link link-primary">{{ r.institution }}</a>
-                  <template v-else>{{ r.institution }}</template>
-                </ion-col>
-                <ion-col>{{ r.loan_number }}</ion-col>
-                <ion-col class="capitalize">{{ r.loan_type }}</ion-col>
-                <ion-col class="font-bold">{{ formatMoney(r.loan_ammount) }}</ion-col>
-                <ion-col>{{ getLinkedAssetLabel(r) }}</ion-col>
-                <ion-col>{{ r.customer_support_no }}</ion-col>
-              </ion-row>
-              <ion-row v-if="debt.length === 0" class="summary-grid-row bg-base-100">
-                <ion-col :size="12" class="text-base-content/60">No records</ion-col>
-              </ion-row>
-            </ion-grid>
-          </div>
-        </div>
-
-        <!-- Real Estate -->
-        <div class="rounded-lg border border-base-200 bg-base-300 overflow-hidden">
-          <h2 class="table-category-title border-b border-base-200 bg-info/40 px-4 py-3 text-sm font-semibold flex justify-between items-center flex-wrap gap-2 text-secondary-content">
-            <span class="flex items-center gap-2">
-              <button type="button" class="p-0 border-0 bg-transparent cursor-pointer" @click="openAddModal('real_estate')" title="Add Real Estate"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg></button>
-              <span>Real Estate</span>
-            </span>
-            <span class="font-bold text-secondary-content">{{ formatMoney(totalRealEstateValue) }}</span>
-          </h2>
-          <div class="md:hidden summary-section-scroll overflow-y-auto space-y-2 p-3">
-            <div v-for="r in sortedRealEstate" :key="r.re_id" class="rounded-lg border border-base-200 bg-base-100 p-3 flex items-start gap-2 text-sm">
-              <button type="button" class="p-0 border-0 bg-transparent cursor-pointer shrink-0 mt-0.5" @click="openEditModal('real_estate', r)" title="Update"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg></button>
-              <div class="flex-1 min-w-0 space-y-1.5">
-                <div class="flex justify-between items-start gap-2">
-                  <span class="font-semibold">{{ [r.number, r.street].filter(Boolean).join(' ') || '—' }}, {{ r.city }}</span>
-                  <span class="font-bold shrink-0">{{ formatMoney(r.value) }}</span>
-                </div>
-                <div class="text-base-content/80"><span class="font-medium">State:</span> {{ r.state }} <span class="font-medium">Zip:</span> {{ r.zipcode }}</div>
-                <div class="text-base-content/80"><span class="font-medium">Trust:</span> {{ r.trust_designated ? 'Y' : 'N' }}</div>
-              </div>
-            </div>
-            <p v-if="realEstate.length === 0" class="text-base-content/60 text-sm py-2">No records</p>
-          </div>
-          <div class="hidden md:block summary-section-scroll overflow-x-auto overflow-y-auto">
-            <ion-grid class="ion-no-padding summary-grid summary-grid-7">
-              <ion-row class="summary-grid-header bg-base-200/80">
-                <ion-col class="summary-edit-col"></ion-col>
-                <ion-col v-for="col in [{k:'address',l:'Address'},{k:'city',l:'City'},{k:'state',l:'State'},{k:'zipcode',l:'Zip'},{k:'value',l:'Value'},{k:'trust_designated',l:'Trust'}]" :key="col.k" class="cursor-pointer select-none hover:bg-base-200/50" @click="setSort('realEstate', col.k)">{{ col.l }} {{ sortState.realEstate.key === col.k ? (sortState.realEstate.dir === 'asc' ? '▲' : '▼') : '' }}</ion-col>
-              </ion-row>
-              <ion-row v-for="(r, i) in sortedRealEstate" :key="r.re_id" :class="['summary-grid-row', 'bg-base-100']">
-                <ion-col class="summary-edit-col">
-                  <button type="button" class="p-0 border-0 bg-transparent cursor-pointer" @click="openEditModal('real_estate', r)" title="Update"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg></button>
-                </ion-col>
-                <ion-col>{{ [r.number, r.street].filter(Boolean).join(' ') || '—' }}</ion-col>
-                <ion-col>{{ r.city }}</ion-col>
-                <ion-col>{{ r.state }}</ion-col>
-                <ion-col>{{ r.zipcode }}</ion-col>
-                <ion-col class="font-bold">{{ formatMoney(r.value) }}</ion-col>
-                <ion-col>{{ r.trust_designated ? 'Y' : 'N' }}</ion-col>
-              </ion-row>
-              <ion-row v-if="realEstate.length === 0" class="summary-grid-row bg-base-100">
-                <ion-col :size="12" class="text-base-content/60">No records</ion-col>
-              </ion-row>
-            </ion-grid>
-          </div>
-        </div>
-
-        <!-- Insurance -->
-        <div class="rounded-lg border border-base-200 bg-base-300 overflow-hidden">
-          <h2 class="table-category-title border-b border-base-200 bg-info/40 px-4 py-3 text-sm font-semibold flex justify-between items-center flex-wrap gap-2 text-secondary-content">
-            <span class="flex items-center gap-2">
-              <button type="button" class="p-0 border-0 bg-transparent cursor-pointer" @click="openAddModal('insurance')" title="Add Insurance"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg></button>
-              <span>Insurance</span>
-            </span>
-          </h2>
-          <div class="md:hidden summary-section-scroll overflow-y-auto space-y-2 p-3">
-            <div v-for="r in sortedInsurance" :key="r.ins_id" class="rounded-lg border border-base-200 bg-base-100 p-3 flex items-start gap-2 text-sm">
-              <button type="button" class="p-0 border-0 bg-transparent cursor-pointer shrink-0 mt-0.5" @click="openEditModal('insurance', r)" title="Update"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg></button>
-              <div class="flex-1 min-w-0 space-y-1.5">
-                <div class="flex justify-between items-start gap-2">
-                  <a v-if="r.institution_url && r.institution_url.trim()" :href="r.institution_url" target="_blank" rel="noopener noreferrer" class="font-semibold link link-primary">{{ r.policy_holder }}</a>
-                  <span v-else class="font-semibold">{{ r.policy_holder }}</span>
-                  <span class="font-bold shrink-0 text-secondary">{{ formatMoney(r.policy_amt) }}</span>
-                </div>
-                <div class="text-base-content/80"><span class="font-medium">Policy #:</span> {{ r.polocy_number }}</div>
-                <div class="text-base-content/80"><span class="font-medium">Entity:</span> {{ r.entity_covered }}</div>
-                <div class="text-base-content/80"><span class="font-medium">Intent:</span> <span class="capitalize">{{ r.intent }}</span></div>
-              </div>
-            </div>
-            <p v-if="insurance.length === 0" class="text-base-content/60 text-sm py-2">No records</p>
-          </div>
-          <div class="hidden md:block summary-section-scroll overflow-x-auto overflow-y-auto">
-            <ion-grid class="ion-no-padding summary-grid summary-grid-6">
-              <ion-row class="summary-grid-header bg-base-200/80">
-                <ion-col class="summary-edit-col"></ion-col>
-                <ion-col v-for="col in [{k:'policy_holder',l:'Policy Holder'},{k:'polocy_number',l:'Policy #'},{k:'entity_covered',l:'Entity Covered'},{k:'policy_amt',l:'Amount'},{k:'intent',l:'Intent'}]" :key="col.k" class="cursor-pointer select-none hover:bg-base-200/50" @click="setSort('insurance', col.k)">{{ col.l }} {{ sortState.insurance.key === col.k ? (sortState.insurance.dir === 'asc' ? '▲' : '▼') : '' }}</ion-col>
-              </ion-row>
-              <ion-row v-for="(r, i) in sortedInsurance" :key="r.ins_id" :class="['summary-grid-row', 'bg-base-100']">
-                <ion-col class="summary-edit-col">
-                  <button type="button" class="p-0 border-0 bg-transparent cursor-pointer" @click="openEditModal('insurance', r)" title="Update"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg></button>
-                </ion-col>
-                <ion-col>
-                  <a v-if="r.institution_url && r.institution_url.trim()" :href="r.institution_url" target="_blank" rel="noopener noreferrer" class="link link-primary">{{ r.policy_holder }}</a>
-                  <template v-else>{{ r.policy_holder }}</template>
-                </ion-col>
-                <ion-col>{{ r.polocy_number }}</ion-col>
-                <ion-col>{{ r.entity_covered }}</ion-col>
-                <ion-col class="text-secondary font-bold">{{ formatMoney(r.policy_amt) }}</ion-col>
-                <ion-col class="capitalize">{{ r.intent }}</ion-col>
-              </ion-row>
-              <ion-row v-if="insurance.length === 0" class="summary-grid-row bg-base-100">
-                <ion-col :size="12" class="text-base-content/60">No records</ion-col>
-              </ion-row>
-            </ion-grid>
-          </div>
-        </div>
+        </EstateSection>
       </div>
     </template>
 
@@ -419,10 +354,28 @@
               <option v-for="t in addDebtTypes" :key="t" :value="t">{{ t }}</option>
             </select>
           </label>
+          <label class="form-control"><span class="label-text text-sm">Debt structure</span>
+            <select v-model="addDebtForm.is_revolving" class="select select-bordered select-sm w-full">
+              <option :value="true">Revolving (credit card, line of credit)</option>
+              <option :value="false">Installment (mortgage, auto loan, etc.)</option>
+            </select>
+          </label>
           <label class="form-control"><span class="label-text text-sm">Institution</span><input v-model.trim="addDebtForm.institution" class="input input-bordered input-sm w-full" required /></label>
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label class="form-control"><span class="label-text text-sm">Loan #</span><input v-model.trim="addDebtForm.loan_number" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control"><span class="label-text text-sm">Loan Amount</span><input v-model="addDebtForm.loan_ammount" class="input input-bordered input-sm w-full" type="number" step="0.01" /></label>
+            <label class="form-control">
+              <span class="label-text text-sm">{{ addDebtForm.is_revolving ? "Current balance" : "Principal balance" }}</span>
+              <input v-model="addDebtForm.loan_ammount" class="input input-bordered input-sm w-full" type="number" step="0.01" min="0" />
+            </label>
+          </div>
+          <div
+            v-if="!addDebtForm.is_revolving"
+            class="grid grid-cols-1 gap-3 sm:grid-cols-2 rounded-lg border border-base-300 p-3"
+          >
+            <label class="form-control"><span class="label-text text-sm">Annual interest rate (%)</span><input v-model="addDebtForm.interest_rate_annual" class="input input-bordered input-sm w-full" type="number" step="0.001" min="0" placeholder="e.g. 6.5" /></label>
+            <label class="form-control"><span class="label-text text-sm">Term (months)</span><input v-model="addDebtForm.term_months" class="input input-bordered input-sm w-full" type="number" step="1" min="1" placeholder="e.g. 360" /></label>
+            <label class="form-control"><span class="label-text text-sm">Scheduled monthly payment</span><input v-model="addDebtForm.scheduled_monthly_payment" class="input input-bordered input-sm w-full" type="number" step="0.01" min="0" /></label>
+            <label class="form-control"><span class="label-text text-sm">Loan start date</span><input v-model="addDebtForm.loan_start_date" class="input input-bordered input-sm w-full" type="date" /></label>
           </div>
           <label class="form-control"><span class="label-text text-sm">Link to Asset</span>
             <select class="select select-bordered select-sm w-full" v-model="addDebtForm.linked_asset">
@@ -588,7 +541,20 @@
             <label class="form-control"><span class="label-text text-sm">Institution</span><input v-model="editRecord.institution" class="input input-bordered input-sm w-full" /></label>
             <label class="form-control"><span class="label-text text-sm">Loan #</span><input v-model="editRecord.loan_number" class="input input-bordered input-sm w-full" /></label>
             <label class="form-control"><span class="label-text text-sm">Loan Type</span><input v-model="editRecord.loan_type" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control"><span class="label-text text-sm">Loan Amount</span><input v-model="editRecord.debtLoanAmmount" class="input input-bordered input-sm w-full" type="number" step="0.01" /></label>
+            <label class="form-control sm:col-span-2"><span class="label-text text-sm">Debt structure</span>
+              <select v-model="editRecord.is_revolving" class="select select-bordered select-sm w-full">
+                <option :value="true">Revolving</option>
+                <option :value="false">Installment</option>
+              </select>
+            </label>
+            <label class="form-control">
+              <span class="label-text text-sm">{{ editRecord.is_revolving ? "Current balance" : "Principal balance" }}</span>
+              <input v-model="editRecord.debtLoanAmmount" class="input input-bordered input-sm w-full" type="number" step="0.01" min="0" />
+            </label>
+            <label v-if="!editRecord.is_revolving" class="form-control"><span class="label-text text-sm">Annual interest rate (%)</span><input v-model="editRecord.interest_rate_annual" class="input input-bordered input-sm w-full" type="number" step="0.001" min="0" /></label>
+            <label v-if="!editRecord.is_revolving" class="form-control"><span class="label-text text-sm">Term (months)</span><input v-model="editRecord.term_months" class="input input-bordered input-sm w-full" type="number" step="1" min="1" /></label>
+            <label v-if="!editRecord.is_revolving" class="form-control"><span class="label-text text-sm">Scheduled monthly payment</span><input v-model="editRecord.scheduled_monthly_payment" class="input input-bordered input-sm w-full" type="number" step="0.01" min="0" /></label>
+            <label v-if="!editRecord.is_revolving" class="form-control"><span class="label-text text-sm">Loan start date</span><input v-model="editRecord.loan_start_date" class="input input-bordered input-sm w-full" type="date" /></label>
             <label class="form-control sm:col-span-2"><span class="label-text text-sm">Link to Asset</span><select v-model="editRecord.linked_asset" class="select select-bordered select-sm w-full"><option value="">None (no link)</option><option v-for="a in linkedAssets" :key="a.type + ':' + a.id" :value="a.type + ':' + a.id">{{ a.label }}</option></select></label>
             <label class="form-control"><span class="label-text text-sm">Borrower</span><input v-model="editRecord.borrower" class="input input-bordered input-sm w-full" /></label>
             <label class="form-control"><span class="label-text text-sm">Support #</span><input v-model="editRecord.customer_support_no" class="input input-bordered input-sm w-full" /></label>
@@ -650,11 +616,69 @@
         <button type="submit">close</button>
       </form>
     </dialog>
-  </section>
+  </main>
 </template>
 
 <script setup>
+import { inferIsRevolvingDebt } from "~/utils/debtPayment";
+
 useHead({ title: "Estate Management" });
+
+const assetInventoryColumns = [
+  { k: "title", l: "Title" },
+  { k: "classification", l: "Classification" },
+  { k: "value", l: "Value" },
+  { k: "location", l: "Location", desktopOnly: true },
+];
+
+const assetVehicleColumns = [
+  { k: "make", l: "Make" },
+  { k: "model", l: "Model" },
+  { k: "vin", l: "VIN", desktopOnly: true },
+  { k: "value", l: "Value" },
+  { k: "trust_designated", l: "Trust", desktopOnly: true },
+];
+
+const cashColumns = [
+  { k: "acct_type", l: "Type" },
+  { k: "institution", l: "Institution" },
+  { k: "acct_number", l: "Account #", desktopOnly: true },
+  { k: "value", l: "Value" },
+  { k: "trust_designated", l: "Trust", desktopOnly: true },
+];
+
+const debtColumns = [
+  { k: "institution", l: "Institution" },
+  { k: "loan_number", l: "Loan #", desktopOnly: true },
+  { k: "loan_type", l: "Loan Type" },
+  { k: "loan_ammount", l: "Loan Amount" },
+  { k: "linked_asset", l: "Linked Asset", desktopOnly: true },
+  { k: "customer_support_no", l: "Support #", desktopOnly: true },
+];
+
+const realEstateColumns = [
+  { k: "address", l: "Address" },
+  { k: "city", l: "City", desktopOnly: true },
+  { k: "state", l: "State", desktopOnly: true },
+  { k: "zipcode", l: "Zip" },
+  { k: "value", l: "Value" },
+  { k: "trust_designated", l: "Trust", desktopOnly: true },
+];
+
+const insuranceColumns = [
+  { k: "policy_holder", l: "Policy Holder" },
+  { k: "polocy_number", l: "Policy #", desktopOnly: true },
+  { k: "entity_covered", l: "Entity Covered" },
+  { k: "policy_amt", l: "Amount" },
+  { k: "intent", l: "Intent", desktopOnly: true },
+];
+
+function estateColHeaderClass(col) {
+  return [
+    "cursor-pointer py-2 pr-2 md:py-3 md:pr-4 hover:text-gray-700 dark:hover:text-gray-200",
+    col.desktopOnly ? "hidden md:table-cell" : "",
+  ];
+}
 
 const auth = useAuthStore();
 const loading = ref(true);
@@ -682,7 +706,21 @@ const addAssetForm = reactive({ classification_type: "", title: "", value: "", d
 const addAssetClassifications = ref([]);
 const addRealEstateForm = reactive({ number: "", street: "", city: "", state: "", zipcode: "", value: "", trust_designated: "" });
 const addInsuranceForm = reactive({ policy_holder: "", polocy_number: "", entity_covered: "", policy_amt: "", intent: "", institution_url: "" });
-const addDebtForm = reactive({ institution: "", loan_number: "", loan_ammount: "", loan_type: "", linked_asset: "", borrower: "", customer_support_no: "", address_url: "" });
+const addDebtForm = reactive({
+  institution: "",
+  loan_number: "",
+  loan_ammount: "",
+  loan_type: "",
+  linked_asset: "",
+  borrower: "",
+  customer_support_no: "",
+  address_url: "",
+  is_revolving: false,
+  interest_rate_annual: "",
+  term_months: "",
+  scheduled_monthly_payment: "",
+  loan_start_date: "",
+});
 const addDebtTypes = ref([]);
 const addCashForm = reactive({
   asset_category: "Cash",
@@ -750,6 +788,21 @@ const addModalTitle = computed(() => {
   if (t === "insurance") return "Add Insurance";
   return "Add Record";
 });
+
+function formatDebtTermsLine(r) {
+  if (inferIsRevolvingDebt(r)) return "";
+  const parts = [];
+  if (r.interest_rate_annual != null && r.interest_rate_annual !== "") {
+    parts.push(`${r.interest_rate_annual}% APR`);
+  }
+  if (r.term_months != null && r.term_months !== "") {
+    parts.push(`${r.term_months} mo`);
+  }
+  if (r.scheduled_monthly_payment != null && r.scheduled_monthly_payment !== "") {
+    parts.push(`${formatMoney(r.scheduled_monthly_payment)}/mo`);
+  }
+  return parts.length ? parts.join(" · ") : "Installment loan";
+}
 
 function formatMoney(val) {
   if (val == null || val === '') return '—';
@@ -884,6 +937,15 @@ const totalDebt = computed(() => {
 
 const netWealth = computed(() => totalAssets.value - totalDebt.value);
 
+const totalHardAssets = computed(() => totalAssetInventory.value + totalAssetVehicles.value);
+
+const estateStats = computed(() => [
+  { name: "Assets", value: formatMoney(totalAssets.value) },
+  { name: "Debt", value: formatMoney(totalDebt.value) },
+  { name: "Hard Assets", value: formatMoney(totalHardAssets.value) },
+  { name: "Net Wealth", value: formatMoney(netWealth.value) },
+]);
+
 const sumByKey = (arr, key) => arr.reduce((a, r) => a + (toNumber(r[key]) || 0), 0);
 const totalAssetInventory = computed(() => sumByKey(assetInventory.value, 'value'));
 const totalAssetVehicles = computed(() => sumByKey(assetVehicles.value, 'value'));
@@ -951,6 +1013,11 @@ async function openAddModal(type) {
     addDebtForm.borrower = "";
     addDebtForm.customer_support_no = "";
     addDebtForm.address_url = "";
+    addDebtForm.is_revolving = false;
+    addDebtForm.interest_rate_annual = "";
+    addDebtForm.term_months = "";
+    addDebtForm.scheduled_monthly_payment = "";
+    addDebtForm.loan_start_date = "";
   } else if (type === "cash") {
     await loadAddCashClassifications();
     addCashForm.asset_category = "Cash";
@@ -1150,6 +1217,12 @@ async function submitAddDebt() {
         customer_support_no: addDebtForm.customer_support_no || undefined,
         address_url: addDebtForm.address_url || undefined,
         borrower: addDebtForm.borrower || undefined,
+        is_revolving: addDebtForm.is_revolving,
+        interest_rate_annual: addDebtForm.interest_rate_annual !== "" ? addDebtForm.interest_rate_annual : undefined,
+        term_months: addDebtForm.term_months !== "" ? addDebtForm.term_months : undefined,
+        scheduled_monthly_payment:
+          addDebtForm.scheduled_monthly_payment !== "" ? addDebtForm.scheduled_monthly_payment : undefined,
+        loan_start_date: addDebtForm.loan_start_date || undefined,
       },
     });
     addModalRef.value?.close();
@@ -1243,6 +1316,20 @@ function openEditModal(type, record) {
     cloned.linked_asset = (cloned.linked_asset_type && cloned.linked_asset_id)
       ? cloned.linked_asset_type + ":" + cloned.linked_asset_id
       : "";
+    cloned.is_revolving = inferIsRevolvingDebt(cloned);
+    cloned.interest_rate_annual =
+      cloned.interest_rate_annual != null && cloned.interest_rate_annual !== ""
+        ? String(cloned.interest_rate_annual)
+        : "";
+    cloned.term_months =
+      cloned.term_months != null && cloned.term_months !== "" ? String(cloned.term_months) : "";
+    cloned.scheduled_monthly_payment =
+      cloned.scheduled_monthly_payment != null && cloned.scheduled_monthly_payment !== ""
+        ? String(cloned.scheduled_monthly_payment)
+        : "";
+    cloned.loan_start_date = cloned.loan_start_date
+      ? String(cloned.loan_start_date).slice(0, 10)
+      : "";
   }
   if (type === "insurance") {
     const val = cloned.policy_amt;
@@ -1281,6 +1368,15 @@ async function saveEdit() {
       loan_ammount: loanAmt,
       linked_asset_type: linkedType || null,
       linked_asset_id: linkedId ? Number(linkedId) : null,
+      is_revolving: r.is_revolving === true || r.is_revolving === "true" ? true : r.is_revolving === false || r.is_revolving === "false" ? false : inferIsRevolvingDebt(r),
+      interest_rate_annual:
+        r.interest_rate_annual !== "" && r.interest_rate_annual != null ? Number(r.interest_rate_annual) : null,
+      term_months: r.term_months !== "" && r.term_months != null ? Number(r.term_months) : null,
+      scheduled_monthly_payment:
+        r.scheduled_monthly_payment !== "" && r.scheduled_monthly_payment != null
+          ? Number(r.scheduled_monthly_payment)
+          : null,
+      loan_start_date: r.loan_start_date || null,
     };
   } else {
     body = { ...editRecord.value };
@@ -1420,54 +1516,5 @@ watch(() => auth.user, (user) => {
 }
 .table-category-title {
   text-transform: capitalize;
-}
-
-/* ion-grid table-like styling */
-.summary-grid {
-  font-size: 0.875rem;
-}
-.summary-grid {
-  width: 100%;
-}
-.summary-grid ion-row {
-  border-bottom: 1px solid var(--color-base-200, #dadede);
-  min-height: 2rem;
-}
-.summary-grid ion-row:last-child {
-  border-bottom: none;
-}
-.summary-grid-header {
-  font-weight: 600;
-}
-.summary-grid-header ion-col {
-  padding: 0.25rem 0.5rem;
-}
-.summary-grid-row ion-col {
-  padding: 0.25rem 0.5rem;
-}
-.summary-grid-row ion-col:last-child {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-.summary-edit-col {
-  width: 2rem;
-  min-width: 2rem;
-  max-width: 2rem;
-  flex: 0 0 2rem;
-  padding: 0.25rem;
-}
-.summary-net-wealth-total {
-  text-align: left;
-  justify-content: flex-start !important;
-}
-.summary-grid-2 { min-width: 28rem; }
-.summary-grid-6 { min-width: 54rem; }
-.summary-grid-7 { min-width: 63rem; }
-.summary-grid-8 { min-width: 72rem; }
-@media (max-width: 767px) {
-  .summary-grid-mobile {
-    min-width: 100%;
-  }
 }
 </style>

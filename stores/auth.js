@@ -1,4 +1,10 @@
 import { defineStore } from "pinia";
+import { Capacitor } from "@capacitor/core";
+import { parseFetchError } from "~/utils/parseFetchError";
+
+function isNativeApp() {
+  return import.meta.client && Capacitor.isNativePlatform();
+}
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
@@ -13,12 +19,10 @@ export const useAuthStore = defineStore("auth", {
       this.error = "";
 
       try {
-        // Plugin adds Supabase JWT to /api/ requests; server supports JWT + legacy session cookie
-        const response = await $fetch("/api/auth/me");
+        const response = await $fetch("/api/auth/me", { timeout: 8000 });
         this.user = response?.user ?? null;
       } catch (error) {
-        this.error =
-          error?.data?.statusMessage || error?.message || "Session check failed.";
+        this.error = parseFetchError(error, "Session check failed.");
         this.user = null;
       } finally {
         this.loading = false;
@@ -34,23 +38,27 @@ export const useAuthStore = defineStore("auth", {
         const supabase = nuxtApp.$supabase;
         const normalizedEmail = email.trim().toLowerCase();
 
-        // Try legacy login first (existing app_users) - avoids Supabase 400 for users not in Auth
-        try {
-          const legacyResponse = await $fetch("/api/auth/login", {
-            method: "POST",
-            body: { email: normalizedEmail, password },
-          });
-          if (legacyResponse?.user) {
-            this.user = legacyResponse.user;
-            return this.user;
-          }
-        } catch (legacyErr) {
-          // Legacy failed - try Supabase if configured
-          if (!supabase) {
-            const msg = legacyErr?.data?.statusMessage || legacyErr?.message || "Invalid email or password.";
-            const err = new Error(msg);
-            err.data = { statusMessage: msg };
-            throw err;
+        // Legacy cookie login only works same-origin (web). Native uses Supabase JWT on /api/.
+        if (!isNativeApp()) {
+          try {
+            const legacyResponse = await $fetch("/api/auth/login", {
+              method: "POST",
+              body: { email: normalizedEmail, password },
+            });
+            if (legacyResponse?.user) {
+              this.user = legacyResponse.user;
+              return this.user;
+            }
+          } catch (legacyErr) {
+            if (!supabase) {
+              const msg =
+                legacyErr?.data?.statusMessage ||
+                legacyErr?.message ||
+                "Invalid email or password.";
+              const err = new Error(msg);
+              err.data = { statusMessage: msg };
+              throw err;
+            }
           }
         }
 
@@ -157,7 +165,6 @@ export const useAuthStore = defineStore("auth", {
       } catch (error) {
         this.error =
           error?.data?.statusMessage || error?.message || "Logout failed.";
-        throw error;
       } finally {
         this.user = null;
         this.loading = false;

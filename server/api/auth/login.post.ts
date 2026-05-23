@@ -86,7 +86,7 @@ export default defineEventHandler(async (event) => {
     if (error?.statusCode) {
       throw error;
     }
-    console.error("[auth/login]", error?.message ?? error, "DATABASE_URL host:", process.env.DATABASE_URL?.match(/@([^:]+)/)?.[1] ?? "unknown");
+    console.error("[auth/login]", error?.message ?? error);
     throw createError({
       statusCode: 500,
       statusMessage: process.env.NODE_ENV === "development" && error?.message
