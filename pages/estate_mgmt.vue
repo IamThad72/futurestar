@@ -57,230 +57,70 @@
 
       <div v-else class="space-y-10 py-8 md:space-y-16 md:py-16 xl:space-y-20">
         <EstateSection title="Asset Inventory" :total="formatMoney(totalAssetInventory)" @add="openAddModal('asset')">
-          <div class="overflow-x-auto">
-            <table class="w-full min-w-0 text-left text-xs md:text-sm md:min-w-[40rem]">
-              <thead>
-                <tr class="border-b border-gray-200 text-[10px] font-semibold uppercase tracking-wide text-gray-500 md:text-xs dark:border-white/10 dark:text-gray-400">
-                  <th class="w-10"></th>
-                  <th
-                    v-for="col in assetInventoryColumns"
-                    :key="col.k"
-                    :class="estateColHeaderClass(col)"
-                    @click="setSort('assetInventory', col.k)"
-                  >
-                    {{ col.l }} {{ sortState.assetInventory.key === col.k ? (sortState.assetInventory.dir === 'asc' ? '▲' : '▼') : '' }}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="r in sortedAssetInventory" :key="r.ai_id" class="border-b border-gray-100 text-gray-900 dark:border-white/5 dark:text-white">
-                  <td class="w-8 py-2 pr-1 md:w-10 md:py-3 md:pr-2">
-                    <button type="button" class="text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400" @click="openEditModal('asset_inventory', r)" title="Update">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 md:size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>
-                    </button>
-                  </td>
-                  <td class="py-2 pr-2 md:py-3 md:pr-4 font-medium">{{ r.title }}</td>
-                  <td class="py-2 pr-2 md:py-3 md:pr-4 capitalize text-gray-600 dark:text-gray-300">{{ r.asset_classification ?? r.classification_type ?? '—' }}</td>
-                  <td class="py-2 pr-2 md:py-3 md:pr-4 font-semibold tabular-nums">{{ formatMoney(r.value) }}</td>
-                  <td class="hidden py-2 pr-2 md:py-3 md:pr-4 md:table-cell">{{ r.location }}</td>
-                </tr>
-                <tr v-if="assetInventory.length === 0" class="border-b border-gray-100 text-gray-900 dark:border-white/5 dark:text-white">
-                  <td colspan="5" class="py-6 text-center text-xs text-gray-500 md:py-8 md:text-sm dark:text-gray-400">No records</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <EstateRecordList
+            :items="sortedAssetInventory"
+            item-key="ai_id"
+            :columns="assetInventoryColumns"
+            :sort-state="sortState.assetInventory"
+            :map-row="mapAssetInventoryRow"
+            @sort="setSort('assetInventory', $event)"
+            @edit="openEditModal('asset_inventory', $event)"
+          />
         </EstateSection>
         <EstateSection title="Asset Vehicles" :total="formatMoney(totalAssetVehicles)" @add="openAddModal('vehicle')">
-          <div class="overflow-x-auto">
-            <table class="w-full min-w-0 text-left text-xs md:text-sm md:min-w-[40rem]">
-              <thead>
-                <tr class="border-b border-gray-200 text-[10px] font-semibold uppercase tracking-wide text-gray-500 md:text-xs dark:border-white/10 dark:text-gray-400">
-                  <th class="w-10"></th>
-                  <th
-                    v-for="col in assetVehicleColumns"
-                    :key="col.k"
-                    :class="estateColHeaderClass(col)"
-                    @click="setSort('assetVehicles', col.k)"
-                  >
-                    {{ col.l }} {{ sortState.assetVehicles.key === col.k ? (sortState.assetVehicles.dir === 'asc' ? '▲' : '▼') : '' }}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="r in sortedAssetVehicles" :key="r.vh_id" class="border-b border-gray-100 text-gray-900 dark:border-white/5 dark:text-white">
-                  <td class="w-8 py-2 pr-1 md:w-10 md:py-3 md:pr-2">
-                    <button type="button" class="text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400" @click="openEditModal('asset_vehicles', r)" title="Update">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 md:size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>
-                    </button>
-                  </td>
-                  <td class="py-2 pr-2 md:py-3 md:pr-4">{{ r.make }}</td>
-                  <td class="py-2 pr-2 md:py-3 md:pr-4">{{ r.model }}</td>
-                  <td class="hidden py-2 pr-2 md:py-3 md:pr-4 md:table-cell">{{ r.vin }}</td>
-                  <td class="py-2 pr-2 md:py-3 md:pr-4 font-semibold tabular-nums">{{ formatMoney(r.value) }}</td>
-                  <td class="hidden py-2 pr-2 md:py-3 md:pr-4 md:table-cell">{{ r.trust_designated ? 'Y' : 'N' }}</td>
-                </tr>
-                <tr v-if="assetVehicles.length === 0" class="border-b border-gray-100 text-gray-900 dark:border-white/5 dark:text-white">
-                  <td colspan="6" class="py-6 text-center text-xs text-gray-500 md:py-8 md:text-sm dark:text-gray-400">No records</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <EstateRecordList
+            :items="sortedAssetVehicles"
+            item-key="vh_id"
+            :columns="assetVehicleColumns"
+            :sort-state="sortState.assetVehicles"
+            :map-row="mapAssetVehicleRow"
+            @sort="setSort('assetVehicles', $event)"
+            @edit="openEditModal('asset_vehicles', $event)"
+          />
         </EstateSection>
         <EstateSection title="Cash and Investments" :total="formatMoney(totalCashAndInvestments)" @add="openAddModal('cash')">
-          <div class="overflow-x-auto">
-            <table class="w-full min-w-0 text-left text-xs md:text-sm md:min-w-[40rem]">
-              <thead>
-                <tr class="border-b border-gray-200 text-[10px] font-semibold uppercase tracking-wide text-gray-500 md:text-xs dark:border-white/10 dark:text-gray-400">
-                  <th class="w-10"></th>
-                  <th
-                    v-for="col in cashColumns"
-                    :key="col.k"
-                    :class="estateColHeaderClass(col)"
-                    @click="setSort('cashAndInvestments', col.k)"
-                  >
-                    {{ col.l }} {{ sortState.cashAndInvestments.key === col.k ? (sortState.cashAndInvestments.dir === 'asc' ? '▲' : '▼') : '' }}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(r, i) in sortedCashAndInvestments" :key="r.ci_id ?? 'cai-' + i" class="border-b border-gray-100 text-gray-900 dark:border-white/5 dark:text-white">
-                  <td class="w-8 py-2 pr-1 md:w-10 md:py-3 md:pr-2">
-                    <button type="button" class="text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400" @click="openEditModal('cash_and_investments', r)" title="Update">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 md:size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>
-                    </button>
-                  </td>
-                  <td class="py-2 pr-2 md:py-3 md:pr-4 capitalize">{{ r.acct_type }}</td>
-                  <td class="py-2 pr-2 md:py-3 md:pr-4">
-                    <a v-if="r.institution_url && r.institution_url.trim()" :href="r.institution_url" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">{{ r.institution }}</a>
-                    <template v-else>{{ r.institution }}</template>
-                  </td>
-                  <td class="hidden py-2 pr-2 md:py-3 md:pr-4 md:table-cell">{{ r.acct_number }}</td>
-                  <td class="py-2 pr-2 md:py-3 md:pr-4 font-semibold tabular-nums">{{ formatMoney(r.value) }}</td>
-                  <td class="hidden py-2 pr-2 md:py-3 md:pr-4 md:table-cell">{{ r.trust_designated ? 'Y' : 'N' }}</td>
-                </tr>
-                <tr v-if="sortedCashAndInvestments.length === 0" class="border-b border-gray-100 text-gray-900 dark:border-white/5 dark:text-white">
-                  <td colspan="6" class="py-6 text-center text-xs text-gray-500 md:py-8 md:text-sm dark:text-gray-400">No records</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <EstateRecordList
+            :items="sortedCashAndInvestments"
+            item-key="ci_id"
+            :columns="cashColumns"
+            :sort-state="sortState.cashAndInvestments"
+            :map-row="mapCashRow"
+            @sort="setSort('cashAndInvestments', $event)"
+            @edit="openEditModal('cash_and_investments', $event)"
+          />
         </EstateSection>
         <EstateSection title="Debt" :total="formatMoney(totalDebtTable)" @add="openAddModal('debt')">
-          <div class="overflow-x-auto">
-            <table class="w-full min-w-0 text-left text-xs md:text-sm md:min-w-[40rem]">
-              <thead>
-                <tr class="border-b border-gray-200 text-[10px] font-semibold uppercase tracking-wide text-gray-500 md:text-xs dark:border-white/10 dark:text-gray-400">
-                  <th class="w-10"></th>
-                  <th
-                    v-for="col in debtColumns"
-                    :key="col.k"
-                    :class="estateColHeaderClass(col)"
-                    @click="setSort('debt', col.k)"
-                  >
-                    {{ col.l }} {{ sortState.debt.key === col.k ? (sortState.debt.dir === 'asc' ? '▲' : '▼') : '' }}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="r in sortedDebt" :key="r.dbt_id" class="border-b border-gray-100 text-gray-900 dark:border-white/5 dark:text-white">
-                  <td class="w-8 py-2 pr-1 md:w-10 md:py-3 md:pr-2">
-                    <button type="button" class="text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400" @click="openEditModal('debt', r)" title="Update">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 md:size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>
-                    </button>
-                  </td>
-                  <td class="py-2 pr-2 md:py-3 md:pr-4">
-                    <a v-if="r.address_url && r.address_url.trim()" :href="r.address_url" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">{{ r.institution }}</a>
-                    <template v-else>{{ r.institution }}</template>
-                  </td>
-                  <td class="hidden py-2 pr-2 md:py-3 md:pr-4 md:table-cell">{{ r.loan_number }}</td>
-                  <td class="py-2 pr-2 md:py-3 md:pr-4 capitalize">{{ r.loan_type }}</td>
-                  <td class="py-2 pr-2 md:py-3 md:pr-4 font-semibold tabular-nums">{{ formatMoney(r.loan_ammount) }}</td>
-                  <td class="hidden py-2 pr-2 md:py-3 md:pr-4 md:table-cell">{{ getLinkedAssetLabel(r) }}</td>
-                  <td class="hidden py-2 pr-2 md:py-3 md:pr-4 md:table-cell">{{ r.customer_support_no }}</td>
-                </tr>
-                <tr v-if="debt.length === 0" class="border-b border-gray-100 text-gray-900 dark:border-white/5 dark:text-white">
-                  <td colspan="7" class="py-6 text-center text-xs text-gray-500 md:py-8 md:text-sm dark:text-gray-400">No records</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <EstateRecordList
+            :items="sortedDebt"
+            item-key="dbt_id"
+            :columns="debtColumns"
+            :sort-state="sortState.debt"
+            :map-row="mapDebtRow"
+            @sort="setSort('debt', $event)"
+            @edit="openEditModal('debt', $event)"
+          />
         </EstateSection>
         <EstateSection title="Real Estate" :total="formatMoney(totalRealEstateValue)" @add="openAddModal('real_estate')">
-          <div class="overflow-x-auto">
-            <table class="w-full min-w-0 text-left text-xs md:text-sm md:min-w-[40rem]">
-              <thead>
-                <tr class="border-b border-gray-200 text-[10px] font-semibold uppercase tracking-wide text-gray-500 md:text-xs dark:border-white/10 dark:text-gray-400">
-                  <th class="w-10"></th>
-                  <th
-                    v-for="col in realEstateColumns"
-                    :key="col.k"
-                    :class="estateColHeaderClass(col)"
-                    @click="setSort('realEstate', col.k)"
-                  >
-                    {{ col.l }} {{ sortState.realEstate.key === col.k ? (sortState.realEstate.dir === 'asc' ? '▲' : '▼') : '' }}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="r in sortedRealEstate" :key="r.re_id" class="border-b border-gray-100 text-gray-900 dark:border-white/5 dark:text-white">
-                  <td class="w-8 py-2 pr-1 md:w-10 md:py-3 md:pr-2">
-                    <button type="button" class="text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400" @click="openEditModal('real_estate', r)" title="Update">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 md:size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>
-                    </button>
-                  </td>
-                  <td class="py-2 pr-2 md:py-3 md:pr-4">{{ [r.number, r.street].filter(Boolean).join(' ') || '—' }}</td>
-                  <td class="hidden py-2 pr-2 md:py-3 md:pr-4 md:table-cell">{{ r.city }}</td>
-                  <td class="hidden py-2 pr-2 md:py-3 md:pr-4 md:table-cell">{{ r.state }}</td>
-                  <td class="py-2 pr-2 md:py-3 md:pr-4">{{ r.zipcode }}</td>
-                  <td class="py-2 pr-2 md:py-3 md:pr-4 font-semibold tabular-nums">{{ formatMoney(r.value) }}</td>
-                  <td class="hidden py-2 pr-2 md:py-3 md:pr-4 md:table-cell">{{ r.trust_designated ? 'Y' : 'N' }}</td>
-                </tr>
-                <tr v-if="realEstate.length === 0" class="border-b border-gray-100 text-gray-900 dark:border-white/5 dark:text-white">
-                  <td colspan="7" class="py-6 text-center text-xs text-gray-500 md:py-8 md:text-sm dark:text-gray-400">No records</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <EstateRecordList
+            :items="sortedRealEstate"
+            item-key="re_id"
+            :columns="realEstateColumns"
+            :sort-state="sortState.realEstate"
+            :map-row="mapRealEstateRow"
+            @sort="setSort('realEstate', $event)"
+            @edit="openEditModal('real_estate', $event)"
+          />
         </EstateSection>
         <EstateSection title="Insurance" @add="openAddModal('insurance')">
-          <div class="overflow-x-auto">
-            <table class="w-full min-w-0 text-left text-xs md:text-sm md:min-w-[40rem]">
-              <thead>
-                <tr class="border-b border-gray-200 text-[10px] font-semibold uppercase tracking-wide text-gray-500 md:text-xs dark:border-white/10 dark:text-gray-400">
-                  <th class="w-10"></th>
-                  <th
-                    v-for="col in insuranceColumns"
-                    :key="col.k"
-                    :class="estateColHeaderClass(col)"
-                    @click="setSort('insurance', col.k)"
-                  >
-                    {{ col.l }} {{ sortState.insurance.key === col.k ? (sortState.insurance.dir === 'asc' ? '▲' : '▼') : '' }}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="r in sortedInsurance" :key="r.ins_id" class="border-b border-gray-100 text-gray-900 dark:border-white/5 dark:text-white">
-                  <td class="w-8 py-2 pr-1 md:w-10 md:py-3 md:pr-2">
-                    <button type="button" class="text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400" @click="openEditModal('insurance', r)" title="Update">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 md:size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>
-                    </button>
-                  </td>
-                  <td class="py-2 pr-2 md:py-3 md:pr-4">
-                    <a v-if="r.institution_url && r.institution_url.trim()" :href="r.institution_url" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">{{ r.policy_holder }}</a>
-                    <template v-else>{{ r.policy_holder }}</template>
-                  </td>
-                  <td class="hidden py-2 pr-2 md:py-3 md:pr-4 md:table-cell">{{ r.polocy_number }}</td>
-                  <td class="py-2 pr-2 md:py-3 md:pr-4">{{ r.entity_covered }}</td>
-                  <td class="py-2 pr-2 md:py-3 md:pr-4 font-semibold tabular-nums">{{ formatMoney(r.policy_amt) }}</td>
-                  <td class="hidden py-2 pr-2 md:py-3 md:pr-4 capitalize md:table-cell">{{ r.intent }}</td>
-                </tr>
-                <tr v-if="insurance.length === 0" class="border-b border-gray-100 text-gray-900 dark:border-white/5 dark:text-white">
-                  <td colspan="6" class="py-6 text-center text-xs text-gray-500 md:py-8 md:text-sm dark:text-gray-400">No records</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <EstateRecordList
+            :items="sortedInsurance"
+            item-key="ins_id"
+            :columns="insuranceColumns"
+            :sort-state="sortState.insurance"
+            :map-row="mapInsuranceRow"
+            @sort="setSort('insurance', $event)"
+            @edit="openEditModal('insurance', $event)"
+          />
         </EstateSection>
       </div>
     </template>
@@ -673,13 +513,6 @@ const insuranceColumns = [
   { k: "intent", l: "Intent", desktopOnly: true },
 ];
 
-function estateColHeaderClass(col) {
-  return [
-    "cursor-pointer py-2 pr-2 md:py-3 md:pr-4 hover:text-gray-700 dark:hover:text-gray-200",
-    col.desktopOnly ? "hidden md:table-cell" : "",
-  ];
-}
-
 const auth = useAuthStore();
 const loading = ref(true);
 const updateModalRef = ref(null);
@@ -809,6 +642,81 @@ function formatMoney(val) {
   const n = toNumber(val);
   if (Number.isNaN(n)) return String(val);
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+}
+
+function estateDetailLines(entries) {
+  return entries.filter((line) => line && line.value != null && line.value !== "" && line.value !== "—");
+}
+
+function mapAssetInventoryRow(r) {
+  return {
+    title: r.title || "—",
+    subtitle: r.asset_classification ?? r.classification_type ?? "—",
+    note: formatMoney(r.value),
+    lines: estateDetailLines([r.location ? { label: "Location", value: r.location } : null]),
+  };
+}
+
+function mapAssetVehicleRow(r) {
+  const title = [r.year, r.make, r.model].filter(Boolean).join(" ") || "—";
+  return {
+    title,
+    subtitle: r.vin ? `VIN ${r.vin}` : undefined,
+    note: formatMoney(r.value),
+    lines: estateDetailLines([{ label: "Trust", value: r.trust_designated ? "Y" : "N" }]),
+  };
+}
+
+function mapCashRow(r) {
+  return {
+    title: r.institution || "—",
+    subtitle: r.acct_type || undefined,
+    note: formatMoney(r.value),
+    lines: estateDetailLines([
+      r.acct_number ? { label: "Account #", value: r.acct_number } : null,
+      { label: "Trust", value: r.trust_designated ? "Y" : "N" },
+    ]),
+  };
+}
+
+function mapDebtRow(r) {
+  const terms = formatDebtTermsLine(r);
+  return {
+    title: r.institution || "—",
+    subtitle: r.loan_type || undefined,
+    note: formatMoney(r.loan_ammount),
+    lines: estateDetailLines([
+      r.loan_number ? { label: "Loan #", value: r.loan_number } : null,
+      getLinkedAssetLabel(r) !== "—" ? { label: "Linked", value: getLinkedAssetLabel(r) } : null,
+      r.customer_support_no ? { label: "Support", value: r.customer_support_no } : null,
+      terms ? { label: "Terms", value: terms } : null,
+    ]),
+  };
+}
+
+function mapRealEstateRow(r) {
+  const address = [r.number, r.street].filter(Boolean).join(" ") || "—";
+  return {
+    title: address,
+    subtitle: [r.city, r.state].filter(Boolean).join(", ") || undefined,
+    note: formatMoney(r.value),
+    lines: estateDetailLines([
+      r.zipcode ? { label: "Zip", value: r.zipcode } : null,
+      { label: "Trust", value: r.trust_designated ? "Y" : "N" },
+    ]),
+  };
+}
+
+function mapInsuranceRow(r) {
+  return {
+    title: r.policy_holder || "—",
+    subtitle: r.entity_covered || undefined,
+    note: formatMoney(r.policy_amt),
+    lines: estateDetailLines([
+      r.polocy_number ? { label: "Policy #", value: r.polocy_number } : null,
+      r.intent ? { label: "Intent", value: r.intent } : null,
+    ]),
+  };
 }
 
 function toNumber(val) {

@@ -69,90 +69,23 @@
 
       <div v-else class="py-4 md:py-6">
         <p class="mx-auto max-w-7xl mb-2 px-4 text-xs text-gray-500 sm:px-6 md:mb-3 md:text-sm lg:px-8 dark:text-gray-400">
-          {{ monthNames[selectedMonth - 1] }} {{ selectedYear }} — use the edit icon to view or add transactions
+          {{ monthNames[selectedMonth - 1] }} {{ selectedYear }} — tap a budget line to view or add transactions
         </p>
 
         <div class="space-y-4 md:space-y-6">
         <template v-for="section in budgetTrackerDisplaySections" :key="section.key">
-          <EstateSection :title="section.title" :total="sectionSummary(section)" :show-add="false" compact>
-            <div class="flow-root text-[11px] md:text-sm">
-              <div class="-mx-4 overflow-x-auto sm:mx-0">
-                <div class="inline-block min-w-full align-middle">
-                  <table class="min-w-full divide-y divide-gray-300 dark:divide-white/10">
-                    <thead>
-                      <tr>
-                        <th
-                          scope="col"
-                          class="sticky top-0 z-10 w-8 border-b border-gray-300 bg-white/95 pl-2 pr-0 py-2 backdrop-blur-sm md:w-10 md:py-3.5 dark:border-white/10 dark:bg-gray-950/95"
-                        >
-                          <span class="sr-only">Edit</span>
-                        </th>
-                        <th
-                          scope="col"
-                          class="sticky top-0 z-10 border-b border-gray-300 bg-white/95 pl-1 pr-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-gray-500 backdrop-blur-sm md:px-4 md:py-3.5 md:text-xs dark:border-white/10 dark:bg-gray-950/95 dark:text-gray-400"
-                        >
-                          Category
-                        </th>
-                        <th
-                          scope="col"
-                          class="sticky top-0 z-10 border-b border-gray-300 bg-white/95 px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wide text-gray-500 backdrop-blur-sm md:px-4 md:py-3.5 md:text-xs dark:border-white/10 dark:bg-gray-950/95 dark:text-gray-400"
-                        >
-                          Budget
-                        </th>
-                        <th
-                          scope="col"
-                          class="sticky top-0 z-10 border-b border-gray-300 bg-white/95 px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wide text-gray-500 backdrop-blur-sm md:px-4 md:py-3.5 md:text-xs dark:border-white/10 dark:bg-gray-950/95 dark:text-gray-400"
-                        >
-                          Actual
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200 bg-white dark:divide-white/10 dark:bg-transparent">
-                      <tr
-                        v-for="row in section.rows"
-                        :key="`${section.key}-${row.item.id}`"
-                        class="odd:bg-gray-50 dark:odd:bg-white/[0.03]"
-                      >
-                        <td class="whitespace-nowrap pl-2 pr-0 py-2 md:py-3.5">
-                          <button
-                            type="button"
-                            class="-mr-0.5 text-gray-400 hover:text-indigo-600 md:-mr-0 dark:hover:text-indigo-400"
-                            title="Update"
-                            @click="openSubCategoryModal(row.item, section.listType, row.group)"
-                          >
-                            <span class="sr-only">Edit, {{ row.group.category }}{{ row.item.sub_category ? ` ${row.item.sub_category}` : "" }}</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5 md:size-5" aria-hidden="true">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
-                            </svg>
-                          </button>
-                        </td>
-                        <td class="pl-1 pr-3 py-2 md:px-4 md:py-3.5">
-                          <div class="min-w-0 font-medium text-gray-900 dark:text-white">
-                            <span>{{ row.group.category }}</span>
-                            <template v-if="(row.item.sub_category || '').trim()">
-                              <span class="text-gray-400"> · </span>
-                              <span :class="section.accent">{{ row.item.sub_category }}</span>
-                            </template>
-                            <span
-                              class="ml-1 font-normal text-[10px] md:text-xs"
-                              :class="getVarianceClass(row.item.id, section.listType, row.item.monthly_amount)"
-                            >
-                              ({{ formatVariance(row.item.id, section.listType, row.item.monthly_amount) }})
-                            </span>
-                          </div>
-                        </td>
-                        <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-gray-700 md:px-4 md:py-3.5 dark:text-gray-200">
-                          ${{ formatAmount(row.item.monthly_amount) }}
-                        </td>
-                        <td class="whitespace-nowrap px-3 py-2 text-right font-semibold tabular-nums text-gray-900 md:px-4 md:py-3.5 dark:text-white">
-                          ${{ formatAmount(getActualForItem(row.item.id, section.listType)) }}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+          <EstateSection :title="section.title" :show-add="false" compact>
+            <template #total>
+              <span>${{ formatAmount(sectionActualTotal(section)) }}</span>
+              <span class="text-base-content/50"> / </span>
+              <span class="budget-tracker-budgeted">${{ formatAmount(sectionBudgetedTotal(section)) }}</span>
+            </template>
+            <EstateRecordList
+              :items="budgetTrackerListItems(section)"
+              item-key="_listKey"
+              :map-row="mapBudgetTrackerRow(section)"
+              @edit="onBudgetTrackerRowSelect(section, $event)"
+            />
           </EstateSection>
         </template>
         </div>
@@ -481,13 +414,9 @@
           </h3>
           <div v-if="selectedBudgetItem" class="flex-1 overflow-y-auto min-h-0">
             <div v-if="!transactionsForModal.length" class="text-base-content/50 italic py-4">No transactions yet.</div>
-            <div v-else class="space-y-2 text-xs md:space-y-3 md:text-sm">
-              <div
-                v-for="tx in transactionsForModal"
-                :key="tx.id"
-                class="border border-base-200 rounded-lg p-2.5 md:p-3"
-              >
-                <template v-if="editingTxId === tx.id">
+            <ion-list v-else lines="full" class="budget-tx-list">
+              <template v-for="tx in transactionsForModal" :key="tx.id">
+                <div v-if="editingTxId === tx.id" class="budget-tx-list__edit">
                   <form @submit.prevent="saveEditTransaction" class="space-y-3">
                     <label class="form-control w-full">
                       <span class="label-text text-sm">Category / Sub-category</span>
@@ -551,23 +480,26 @@
                       <button type="button" class="btn btn-ghost btn-sm" @click="cancelEdit">Cancel</button>
                     </div>
                   </form>
-                </template>
-                <template v-else>
-                  <div class="flex flex-wrap items-center justify-between gap-1.5 md:gap-2">
-                    <div class="min-w-0 text-xs md:text-sm">
-                      <span class="font-medium">{{ formatDate(tx.date) }}</span>
-                      <span class="ml-1.5 font-bold md:ml-2" :class="tx.type === 'income' ? 'text-primary' : 'text-error'">
-                        {{ tx.type === 'income' ? '' : '-' }}${{ formatAmount(tx.amount) }}
-                      </span>
-                      <div v-if="tx.description" class="text-[11px] text-base-content/60 mt-0.5 md:text-sm">{{ tx.description }}</div>
-                      <div v-if="tx.destination_institution || tx.destination_acct_type" class="text-[10px] text-base-content/50 mt-0.5 md:text-xs">
-                        → {{ [tx.destination_institution, tx.destination_acct_type].filter(Boolean).join(" — ") }}
-                      </div>
-                      <div v-if="tx.principal_applied != null && Number(tx.principal_applied) > 0" class="text-[10px] text-base-content/60 mt-0.5 md:text-xs">
-                        Principal ${{ formatAmount(tx.principal_applied) }}<template v-if="tx.interest_applied != null && Number(tx.interest_applied) > 0"> · interest ${{ formatAmount(tx.interest_applied) }}</template>
-                      </div>
-                    </div>
-                    <div class="flex shrink-0 gap-0.5 -mr-1 md:gap-1 md:mr-0">
+                </div>
+                <ion-item v-else class="budget-tx-list__item">
+                  <ion-label>
+                    <h2 class="budget-tx-list__date">{{ formatDate(tx.date) }}</h2>
+                    <p v-if="tx.description" class="budget-tx-list__desc">{{ tx.description }}</p>
+                    <p v-if="tx.destination_institution || tx.destination_acct_type" class="budget-tx-list__meta">
+                      → {{ [tx.destination_institution, tx.destination_acct_type].filter(Boolean).join(" — ") }}
+                    </p>
+                    <p v-if="tx.principal_applied != null && Number(tx.principal_applied) > 0" class="budget-tx-list__meta">
+                      Principal ${{ formatAmount(tx.principal_applied) }}<template v-if="tx.interest_applied != null && Number(tx.interest_applied) > 0"> · interest ${{ formatAmount(tx.interest_applied) }}</template>
+                    </p>
+                  </ion-label>
+                  <div slot="end" class="budget-tx-list__end">
+                    <span
+                      class="budget-tx-list__amount"
+                      :class="tx.type === 'income' ? 'budget-tx-list__amount--income' : 'budget-tx-list__amount--expense'"
+                    >
+                      {{ tx.type === "income" ? "" : "-" }}${{ formatAmount(tx.amount) }}
+                    </span>
+                    <div class="budget-tx-list__actions">
                       <button type="button" class="btn btn-ghost btn-xs btn-square md:btn-sm" aria-label="Edit" @click="startEditTx(tx)">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5 md:size-4"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" /></svg>
                       </button>
@@ -576,9 +508,9 @@
                       </button>
                     </div>
                   </div>
-                </template>
-              </div>
-            </div>
+                </ion-item>
+              </template>
+            </ion-list>
             <div class="mt-4 pt-4 border-t border-base-200">
               <button type="button" class="btn btn-primary btn-sm" @click="addTxFromSubCategory">
                 Add Transaction
@@ -725,6 +657,7 @@
 </template>
 
 <script setup>
+import { IonItem, IonLabel, IonList } from "@ionic/vue";
 import { ArrowUpTrayIcon } from "@heroicons/vue/20/solid";
 import {
   formatDebtRecordLabel,
@@ -1008,12 +941,12 @@ const addTransactionModalTitle = computed(() => {
 /** Budget Details: by type, then flat rows "Category — Subcategory" (group order, then subcategory sort) */
 const budgetTrackerDisplaySections = computed(() => {
   const base = [
-    { key: "expense", title: "Expenses", listType: "expense", accent: "text-red-600 dark:text-red-400", groups: expenseBudgetGroups.value },
-    { key: "income", title: "Income", listType: "income", accent: "text-emerald-600 dark:text-emerald-400", groups: incomeBudgetGroups.value },
-    { key: "investment", title: "Investments", listType: "expense", accent: "text-violet-600 dark:text-violet-400", groups: investmentBudgetGroups.value },
-    { key: "savings", title: "Savings", listType: "expense", accent: "text-sky-600 dark:text-sky-400", groups: savingsBudgetGroups.value },
-    { key: "tax", title: "Tax", listType: "income", accent: "text-amber-600 dark:text-amber-400", groups: taxBudgetGroups.value },
-    { key: "insurance", title: "Insurance", listType: "income", accent: "text-gray-600 dark:text-gray-300", groups: insuranceBudgetGroups.value },
+    { key: "expense", title: "Expenses", listType: "expense", badgeClass: "estate-record-list__badge--expense", groups: expenseBudgetGroups.value },
+    { key: "income", title: "Income", listType: "income", badgeClass: "estate-record-list__badge--income", groups: incomeBudgetGroups.value },
+    { key: "investment", title: "Investments", listType: "expense", badgeClass: "estate-record-list__badge--investment", groups: investmentBudgetGroups.value },
+    { key: "savings", title: "Savings", listType: "expense", badgeClass: "estate-record-list__badge--savings", groups: savingsBudgetGroups.value },
+    { key: "tax", title: "Tax", listType: "income", badgeClass: "estate-record-list__badge--tax", groups: taxBudgetGroups.value },
+    { key: "insurance", title: "Insurance", listType: "income", badgeClass: "estate-record-list__badge--insurance", groups: insuranceBudgetGroups.value },
   ];
   return base
     .map((s) => ({
@@ -1031,14 +964,61 @@ const budgetTrackerDisplaySections = computed(() => {
     }))
     .filter((s) => s.rows.length > 0);
 });
-function sectionSummary(section) {
+function sectionBudgetedTotal(section) {
   let budget = 0;
-  let actual = 0;
   for (const row of section.rows) {
     budget += Number(row.item.monthly_amount) || 0;
+  }
+  return budget;
+}
+
+function sectionActualTotal(section) {
+  let actual = 0;
+  for (const row of section.rows) {
     actual += getActualForItem(row.item.id, section.listType);
   }
-  return `$${formatAmount(actual)} / $${formatAmount(budget)}`;
+  return actual;
+}
+
+function budgetTrackerListItems(section) {
+  return section.rows.map((row) => ({
+    ...row,
+    _listKey: `${section.key}-${row.item.id}`,
+  }));
+}
+
+function mapBudgetTrackerRow(section) {
+  return (row) => {
+    const { item, group } = row;
+    const sub = (item.sub_category || "").trim();
+    const actual = getActualForItem(item.id, section.listType);
+    const budgeted = item.monthly_amount;
+    return {
+      title: group.category,
+      titleSuffix: sub || undefined,
+      titleSuffixBadgeClass: section.badgeClass,
+      note: `$${formatAmount(actual)}`,
+      noteClass: getBudgetNoteClass(actual, budgeted),
+      lines: [
+        {
+          label: "Budgeted",
+          segments: [
+            { text: `$${formatAmount(budgeted)}`, class: "estate-record-list__line-value--budgeted" },
+            { text: " / ", class: "estate-record-list__line-sep" },
+            { text: "Dif: ", class: "estate-record-list__line-dif-label" },
+            {
+              text: formatBudgetDifference(actual, budgeted, section.listType, section.key),
+              class: getBudgetDifferenceClass(actual, budgeted, section.listType, section.key),
+            },
+          ],
+        },
+      ],
+    };
+  };
+}
+
+function onBudgetTrackerRowSelect(section, row) {
+  openSubCategoryModal(row.item, section.listType, row.group);
 }
 
 
@@ -1149,20 +1129,38 @@ function getActualForItem(itemId, type) {
   return actualByItem.value[key] ?? 0;
 }
 
-function getVarianceClass(itemId, type, budgeted) {
-  const actual = getActualForItem(itemId, type);
-  const variance = type === "income" ? actual - (budgeted || 0) : (budgeted || 0) - actual;
-  if (Math.abs(variance) < 0.01) return "text-gray-500 dark:text-gray-400";
-  // More than budgeted (over) = error; under = secondary
-  const isOver = type === "income" ? variance > 0 : variance < 0;
-  return isOver ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400";
+function getBudgetNoteClass(actual, budgeted) {
+  const budget = Number(budgeted) || 0;
+  const spent = Number(actual) || 0;
+  if (Math.abs(spent - budget) < 0.01) return "estate-record-list__note--on-budget";
+  return spent > budget
+    ? "estate-record-list__note--over"
+    : "estate-record-list__note--under";
 }
 
-function formatVariance(itemId, type, budgeted) {
-  const actual = getActualForItem(itemId, type);
-  const variance = type === "income" ? actual - (budgeted || 0) : (budgeted || 0) - actual;
-  const sign = variance >= 0 ? "+" : "";
-  return `${sign}$${formatAmount(Math.abs(variance))}`;
+/** Positive = favorable (under spend, beat income target, under tax/insurance). */
+function budgetDifferenceAmount(actual, budgeted, listType, sectionKey) {
+  const budget = Number(budgeted) || 0;
+  const act = Number(actual) || 0;
+  if (sectionKey === "income" && listType === "income") {
+    return act - budget;
+  }
+  return budget - act;
+}
+
+function formatBudgetDifference(actual, budgeted, listType, sectionKey) {
+  const diff = budgetDifferenceAmount(actual, budgeted, listType, sectionKey);
+  if (Math.abs(diff) < 0.01) return `$${formatAmount(0)}`;
+  const sign = diff > 0 ? "+" : "−";
+  return `${sign}$${formatAmount(Math.abs(diff))}`;
+}
+
+function getBudgetDifferenceClass(actual, budgeted, listType, sectionKey) {
+  const diff = budgetDifferenceAmount(actual, budgeted, listType, sectionKey);
+  if (Math.abs(diff) < 0.01) return "estate-record-list__line-value--on-budget";
+  return diff > 0
+    ? "estate-record-list__line-value--under"
+    : "estate-record-list__line-value--over";
 }
 
 function formatAmount(val) {
@@ -2126,4 +2124,76 @@ watch(
   { immediate: true },
 );
 </script>
+
+<style scoped>
+.budget-tracker-budgeted {
+  color: var(--color-primary, #1e3a8a);
+}
+
+.budget-tx-list {
+  margin: 0;
+  padding-inline: 8px;
+  background: transparent;
+}
+
+.budget-tx-list__item {
+  --background: var(--color-base-100, #fbffff);
+  --color: var(--color-base-content, #151616);
+  --border-color: color-mix(in srgb, var(--color-base-content, #151616) 10%, transparent);
+  --inner-padding-end: 0.5rem;
+}
+
+.budget-tx-list__edit {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-base-content, #151616) 10%, transparent);
+}
+
+.budget-tx-list__date {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.budget-tx-list__desc {
+  margin: 0.125rem 0 0;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-base-content, #151616) 65%, transparent);
+}
+
+.budget-tx-list__meta {
+  margin: 0.125rem 0 0;
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-base-content, #151616) 52%, transparent);
+}
+
+.budget-tx-list__end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  align-self: center;
+  margin-inline-start: 0.5rem;
+}
+
+.budget-tx-list__amount {
+  font-size: 0.875rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.budget-tx-list__amount--income {
+  color: var(--color-primary, #1e3a8a);
+}
+
+.budget-tx-list__amount--expense {
+  color: #f87171;
+}
+
+.budget-tx-list__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+</style>
 

@@ -4,7 +4,9 @@
       <div class="flex flex-wrap items-center justify-between gap-2 md:gap-3">
         <h2 class="text-sm font-semibold text-gray-900 md:text-base dark:text-white">{{ title }}</h2>
         <div class="flex items-center gap-2 md:gap-3">
-          <span v-if="total" class="text-xs font-semibold tabular-nums text-gray-900 md:text-sm dark:text-white">{{ total }}</span>
+          <span v-if="total || $slots.total" class="text-xs font-semibold tabular-nums text-gray-900 md:text-sm dark:text-white">
+            <slot name="total">{{ total }}</slot>
+          </span>
           <button
             v-if="showAdd"
             type="button"
