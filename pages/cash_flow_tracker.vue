@@ -659,7 +659,12 @@
                     >
                       <option value="">Select...</option>
                       <optgroup v-for="group in expenseBudgetGroups" :key="`csv-exp-${group.category}`" :label="group.category">
-                        <option v-for="item in group.items" :key="item.id" :value="String(item.id)">
+                        <option v-for="item in group.items" :key="item.id" :value="csvBudgetItemKey('expense', item.id)">
+                          {{ item.sub_category || group.category }}
+                        </option>
+                      </optgroup>
+                      <optgroup v-for="group in insuranceBudgetGroups" :key="`csv-ins-${group.category}`" :label="`Insurance — ${group.category}`">
+                        <option v-for="item in group.items" :key="item.id" :value="csvBudgetItemKey('insurance', item.id)">
                           {{ item.sub_category || group.category }}
                         </option>
                       </optgroup>
@@ -740,8 +745,10 @@ import {
 import {
   enrichCsvExpenseRows,
   applyCsvDuplicateFlags,
-  expenseCsvDedupeKey,
+  budgetCsvDedupeKey,
   buildExistingExpenseDedupeSets,
+  csvBudgetItemKey,
+  parseCsvBudgetItemKey,
 } from "~/utils/csvExpenseImport";
 
 useHead({ title: "Budget Tracker" });
@@ -866,12 +873,15 @@ const expenseBudgetGroups = computed(() =>
   ),
 );
 
-const validExpenseBudgetItemIds = computed(() => {
-  const ids = new Set();
+const validCsvBudgetItemKeys = computed(() => {
+  const keys = new Set();
   for (const e of budgets.value.expenses ?? []) {
-    if ((e.expense_type || "expense") === "expense") ids.add(String(e.id));
+    if ((e.expense_type || "expense") === "expense") keys.add(csvBudgetItemKey("expense", e.id));
   }
-  return ids;
+  for (const i of budgets.value.income ?? []) {
+    if (i.income_type === "deduction") keys.add(csvBudgetItemKey("insurance", i.id));
+  }
+  return keys;
 });
 
 const savingsBudgetGroups = computed(() =>
@@ -1469,6 +1479,20 @@ function buildExistingExpenseCsvDedupeKeySet() {
   return buildExistingExpenseDedupeSets(transactions.value).keysWithExpense;
 }
 
+function csvRowSubmitBody(row, dateStr) {
+  const parsed = parseCsvBudgetItemKey(row.budgetItemId);
+  if (!parsed) return null;
+  const base = {
+    transaction_date: dateStr,
+    amount: row.amount,
+    description: row.description || null,
+  };
+  if (parsed.kind === "insurance") {
+    return { ...base, type: "income", income_id: parsed.id };
+  }
+  return { ...base, type: "expense", expense_id: parsed.id };
+}
+
 function csvRowClass(row) {
   if (row.ignored) return "opacity-50 bg-base-200/50";
   if (!row.budgetItemId) return "bg-error/10";
@@ -1517,7 +1541,7 @@ async function onCsvFileSelected(ev) {
         const enriched = enrichCsvExpenseRows(
           rows,
           transactions.value,
-          validExpenseBudgetItemIds.value,
+          validCsvBudgetItemKeys.value,
         );
         csvRows.value = enriched;
         csvError.value = "";
@@ -1550,13 +1574,11 @@ async function forceAddCsvExpenseRow(idx) {
       csvError.value = `Invalid date for row: ${row.description || row.amount}`;
       return;
     }
-    const body = {
-      type: "expense",
-      expense_id: parseInt(String(row.budgetItemId), 10),
-      transaction_date: dateStr,
-      amount: row.amount,
-      description: row.description || null,
-    };
+    const body = csvRowSubmitBody(row, dateStr);
+    if (!body) {
+      csvError.value = "Invalid expense item for a row.";
+      return;
+    }
     await $fetch("/api/budget/transactions/submit", { method: "POST", body });
     row.csvImported = true;
     row.csvDuplicateSkipped = false;
@@ -1589,8 +1611,7 @@ async function saveCsvTransactions() {
         csvError.value = `Invalid date for row: ${row.description || row.amount}`;
         return;
       }
-      const expenseId = parseInt(String(row.budgetItemId), 10);
-      const key = expenseCsvDedupeKey(expenseId, dateStr, row.amount);
+      const key = budgetCsvDedupeKey(row.budgetItemId, dateStr, row.amount);
       if (!key) {
         csvError.value = "Invalid expense item or amount for a row.";
         return;
@@ -1600,13 +1621,11 @@ async function saveCsvTransactions() {
         skippedDup++;
         continue;
       }
-      const body = {
-        type: "expense",
-        expense_id: expenseId,
-        transaction_date: dateStr,
-        amount: row.amount,
-        description: row.description || null,
-      };
+      const body = csvRowSubmitBody(row, dateStr);
+      if (!body) {
+        csvError.value = "Invalid expense item or amount for a row.";
+        return;
+      }
       await $fetch("/api/budget/transactions/submit", { method: "POST", body });
       keySet.add(key);
       row.csvImported = true;

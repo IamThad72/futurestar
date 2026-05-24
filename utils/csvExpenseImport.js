@@ -31,29 +31,72 @@ export function normalizeExpenseDescription(text) {
     .replace(/\s+/g, " ");
 }
 
-function pickMostCommonExpenseId(countById) {
+function pickMostCommonBudgetItemKey(countByKey) {
   let best = "";
   let bestCount = 0;
-  for (const [id, count] of countById.entries()) {
+  for (const [key, count] of countByKey.entries()) {
     if (count > bestCount) {
       bestCount = count;
-      best = id;
+      best = key;
     }
   }
   return best;
 }
 
-/** norm description -> Map<expenseId, count> from past expense transactions */
+/** Composite select value: expense lines use e:id, insurance (income deduction) lines use i:id */
+export function csvBudgetItemKey(kind, id) {
+  const n = parseInt(String(id), 10);
+  if (isNaN(n) || n <= 0) return "";
+  return kind === "insurance" ? `i:${n}` : `e:${n}`;
+}
+
+export function parseCsvBudgetItemKey(key) {
+  if (key == null || key === "") return null;
+  const m = String(key).match(/^([ei]):(\d+)$/);
+  if (m) {
+    const id = parseInt(m[2], 10);
+    if (isNaN(id) || id <= 0) return null;
+    return { kind: m[1] === "i" ? "insurance" : "expense", id };
+  }
+  const n = parseInt(String(key), 10);
+  if (!isNaN(n) && n > 0) return { kind: "expense", id: n };
+  return null;
+}
+
+function transactionBudgetItemKey(tx) {
+  if (tx.type === "expense" || (tx.expense_id != null && tx.income_id == null)) {
+    if (tx.expense_id == null) return null;
+    return csvBudgetItemKey("expense", tx.expense_id);
+  }
+  if (tx.income_id != null && (tx.item_type === "deduction" || tx.type === "insurance")) {
+    return csvBudgetItemKey("insurance", tx.income_id);
+  }
+  return null;
+}
+
+function rowBudgetItemKey(row) {
+  if (row?.budgetItemId != null && row.budgetItemId !== "") {
+    const parsed = parseCsvBudgetItemKey(row.budgetItemId);
+    if (parsed) return csvBudgetItemKey(parsed.kind, parsed.id);
+  }
+  if (row?.expense_id != null) return csvBudgetItemKey("expense", row.expense_id);
+  if (row?.income_id != null && row?.item_type === "deduction") {
+    return csvBudgetItemKey("insurance", row.income_id);
+  }
+  return null;
+}
+
+/** norm description -> Map<budgetItemKey, count> from past expense and insurance transactions */
 export function buildExpenseIdSuggestionMap(transactions) {
   const byDesc = new Map();
   for (const tx of transactions ?? []) {
-    if (tx.type !== "expense" || tx.expense_id == null) continue;
+    const itemKey = transactionBudgetItemKey(tx);
+    if (!itemKey) continue;
     const norm = normalizeExpenseDescription(tx.description);
     if (!norm) continue;
-    const eid = String(tx.expense_id);
     if (!byDesc.has(norm)) byDesc.set(norm, new Map());
     const inner = byDesc.get(norm);
-    inner.set(eid, (inner.get(eid) || 0) + 1);
+    inner.set(itemKey, (inner.get(itemKey) || 0) + 1);
   }
   return byDesc;
 }
@@ -64,8 +107,8 @@ export function suggestExpenseBudgetItemId(description, suggestionMap, validExpe
   if (!norm || !suggestionMap?.size) return "";
 
   const pickValid = (countMap) => {
-    const id = pickMostCommonExpenseId(countMap);
-    return id && valid.has(id) ? id : "";
+    const key = pickMostCommonBudgetItemKey(countMap);
+    return key && valid.has(key) ? key : "";
   };
 
   if (suggestionMap.has(norm)) {
@@ -90,13 +133,18 @@ export function suggestExpenseBudgetItemId(description, suggestionMap, validExpe
 }
 
 export function expenseCsvDedupeKey(expenseId, dateStr, amount) {
-  const eid = parseInt(String(expenseId), 10);
-  if (isNaN(eid) || eid <= 0) return null;
+  return budgetCsvDedupeKey(csvBudgetItemKey("expense", expenseId), dateStr, amount);
+}
+
+export function budgetCsvDedupeKey(budgetItemKey, dateStr, amount) {
+  const parsed = parseCsvBudgetItemKey(budgetItemKey);
+  if (!parsed) return null;
   const d = normalizeDateForDedupe(dateStr);
   if (!d) return null;
   const amt = normalizeAmountForDedupe(amount);
   if (amt == null) return null;
-  return `e:${eid}|${d}|${amt}`;
+  const prefix = parsed.kind === "insurance" ? "i" : "e";
+  return `${prefix}:${parsed.id}|${d}|${amt}`;
 }
 
 export function expenseCsvDetailDedupeKey(dateStr, amount, description) {
@@ -113,10 +161,9 @@ export function buildExistingExpenseDedupeSets(transactions) {
   const keysWithExpense = new Set();
   const keysByDetail = new Set();
   for (const tx of transactions ?? []) {
-    const isExpense =
-      tx.type === "expense" || (tx.expense_id != null && tx.income_id == null);
-    if (!isExpense || tx.expense_id == null) continue;
-    const k = expenseCsvDedupeKey(tx.expense_id, tx.date, tx.amount);
+    const itemKey = transactionBudgetItemKey(tx);
+    if (!itemKey) continue;
+    const k = budgetCsvDedupeKey(itemKey, tx.date, tx.amount);
     if (k) keysWithExpense.add(k);
     const dk = expenseCsvDetailDedupeKey(tx.date, tx.amount, tx.description);
     if (dk) keysByDetail.add(dk);
@@ -143,26 +190,16 @@ export function expenseRowsLikelyDuplicate(rowA, rowB) {
   const amtB = normalizeAmountForDedupe(rowB?.amount);
   if (amtA == null || amtB == null || amtA !== amtB) return false;
 
-  const eidA = rowA?.budgetItemId != null && rowA.budgetItemId !== ""
-    ? parseInt(String(rowA.budgetItemId), 10)
-    : rowA?.expense_id != null
-      ? parseInt(String(rowA.expense_id), 10)
-      : null;
-  const eidB = rowB?.budgetItemId != null && rowB.budgetItemId !== ""
-    ? parseInt(String(rowB.budgetItemId), 10)
-    : rowB?.expense_id != null
-      ? parseInt(String(rowB.expense_id), 10)
-      : null;
-  if (eidA && eidB && !isNaN(eidA) && !isNaN(eidB) && eidA === eidB) return true;
+  const keyA = rowBudgetItemKey(rowA);
+  const keyB = rowBudgetItemKey(rowB);
+  if (keyA && keyB && keyA === keyB) return true;
 
   return descriptionsLikelyMatch(rowA?.description, rowB?.description);
 }
 
 function rowMatchesLoadedExpense(row, transactions) {
   for (const tx of transactions ?? []) {
-    const isExpense =
-      tx.type === "expense" || (tx.expense_id != null && tx.income_id == null);
-    if (!isExpense || tx.expense_id == null) continue;
+    if (!transactionBudgetItemKey(tx)) continue;
     if (expenseRowsLikelyDuplicate(row, tx)) return true;
   }
   return false;
@@ -171,7 +208,7 @@ function rowMatchesLoadedExpense(row, transactions) {
 function isRowDuplicate(row, existing, batch, earlierCsvRows, transactions) {
   if (row.ignored) return false;
   if (row.budgetItemId) {
-    const k = expenseCsvDedupeKey(row.budgetItemId, row.date, row.amount);
+    const k = budgetCsvDedupeKey(row.budgetItemId, row.date, row.amount);
     if (k && (existing.keysWithExpense.has(k) || batch.keysWithExpense.has(k))) return true;
   }
   const dk = expenseCsvDetailDedupeKey(row.date, row.amount, row.description);
@@ -186,7 +223,7 @@ function isRowDuplicate(row, existing, batch, earlierCsvRows, transactions) {
 function addRowToBatchKeys(row, batch) {
   if (row.ignored) return;
   if (row.budgetItemId) {
-    const k = expenseCsvDedupeKey(row.budgetItemId, row.date, row.amount);
+    const k = budgetCsvDedupeKey(row.budgetItemId, row.date, row.amount);
     if (k) batch.keysWithExpense.add(k);
   }
   const dk = expenseCsvDetailDedupeKey(row.date, row.amount, row.description);
@@ -197,10 +234,10 @@ function addRowToBatchKeys(row, batch) {
  * Suggest expense budget lines and flag potential duplicates (existing DB + earlier CSV rows).
  * @param {object[]} rows parsed CSV rows (mutated)
  * @param {object[]} transactions all loaded transactions
- * @param {Set<string>|string[]} validExpenseIds expense budget line ids (expense_type expense)
+ * @param {Set<string>|string[]} validBudgetItemKeys expense (e:id) and insurance (i:id) budget line keys
  */
-export function enrichCsvExpenseRows(rows, transactions, validExpenseIds) {
-  const valid = validExpenseIds instanceof Set ? validExpenseIds : new Set(validExpenseIds ?? []);
+export function enrichCsvExpenseRows(rows, transactions, validBudgetItemKeys) {
+  const valid = validBudgetItemKeys instanceof Set ? validBudgetItemKeys : new Set(validBudgetItemKeys ?? []);
   const suggestionMap = buildExpenseIdSuggestionMap(transactions);
   const existing = buildExistingExpenseDedupeSets(transactions);
   const batch = { keysWithExpense: new Set(), keysByDetail: new Set() };
