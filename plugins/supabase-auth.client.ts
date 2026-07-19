@@ -12,7 +12,7 @@ export default defineNuxtPlugin((nuxtApp) => {
   }
 
   const supabase = createClient(supabaseUrl, supabaseKey);
-  const nativeApiBase = getNativeApiBase(config.apiBase);
+  const nativeApiBase = getNativeApiBase(config.nativeApiBase);
 
   // Add Supabase JWT to all /api/ requests so server can resolve app_user
   const apiFetch = ofetch.create({
@@ -25,7 +25,7 @@ export default defineNuxtPlugin((nuxtApp) => {
             ? ctx.request.url
             : String(ctx.request);
 
-      const url = resolveNativeApiUrl(rawUrl, config.apiBase);
+      const url = resolveNativeApiUrl(rawUrl, config.nativeApiBase);
       if (url !== rawUrl) {
         ctx.request = url;
       }

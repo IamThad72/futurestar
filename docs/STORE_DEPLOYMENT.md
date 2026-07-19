@@ -31,8 +31,9 @@ npm run build:mobile:prod   # fails if API base is not HTTPS
 | Variable | Purpose |
 |----------|---------|
 | `DATABASE_URL` | PostgreSQL |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Required for password reset** on legacy accounts (creates Auth user + sends email) |
 | `CORS_ORIGINS` | Extra allowed origins (comma-separated) |
-| `NUXT_PUBLIC_SITE_URL` | Your web app URL (added to CORS allowlist) |
+| `NUXT_PUBLIC_SITE_URL` | Your web app URL (added to CORS allowlist and password-reset redirect) |
 
 Capacitor WebView origins (`https://localhost`, etc.) are allowed by default in `server/middleware/cors.ts`.
 

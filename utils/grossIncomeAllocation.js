@@ -88,6 +88,43 @@ function pushGroupLines(lines, groups, kind) {
   }
 }
 
+/** Normalize category/sub labels for matching (case, spacing, punctuation). */
+function normLabel(text) {
+  return String(text ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ");
+}
+
+/**
+ * Property/vehicle premiums that are not paycheck deductions.
+ * Category > Sub-category pairs excluded from gross-income allocation UI/calc.
+ */
+const EXCLUDED_GROSS_ALLOC_INSURANCE = [
+  { category: "home owners", sub_category: "mortgage 1" },
+  { category: "homeowners", sub_category: "mortgage 1" },
+  { category: "home owners", sub_category: "mortgage 2" },
+  { category: "homeowners", sub_category: "mortgage 2" },
+  { category: "vehicle", sub_category: "car" },
+  { category: "vehicle", sub_category: "golf cart" },
+];
+
+export function isExcludedFromGrossInsuranceAlloc(item, category) {
+  const cat = normLabel(category ?? item?.category);
+  const sub = normLabel(item?.sub_category);
+  return EXCLUDED_GROSS_ALLOC_INSURANCE.some((ex) => cat === ex.category && sub === ex.sub_category);
+}
+
+function filterInsuranceGroupsForGrossAlloc(groups) {
+  return (groups ?? [])
+    .map((g) => ({
+      category: g.category,
+      items: (g.items ?? []).filter((item) => !isExcludedFromGrossInsuranceAlloc(item, g.category)),
+    }))
+    .filter((g) => g.items.length > 0);
+}
+
 /** Split savings/investment groups so retirement lines appear only under Retirement */
 export function partitionSavingsInvestmentForGrossAlloc(savingsGroups, investmentGroups) {
   const retirementGroups = [];
@@ -131,7 +168,7 @@ export function buildGrossAllocatableLines(
 ) {
   const lines = [];
   pushGroupLines(lines, taxGroups, "tax");
-  pushGroupLines(lines, insuranceGroups, "insurance");
+  pushGroupLines(lines, filterInsuranceGroupsForGrossAlloc(insuranceGroups), "insurance");
   pushGroupLines(lines, retirementGroups, "retirement");
   pushGroupLines(lines, savingsGroups, "savings");
   pushGroupLines(lines, investmentGroups, "investment");

@@ -19,7 +19,7 @@ import { useAuthStore } from "~/stores/auth";
 const auth = useAuthStore();
 const route = useRoute();
 
-const guestPaths = new Set(["/", "/login", "/logout"]);
+const guestPaths = new Set(["/", "/login", "/logout", "/reset-password"]);
 
 watch(
   () => auth.user,

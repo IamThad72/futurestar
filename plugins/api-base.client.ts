@@ -9,7 +9,7 @@ export default defineNuxtPlugin({
   enforce: "post",
   setup() {
     const {
-      public: { apiBase },
+      public: { nativeApiBase },
     } = useRuntimeConfig();
 
     const prevFetch = globalThis.$fetch;
@@ -21,7 +21,7 @@ export default defineNuxtPlugin({
             ? input.url
             : String(input);
 
-      const resolved = resolveNativeApiUrl(url, apiBase);
+      const resolved = resolveNativeApiUrl(url, nativeApiBase);
       if (resolved === url) {
         return prevFetch(input as never, init);
       }

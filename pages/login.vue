@@ -25,10 +25,14 @@
         </svg>
       </NuxtLink>
       <h1 class="mt-8 text-center text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl sm:tracking-tight">
-        Sign in to your account
+        {{ forgotMode ? "Reset your password" : "Sign in to your account" }}
       </h1>
       <p class="mt-2 text-center text-sm text-zinc-600">
-        Enter your email and password to continue.
+        {{
+          forgotMode
+            ? "Enter your email and we will send you a link to choose a new password."
+            : "Enter your email and password to continue."
+        }}
       </p>
     </div>
 
@@ -50,8 +54,17 @@
           </div>
         </div>
 
-        <div>
-          <label for="login-password" class="block text-sm/6 font-medium text-zinc-900">Password</label>
+        <div v-if="!forgotMode">
+          <div class="flex items-center justify-between">
+            <label for="login-password" class="block text-sm/6 font-medium text-zinc-900">Password</label>
+            <button
+              type="button"
+              class="text-sm font-semibold text-primary hover:text-primary/80"
+              @click="switchToForgot"
+            >
+              Forgot password?
+            </button>
+          </div>
           <div class="mt-2">
             <input
               id="login-password"
@@ -72,9 +85,27 @@
             class="btn btn-primary w-full min-h-11 rounded-full"
             :disabled="loading"
           >
-            {{ loading ? "Signing in…" : "Sign in" }}
+            {{
+              loading
+                ? forgotMode
+                  ? "Sending…"
+                  : "Signing in…"
+                : forgotMode
+                  ? "Send reset link"
+                  : "Sign in"
+            }}
           </button>
         </div>
+
+        <p v-if="forgotMode" class="text-center text-sm text-zinc-600">
+          <button
+            type="button"
+            class="font-semibold text-primary hover:text-primary/80"
+            @click="switchToSignIn"
+          >
+            Back to sign in
+          </button>
+        </p>
       </form>
 
       <div
@@ -97,14 +128,52 @@
 </template>
 
 <script setup>
+import { isPasswordRecoveryRedirect, parseSupabaseAuthParams } from "~/utils/supabaseAuthHash";
+
 const { go } = useAppNavigate();
+const router = useRouter();
 const auth = useAuthStore();
 const loading = computed(() => auth.loading);
 const error = ref("");
 const success = ref("");
+const forgotMode = ref(false);
 const form = reactive({
   email: "",
   password: "",
+});
+
+function switchToForgot() {
+  forgotMode.value = true;
+  error.value = "";
+  success.value = "";
+  form.password = "";
+}
+
+function switchToSignIn() {
+  forgotMode.value = false;
+  error.value = "";
+  success.value = "";
+}
+
+onMounted(() => {
+  if (import.meta.client && sessionStorage.getItem("loginForgotPassword") === "1") {
+    sessionStorage.removeItem("loginForgotPassword");
+    switchToForgot();
+  }
+
+  const authParams = parseSupabaseAuthParams();
+  if (
+    authParams.type === "recovery" ||
+    authParams.hasAccessToken ||
+    authParams.errorCode === "otp_expired" ||
+    authParams.error
+  ) {
+    const hash = window.location.hash || "";
+    const search = window.location.search || "";
+    void router.replace({ path: "/reset-password", hash, query: Object.fromEntries(new URLSearchParams(search)) });
+  } else if (isPasswordRecoveryRedirect()) {
+    void router.replace({ path: "/reset-password", hash: window.location.hash });
+  }
 });
 
 const submit = async () => {
@@ -112,6 +181,12 @@ const submit = async () => {
   success.value = "";
 
   try {
+    if (forgotMode.value) {
+      const result = await auth.requestPasswordReset(form.email);
+      success.value = result?.message || "Check your email for a reset link.";
+      return;
+    }
+
     const user = await auth.login(form.email, form.password);
     success.value = `Welcome back${user?.display_name ? `, ${user.display_name}` : ""}!`;
     form.password = "";

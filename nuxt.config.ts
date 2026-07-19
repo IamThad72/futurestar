@@ -5,7 +5,11 @@ import { resolve } from "node:path";
 const isProd = process.env.NODE_ENV === "production";
 const isMobileProd = process.env.NUXT_MOBILE_PRODUCTION === "true";
 const isCapacitorBuild = process.env.NUXT_CAPACITOR === "true";
+const isVercel = process.env.VERCEL === "1" || process.env.NITRO_PRESET === "vercel";
 const mobileBuildMode = process.env.CAPACITOR_DEV === "true" ? "dev" : isMobileProd ? "prod" : "capacitor";
+
+/** Capacitor-only; key is nativeApiBase so NUXT_PUBLIC_API_BASE on Vercel does not override web builds */
+const nativeApiBase = isCapacitorBuild ? process.env.NUXT_PUBLIC_API_BASE || "" : "";
 
 export default defineNuxtConfig({
   compatibilityDate: "2025-07-15",
@@ -24,7 +28,7 @@ export default defineNuxtConfig({
       supabaseUrl: process.env.SUPABASE_URL,
       supabasePublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY,
       /** Backend URL for native builds (Capacitor). Example: https://api.myfin.example.com */
-      apiBase: process.env.NUXT_PUBLIC_API_BASE || "",
+      nativeApiBase,
       /** Baked in when NUXT_CAPACITOR=true; used by native hash-router plugin */
       isCapacitorBuild,
     },
@@ -64,9 +68,26 @@ export default defineNuxtConfig({
   },
 
   nitro: {
+    // Vercel: SPA shell from __fallback so HTML and /_nuxt/* assets always match one build
+    preset: isVercel || (isProd && !isCapacitorBuild) ? "vercel" : undefined,
     prerender: {
-      crawlLinks: !isCapacitorBuild,
-      ...(isCapacitorBuild ? { routes: ["/"] } : {}),
+      crawlLinks: false,
+      routes: isCapacitorBuild ? ["/"] : [],
+    },
+    vercel: {
+      config: {
+        routes: [
+          {
+            src: "/_nuxt/(.*)",
+            headers: {
+              "cache-control": "public, max-age=31536000, immutable",
+            },
+            continue: true,
+          },
+          { handle: "filesystem" },
+          { src: "/(.*)", dest: "/__fallback" },
+        ],
+      },
     },
   },
 

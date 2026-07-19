@@ -1,7 +1,7 @@
 import { createError, readBody } from "h3";
 import { createDbClient } from "../../../utils/db";
 import { getSessionUserId } from "../../../utils/auth";
-import { getUserGroupId, groupAccessClause, groupAccessClauseAt, soloUserClauseAt } from "../../../utils/group";
+import { getUserGroupId, groupAccessClauseAt, soloUserClauseAt } from "../../../utils/group";
 import { applyDebtPayment } from "../../../utils/debtPayment";
 
 export default defineEventHandler(async (event) => {
@@ -207,7 +207,7 @@ export default defineEventHandler(async (event) => {
     if (type === "income" && hasIncomeSourceId) {
       const srcCheck = groupId
         ? await client.query(
-            `SELECT 1 FROM income_sources WHERE source_id = $1 AND ${groupAccessClause()}`,
+            `SELECT 1 FROM income_sources WHERE source_id = $1 AND ${groupAccessClauseAt("", 2, 3)}`,
             [incomeSourceIdParsed, userId, groupId],
           )
         : await client.query(`SELECT 1 FROM income_sources WHERE source_id = $1 AND user_id = $2`, [incomeSourceIdParsed, userId]);
@@ -224,7 +224,7 @@ export default defineEventHandler(async (event) => {
     if (type === "expense" && expenseTypeForAdjust === "investment" && hasInvestmentSourceId) {
       const srcCheck = groupId
         ? await client.query(
-            `SELECT 1 FROM investment_sources WHERE source_id = $1 AND ${groupAccessClause()}`,
+            `SELECT 1 FROM investment_sources WHERE source_id = $1 AND ${groupAccessClauseAt("", 2, 3)}`,
             [investmentSourceIdParsed, userId, groupId],
           )
         : await client.query(`SELECT 1 FROM investment_sources WHERE source_id = $1 AND user_id = $2`, [investmentSourceIdParsed, userId]);
@@ -241,7 +241,7 @@ export default defineEventHandler(async (event) => {
     if (type === "expense" && expenseTypeForAdjust === "savings" && hasSavingsSourceId) {
       const srcCheck = groupId
         ? await client.query(
-            `SELECT 1 FROM savings_sources WHERE source_id = $1 AND ${groupAccessClause()}`,
+            `SELECT 1 FROM savings_sources WHERE source_id = $1 AND ${groupAccessClauseAt("", 2, 3)}`,
             [savingsSourceIdParsed, userId, groupId],
           )
         : await client.query(`SELECT 1 FROM savings_sources WHERE source_id = $1 AND user_id = $2`, [savingsSourceIdParsed, userId]);

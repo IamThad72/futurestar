@@ -152,6 +152,80 @@ export const useAuthStore = defineStore("auth", {
         this.loading = false;
       }
     },
+    async requestPasswordReset(email) {
+      this.loading = true;
+      this.error = "";
+
+      try {
+        const normalizedEmail = email.trim().toLowerCase();
+        if (!normalizedEmail) {
+          const err = new Error("Email is required.");
+          err.data = { statusMessage: "Email is required." };
+          throw err;
+        }
+
+        const response = await $fetch("/api/auth/request-password-reset", {
+          method: "POST",
+          body: { email: normalizedEmail },
+        });
+        return { message: response?.message || "Check your email for a reset link." };
+      } catch (error) {
+        this.error =
+          error?.data?.statusMessage || error?.message || "Password reset request failed.";
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    },
+    async completePasswordReset(newPassword) {
+      this.loading = true;
+      this.error = "";
+
+      try {
+        if (!newPassword || newPassword.length < 8) {
+          const err = new Error("Password must be at least 8 characters.");
+          err.data = { statusMessage: "Password must be at least 8 characters." };
+          throw err;
+        }
+
+        const supabase = useNuxtApp().$supabase;
+        if (!supabase) {
+          const err = new Error("Password reset is not available.");
+          err.data = { statusMessage: "Password reset is not available." };
+          throw err;
+        }
+
+        const { error: updateError } = await supabase.auth.updateUser({
+          password: newPassword,
+        });
+        if (updateError) {
+          const err = new Error(updateError.message || "Could not update password.");
+          err.data = { statusMessage: updateError.message || "Could not update password." };
+          throw err;
+        }
+
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        if (token) {
+          await $fetch("/api/auth/sync-password-after-reset", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            body: { newPassword },
+          }).catch(() => undefined);
+        }
+
+        await supabase.auth.signOut();
+        return { success: true };
+      } catch (error) {
+        this.error =
+          error?.data?.statusMessage || error?.message || "Password reset failed.";
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    },
     async logout() {
       this.loading = true;
       this.error = "";
