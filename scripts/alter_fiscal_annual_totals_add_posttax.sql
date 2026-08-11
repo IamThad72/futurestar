@@ -1,4 +1,4 @@
--- Allow Post-Tax Deduction section (e.g. Supplemental Life).
+-- Allow Post-Tax Deduction section (e.g. Supplemental Life, Stock Option Offset).
 ALTER TABLE fiscal_annual_totals
   DROP CONSTRAINT IF EXISTS fiscal_annual_totals_section_check;
 
@@ -16,5 +16,5 @@ ALTER TABLE fiscal_annual_totals
     OR
     (section = 'pretax' AND total_kind IN ('medical', 'dental', 'vision', '401k', 'hsa'))
     OR
-    (section = 'posttax' AND total_kind IN ('supplemental_life'))
+    (section = 'posttax' AND total_kind IN ('supplemental_life', 'stock_option_offset'))
   );
