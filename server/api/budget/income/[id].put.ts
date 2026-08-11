@@ -2,6 +2,7 @@ import { createError, readBody } from "h3";
 import { createDbClient } from "../../../utils/db";
 import { getSessionUserId } from "../../../utils/auth";
 import { getUserGroupId, groupAccessClauseAt, soloUserClauseAt } from "../../../utils/group";
+import { resolveBudgetId } from "../../../utils/budgetAccess";
 
 export default defineEventHandler(async (event) => {
   const userId = await getSessionUserId(event);
@@ -21,6 +22,14 @@ export default defineEventHandler(async (event) => {
   const description = body?.description != null ? String(body.description).trim() : null;
   const monthlyAmount = body?.monthly_amount != null ? Number(body.monthly_amount) : null;
   const annualAmount = body?.annual_amount != null ? Number(body.annual_amount) : null;
+  const cashInvestmentIdRaw = body?.cash_investment_id;
+  const cashInvestmentProvided = cashInvestmentIdRaw !== undefined;
+  const cashInvestmentId =
+    cashInvestmentIdRaw === null || cashInvestmentIdRaw === ""
+      ? null
+      : cashInvestmentIdRaw != null
+        ? parseInt(String(cashInvestmentIdRaw), 10)
+        : null;
 
   const validIncomeTypes = ["gross", "tax", "deduction", "interest", "other"];
   if (incomeType !== null && !validIncomeTypes.includes(incomeType)) {
@@ -35,6 +44,7 @@ export default defineEventHandler(async (event) => {
   try {
     await client.connect();
     const groupId = await getUserGroupId(client, userId);
+    const budget = await resolveBudgetId(client, userId, groupId, body?.budget_id);
 
     const updates = [];
     const values = [];
@@ -64,6 +74,12 @@ export default defineEventHandler(async (event) => {
       updates.push(`income_category_annual_amt = $${paramIndex++}`);
       values.push(annualAmount);
     }
+    if (cashInvestmentProvided) {
+      updates.push(`cash_investment_id = $${paramIndex++}`);
+      values.push(
+        cashInvestmentId != null && !isNaN(cashInvestmentId) && cashInvestmentId > 0 ? cashInvestmentId : null,
+      );
+    }
 
     if (updates.length === 0) {
       return { success: true };
@@ -76,12 +92,18 @@ export default defineEventHandler(async (event) => {
       : soloUserClauseAt("", paramIndex);
     if (groupId) {
       values.push(userId, groupId);
+      paramIndex += 2;
     } else {
       values.push(userId);
+      paramIndex += 1;
     }
+    const budgetParam = paramIndex++;
+    values.push(budget.budget_id);
 
     const result = await client.query(
-      `UPDATE income SET ${updates.join(", ")} WHERE income_id = $${idParam} AND ${accessClause} RETURNING income_id`,
+      `UPDATE income SET ${updates.join(", ")}
+       WHERE income_id = $${idParam} AND ${accessClause} AND budget_id = $${budgetParam}
+       RETURNING income_id, income_type`,
       values,
     );
 

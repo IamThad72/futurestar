@@ -2,6 +2,7 @@ import { createError, readBody } from "h3";
 import { createDbClient } from "../../utils/db";
 import { getSessionUserId } from "../../utils/auth";
 import { getUserGroupId } from "../../utils/group";
+import { resolveBudgetId } from "../../utils/budgetAccess";
 import { budgetExpenseNeedsDebtLink } from "../../../utils/budgetDebt";
 
 export default defineEventHandler(async (event) => {
@@ -60,99 +61,141 @@ export default defineEventHandler(async (event) => {
   try {
     await client.connect();
     const groupId = await getUserGroupId(client, userId);
+    const budget = await resolveBudgetId(client, userId, groupId, body?.budget_id);
     const monthly = monthlyAmount ?? (annualAmount != null ? annualAmount / 12 : null);
     const annual = annualAmount ?? (monthlyAmount != null ? monthlyAmount * 12 : null);
 
     if (type === "income") {
-      await client.query(
-        `INSERT INTO income
-          (user_id, group_id, income_type, income_category, sub_category, income_category_desc, income_category_monthly_amt, income_category_annual_amt)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [userId, groupId ?? null, incomeType, category, subCategory || null, description || null, monthly, annual],
-      );
-    } else {
-      const effectiveCiId = cashInvestmentId != null && !isNaN(cashInvestmentId) && cashInvestmentId > 0 ? cashInvestmentId : null;
-      const effectiveFromCiId =
-        fromCashInvestmentId != null && !isNaN(fromCashInvestmentId) && fromCashInvestmentId > 0 ? fromCashInvestmentId : null;
-      const effectiveDebtId =
-        debtIdParsed != null && !isNaN(debtIdParsed) && debtIdParsed > 0 ? debtIdParsed : null;
-
-      if (effectiveDebtId != null && expenseType !== "expense") {
-        throw createError({
-          statusCode: 400,
-          statusMessage: "Debt link applies to expense budget lines only (not savings or investments).",
-        });
-      }
-
-      if (
-        expenseType === "expense" &&
-        budgetExpenseNeedsDebtLink(category, subCategory, description) &&
-        effectiveDebtId == null
-      ) {
-        throw createError({
-          statusCode: 400,
-          statusMessage: "Select the Estate Management debt record for this expense line.",
-        });
-      }
-
-      const groupId = await getUserGroupId(client, userId);
-
-      if (effectiveDebtId != null) {
-        const debtCheck = groupId
+      const effectiveIncomeCiId =
+        cashInvestmentId != null && !isNaN(cashInvestmentId) && cashInvestmentId > 0 ? cashInvestmentId : null;
+      if (effectiveIncomeCiId != null) {
+        const acctCheck = groupId
           ? await client.query(
-              `SELECT 1 FROM debt WHERE dbt_id = $1 AND (user_id = $2 OR group_id = $3 OR user_id IN (SELECT user_id FROM group_members WHERE group_id = $3))`,
-              [effectiveDebtId, userId, groupId],
+              `SELECT 1 FROM cash_and_investments WHERE ci_id = $1 AND (user_id = $2 OR group_id = $3 OR user_id IN (SELECT user_id FROM group_members WHERE group_id = $3))`,
+              [effectiveIncomeCiId, userId, groupId],
             )
-          : await client.query(`SELECT 1 FROM debt WHERE dbt_id = $1 AND user_id = $2`, [effectiveDebtId, userId]);
-        if (debtCheck.rowCount === 0) {
+          : await client.query(`SELECT 1 FROM cash_and_investments WHERE ci_id = $1 AND user_id = $2`, [
+              effectiveIncomeCiId,
+              userId,
+            ]);
+        if (acctCheck.rowCount === 0) {
           throw createError({
             statusCode: 400,
-            statusMessage: "Invalid debt record.",
+            statusMessage: "Invalid cash or investment account.",
           });
         }
       }
-
-      if ((effectiveCiId != null || effectiveFromCiId != null) && (expenseType === "savings" || expenseType === "investment")) {
-        const checkCi = async (ci) => {
-          const acctCheck = groupId
-            ? await client.query(
-                `SELECT 1 FROM cash_and_investments WHERE ci_id = $1 AND (user_id = $2 OR group_id = $3 OR user_id IN (SELECT user_id FROM group_members WHERE group_id = $3))`,
-                [ci, userId, groupId],
-              )
-            : await client.query(`SELECT 1 FROM cash_and_investments WHERE ci_id = $1 AND user_id = $2`, [ci, userId]);
-          if (acctCheck.rowCount === 0) {
-            throw createError({
-              statusCode: 400,
-              statusMessage: "Invalid cash or investment account.",
-            });
-          }
-        };
-        if (effectiveCiId != null) await checkCi(effectiveCiId);
-        if (effectiveFromCiId != null) await checkCi(effectiveFromCiId);
-      }
-
-      await client.query(
-        `INSERT INTO expenses
-          (user_id, group_id, expense_type, expense_category, sub_category, expense_category_desc, monthly_budget_amt, annual_budget_amt, cash_investment_id, from_cash_investment_id, debt_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+      const inserted = await client.query(
+        `INSERT INTO income
+          (user_id, group_id, budget_id, income_type, income_category, sub_category, income_category_desc, income_category_monthly_amt, income_category_annual_amt, cash_investment_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         RETURNING income_id`,
         [
           userId,
           groupId ?? null,
-          expenseType,
+          budget.budget_id,
+          incomeType,
           category,
           subCategory || null,
           description || null,
           monthly,
           annual,
-          effectiveCiId ?? null,
-          effectiveFromCiId ?? null,
-          expenseType === "expense" ? effectiveDebtId : null,
+          effectiveIncomeCiId,
         ],
       );
-      // Note: Budget plans do not modify actual account balances. Only transactions (via budget/transactions/submit) update cash_and_investments.value.
+      return {
+        success: true,
+        type: "income",
+        id: Number(inserted.rows[0].income_id),
+        budget_id: budget.budget_id,
+      };
     }
 
-    return { success: true };
+    const effectiveCiId = cashInvestmentId != null && !isNaN(cashInvestmentId) && cashInvestmentId > 0 ? cashInvestmentId : null;
+    const effectiveFromCiId =
+      fromCashInvestmentId != null && !isNaN(fromCashInvestmentId) && fromCashInvestmentId > 0 ? fromCashInvestmentId : null;
+    const effectiveDebtId =
+      debtIdParsed != null && !isNaN(debtIdParsed) && debtIdParsed > 0 ? debtIdParsed : null;
+
+    if (effectiveDebtId != null && expenseType !== "expense") {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Debt link applies to expense budget lines only (not savings or investments).",
+      });
+    }
+
+    if (
+      expenseType === "expense" &&
+      budgetExpenseNeedsDebtLink(category, subCategory, description) &&
+      effectiveDebtId == null
+    ) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Select the Estate Management debt record for this expense line.",
+      });
+    }
+
+    if (effectiveDebtId != null) {
+      const debtCheck = groupId
+        ? await client.query(
+            `SELECT 1 FROM debt WHERE dbt_id = $1 AND (user_id = $2 OR group_id = $3 OR user_id IN (SELECT user_id FROM group_members WHERE group_id = $3))`,
+            [effectiveDebtId, userId, groupId],
+          )
+        : await client.query(`SELECT 1 FROM debt WHERE dbt_id = $1 AND user_id = $2`, [effectiveDebtId, userId]);
+      if (debtCheck.rowCount === 0) {
+        throw createError({
+          statusCode: 400,
+          statusMessage: "Invalid debt record.",
+        });
+      }
+    }
+
+    if ((effectiveCiId != null || effectiveFromCiId != null) && (expenseType === "savings" || expenseType === "investment")) {
+      const checkCi = async (ci) => {
+        const acctCheck = groupId
+          ? await client.query(
+              `SELECT 1 FROM cash_and_investments WHERE ci_id = $1 AND (user_id = $2 OR group_id = $3 OR user_id IN (SELECT user_id FROM group_members WHERE group_id = $3))`,
+              [ci, userId, groupId],
+            )
+          : await client.query(`SELECT 1 FROM cash_and_investments WHERE ci_id = $1 AND user_id = $2`, [ci, userId]);
+        if (acctCheck.rowCount === 0) {
+          throw createError({
+            statusCode: 400,
+            statusMessage: "Invalid cash or investment account.",
+          });
+        }
+      };
+      if (effectiveCiId != null) await checkCi(effectiveCiId);
+      if (effectiveFromCiId != null) await checkCi(effectiveFromCiId);
+    }
+
+    const inserted = await client.query(
+      `INSERT INTO expenses
+        (user_id, group_id, budget_id, expense_type, expense_category, sub_category, expense_category_desc, monthly_budget_amt, annual_budget_amt, cash_investment_id, from_cash_investment_id, debt_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       RETURNING expense_id`,
+      [
+        userId,
+        groupId ?? null,
+        budget.budget_id,
+        expenseType,
+        category,
+        subCategory || null,
+        description || null,
+        monthly,
+        annual,
+        effectiveCiId ?? null,
+        effectiveFromCiId ?? null,
+        expenseType === "expense" ? effectiveDebtId : null,
+      ],
+    );
+
+    return {
+      success: true,
+      type: "expense",
+      id: Number(inserted.rows[0].expense_id),
+      budget_id: budget.budget_id,
+    };
   } catch (error) {
     if (error?.statusCode) {
       throw error;

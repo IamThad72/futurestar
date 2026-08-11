@@ -2,6 +2,7 @@ import { createError, readBody } from "h3";
 import { createDbClient } from "../../../utils/db";
 import { getSessionUserId } from "../../../utils/auth";
 import { getUserGroupId, groupAccessClauseAt, soloUserClauseAt } from "../../../utils/group";
+import { resolveBudgetId } from "../../../utils/budgetAccess";
 import { budgetExpenseNeedsDebtLink } from "../../../../utils/budgetDebt";
 
 export default defineEventHandler(async (event) => {
@@ -49,8 +50,12 @@ export default defineEventHandler(async (event) => {
   try {
     await client.connect();
     const groupId = await getUserGroupId(client, userId);
+    const budget = await resolveBudgetId(client, userId, groupId, body?.budget_id);
     const readAccessClause = groupId ? groupAccessClauseAt("", 2, 3) : soloUserClauseAt("", 2);
-    const readParams = groupId ? [id, userId, groupId] : [id, userId];
+    const budgetReadParam = groupId ? "$4" : "$3";
+    const readParams = groupId
+      ? [id, userId, groupId, budget.budget_id]
+      : [id, userId, budget.budget_id];
 
     const updates = [];
     const values = [];
@@ -104,7 +109,7 @@ export default defineEventHandler(async (event) => {
 
     const currentRow = await client.query(
       `SELECT expense_type, expense_category, sub_category, expense_category_desc, debt_id
-       FROM expenses WHERE expense_id = $1 AND ${readAccessClause}`,
+       FROM expenses WHERE expense_id = $1 AND ${readAccessClause} AND budget_id = ${budgetReadParam}`,
       readParams,
     );
     if (currentRow.rowCount === 0) {
@@ -160,12 +165,18 @@ export default defineEventHandler(async (event) => {
       : soloUserClauseAt("", paramIndex);
     if (groupId) {
       values.push(userId, groupId);
+      paramIndex += 2;
     } else {
       values.push(userId);
+      paramIndex += 1;
     }
+    const budgetParam = paramIndex++;
+    values.push(budget.budget_id);
 
     const result = await client.query(
-      `UPDATE expenses SET ${updates.join(", ")} WHERE expense_id = $${idParam} AND ${writeAccessClause} RETURNING expense_id`,
+      `UPDATE expenses SET ${updates.join(", ")}
+       WHERE expense_id = $${idParam} AND ${writeAccessClause} AND budget_id = $${budgetParam}
+       RETURNING expense_id`,
       values,
     );
 

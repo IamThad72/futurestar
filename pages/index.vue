@@ -103,7 +103,7 @@ watch(
     <EstateStatsGrid :stats="estateStats" :loading="estateLoading" />
 
     <ClientOnly>
-      <BudgetBarLineChart
+      <LazyBudgetBarLineChart
         :expense-data="expenseChartRows"
         :other-data="otherChartRows"
         :loading="budgetChartLoading"

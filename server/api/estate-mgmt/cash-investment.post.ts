@@ -44,10 +44,11 @@ export default defineEventHandler(async (event) => {
     await client.connect();
     const groupId = await getUserGroupId(client, userId);
 
-    await client.query(
+    const inserted = await client.query(
       `INSERT INTO cash_and_investments
         (asset_category, acct_type, institution, acct_number, value, acct_support_number, institution_url, acct_holder, acct_intent, trust_designated, user_id, group_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       RETURNING ci_id`,
       [
         assetCategory,
         classificationType,
@@ -71,7 +72,7 @@ export default defineEventHandler(async (event) => {
       [userId, groupId, assetCategory, classificationType, institution, accountIntent, value, institutionUrl],
     );
 
-    return { success: true };
+    return { success: true, type: "cash_and_investments", id: Number(inserted.rows[0].ci_id) };
   } catch (error) {
     if (error?.statusCode) {
       throw error;

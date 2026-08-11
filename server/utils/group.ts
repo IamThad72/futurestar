@@ -19,6 +19,13 @@ export const GROUP_SHARED_TABLES = [
   "income_sources",
   "investment_sources",
   "savings_sources",
+  "vehicle_service_records",
+  "budgets",
+  "budget_month_assignments",
+  "tax_annual_totals",
+  "fiscal_annual_totals",
+  "account_map_layouts",
+  "account_map_edges",
 ] as const;
 
 /** $1 = userId, $2 = groupId */

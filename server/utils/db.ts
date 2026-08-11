@@ -13,9 +13,6 @@ export const createDbClient = () => {
 
   if (DATABASE_URL) {
     const url = DATABASE_URL.trim();
-    if (!url.includes("pooler.supabase.com") && !url.includes(".supabase.co")) {
-      console.warn("[db] DATABASE_URL may be wrong - expected supabase host. Got:", url.slice(0, 60) + "...");
-    }
     return new Client({
       connectionString: url,
       ssl: url.includes("supabase") ? { rejectUnauthorized: false } : false,

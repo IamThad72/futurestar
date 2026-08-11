@@ -1,4 +1,5 @@
 <template>
+ 
   <div
     class="-mx-1 -mt-4 min-h-[calc(100dvh-8.5rem)] bg-zinc-50 px-4 py-12 pb-safe sm:-mx-3 sm:mt-0 sm:px-6 sm:py-16 lg:px-8"
   >
@@ -125,6 +126,7 @@
 
     </div>
   </div>
+ 
 </template>
 
 <script setup>

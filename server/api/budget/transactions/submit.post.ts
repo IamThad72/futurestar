@@ -2,7 +2,10 @@ import { createError, readBody } from "h3";
 import { createDbClient } from "../../../utils/db";
 import { getSessionUserId } from "../../../utils/auth";
 import { getUserGroupId, groupAccessClauseAt, soloUserClauseAt } from "../../../utils/group";
+import { getBudgetForPeriod } from "../../../utils/budgetAccess";
 import { applyDebtPayment } from "../../../utils/debtPayment";
+import { applyFiscalTotalsForTransaction } from "../../../utils/fiscalAnnualTotals";
+import { adjustTaxAnnualTotalForClassification, yearFromDateString } from "../../../utils/taxAnnualTotals";
 
 export default defineEventHandler(async (event) => {
   const userId = await getSessionUserId(event);
@@ -25,6 +28,7 @@ export default defineEventHandler(async (event) => {
     debtIdRaw !== undefined && debtIdRaw !== null && debtIdRaw !== ""
       ? parseInt(String(debtIdRaw), 10)
       : null;
+  const debtCharge = body?.debt_charge === true;
   const incomeSourceIdRaw = body?.income_source_id;
   const incomeSourceIdParsed =
     incomeSourceIdRaw !== undefined && incomeSourceIdRaw !== null && incomeSourceIdRaw !== ""
@@ -92,13 +96,35 @@ export default defineEventHandler(async (event) => {
     let budgetItemSupportsDestination = false;
     let incomeTypeForAdjust = "gross";
     let expenseTypeForAdjust = "expense";
+    let itemKind: "income" | "expense" = type === "income" ? "income" : "expense";
+    let itemType = type === "income" ? "gross" : "expense";
+    let category = "Uncategorized";
+    let subCategory: string | null = null;
     const groupId = await getUserGroupId(client, userId);
+    const txYear = parsedDate.getUTCFullYear();
+    const txMonth = parsedDate.getUTCMonth() + 1;
+    // Prefer local calendar parts when date is YYYY-MM-DD (no timezone shift).
+    const dateMatch = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr);
+    const periodYear = dateMatch ? Number(dateMatch[1]) : txYear;
+    const periodMonth = dateMatch ? Number(dateMatch[2]) : txMonth;
+    const { budget: periodBudget } = await getBudgetForPeriod(
+      client,
+      userId,
+      groupId,
+      periodYear,
+      periodMonth,
+    );
     const budgetAccessClause = groupId ? groupAccessClauseAt("", 2, 3) : soloUserClauseAt("", 2);
-    const budgetAccessParams = groupId ? [userId, groupId] : [userId];
+    const budgetIdParam = groupId ? "$4" : "$3";
+    const budgetAccessParams = groupId
+      ? [userId, groupId, periodBudget.budget_id]
+      : [userId, periodBudget.budget_id];
 
     if (type === "income") {
       const ownership = await client.query(
-        `SELECT COALESCE(income_type, 'gross') as income_type FROM income WHERE income_id = $1 AND ${budgetAccessClause}`,
+        `SELECT COALESCE(income_type, 'gross') as income_type,
+                income_category as category, sub_category
+         FROM income WHERE income_id = $1 AND ${budgetAccessClause} AND budget_id = ${budgetIdParam}`,
         [incomeId, ...budgetAccessParams],
       );
       if (ownership.rowCount === 0) {
@@ -108,10 +134,16 @@ export default defineEventHandler(async (event) => {
         });
       }
       incomeTypeForAdjust = ownership.rows[0]?.income_type ?? "gross";
+      itemKind = "income";
+      itemType = incomeTypeForAdjust;
+      category = String(ownership.rows[0]?.category || "Uncategorized");
+      subCategory = ownership.rows[0]?.sub_category != null ? String(ownership.rows[0].sub_category) : null;
       budgetItemSupportsDestination = incomeTypeForAdjust !== "tax" && incomeTypeForAdjust !== "deduction";
     } else {
       const ownership = await client.query(
-        `SELECT COALESCE(expense_type, 'expense') as expense_type FROM expenses WHERE expense_id = $1 AND ${budgetAccessClause}`,
+        `SELECT COALESCE(expense_type, 'expense') as expense_type,
+                expense_category as category, sub_category
+         FROM expenses WHERE expense_id = $1 AND ${budgetAccessClause} AND budget_id = ${budgetIdParam}`,
         [expenseId, ...budgetAccessParams],
       );
       if (ownership.rowCount === 0) {
@@ -121,6 +153,10 @@ export default defineEventHandler(async (event) => {
         });
       }
       expenseTypeForAdjust = ownership.rows[0]?.expense_type ?? "expense";
+      itemKind = "expense";
+      itemType = expenseTypeForAdjust;
+      category = String(ownership.rows[0]?.category || "Uncategorized");
+      subCategory = ownership.rows[0]?.sub_category != null ? String(ownership.rows[0].sub_category) : null;
       budgetItemSupportsDestination = true;
     }
 
@@ -272,7 +308,8 @@ export default defineEventHandler(async (event) => {
       effectiveDebtId != null &&
       amount != null &&
       !isNaN(amount) &&
-      amount > 0;
+      amount > 0 &&
+      !debtCharge;
 
     let principalApplied: number | null = null;
     let interestApplied: number | null = null;
@@ -283,9 +320,28 @@ export default defineEventHandler(async (event) => {
       interestApplied = applied.interest;
     }
 
+    if (
+      debtCharge &&
+      type === "expense" &&
+      effectiveDebtId != null &&
+      amount != null &&
+      !isNaN(amount) &&
+      amount > 0
+    ) {
+      await client.query(
+        `UPDATE debt SET loan_ammount = COALESCE(loan_ammount::numeric, 0) + $1 WHERE dbt_id = $2`,
+        [amount, effectiveDebtId],
+      );
+    }
+
     await client.query(
-      `INSERT INTO budget_transactions (user_id, group_id, income_id, expense_id, transaction_date, amount, description, cash_investment_id, debt_id, from_cash_investment_id, income_source_id, investment_source_id, savings_source_id, principal_applied, interest_applied)
-       VALUES ($1, $2, $3, $4, $5::date, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+      `INSERT INTO budget_transactions (
+         user_id, group_id, income_id, expense_id, transaction_date, amount, description,
+         cash_investment_id, debt_id, from_cash_investment_id, income_source_id, investment_source_id,
+         savings_source_id, principal_applied, interest_applied,
+         item_kind, item_type, category, sub_category
+       )
+       VALUES ($1, $2, $3, $4, $5::date, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
       [
         userId,
         groupId ?? null,
@@ -302,6 +358,10 @@ export default defineEventHandler(async (event) => {
         effectiveSavingsSourceId,
         principalApplied,
         interestApplied,
+        itemKind,
+        itemType,
+        category,
+        subCategory,
       ],
     );
 
@@ -334,6 +394,38 @@ export default defineEventHandler(async (event) => {
         [amount, effectiveCiId],
       );
     }
+
+    const txAmount = amount != null && !isNaN(amount) ? Math.abs(amount) : 0;
+    const fiscalYear = yearFromDateString(dateStr);
+
+    if (type === "income" && incomeTypeForAdjust === "tax") {
+      await adjustTaxAnnualTotalForClassification(
+        client,
+        periodBudget.budget_id,
+        userId,
+        groupId,
+        fiscalYear,
+        category,
+        subCategory,
+        txAmount,
+      );
+    }
+
+    // Income / Pre-Tax / Post-Tax YTD for new transactions (gross, net, insurance, 401k, HSA, etc.).
+    await applyFiscalTotalsForTransaction(
+      client,
+      periodBudget.budget_id,
+      userId,
+      groupId,
+      fiscalYear,
+      {
+        itemKind: type === "income" ? "income" : "expense",
+        itemType: type === "income" ? incomeTypeForAdjust : expenseTypeForAdjust,
+        category,
+        subCategory,
+        signedAmount: txAmount,
+      },
+    );
 
     return { success: true };
   } catch (error) {

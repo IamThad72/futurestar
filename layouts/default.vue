@@ -154,8 +154,8 @@
 
 
 
-    <AccountManagementModal v-model="showAccountManagement" />
-    <LinkedAccountsModal v-model="showLinkedAccounts" />
+    <LazyAccountManagementModal v-if="showAccountManagement" v-model="showAccountManagement" />
+    <LazyLinkedAccountsModal v-if="showLinkedAccounts" v-model="showLinkedAccounts" />
     <!-- //FOOTER -->
     <!--UnAuthenticated Footer-->
         <footer class="bg-neutral pb-safe">
@@ -179,8 +179,6 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router';
 import { useAuthStore } from '~/stores/auth';
-import LinkedAccountsModal from '~/components/LinkedAccountsModal.vue';
-import AccountManagementModal from '~/components/AccountManagementModal.vue';
 
 import { Bars3Icon, XMarkIcon } from '@heroicons/vue/24/outline'
 
@@ -193,8 +191,11 @@ const links = computed(() => {
   if (auth.user) {
     return [
       { name: 'Estate Management', path: '/estate_mgmt' },
+      { name: 'Garage', path: '/garage' },
+      { name: 'Account Map', path: '/account_map' },
       { name: 'Budget Setup', path: '/cash_flow_mgmt' },
       { name: 'Budget Tracker', path: '/cash_flow_tracker' },
+      { name: 'Tax', path: '/tax' },
     ];
   }
   return [{ name: 'Login', path: '/login' }];

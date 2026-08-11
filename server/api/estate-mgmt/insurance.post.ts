@@ -27,10 +27,11 @@ export default defineEventHandler(async (event) => {
     await client.connect();
     const groupId = await getUserGroupId(client, userId);
 
-    await client.query(
+    const inserted = await client.query(
       `INSERT INTO insurance
         (policy_holder, polocy_number, entity_covered, policy_amt, intent, institution_url, user_id, group_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING ins_id`,
       [
         policyHolder,
         polocyNumber,
@@ -43,7 +44,7 @@ export default defineEventHandler(async (event) => {
       ],
     );
 
-    return { success: true };
+    return { success: true, type: "insurance", id: Number(inserted.rows[0].ins_id) };
   } catch (error) {
     if (error?.statusCode) {
       throw error;

@@ -40,7 +40,7 @@ export default defineNuxtConfig({
   // Global CSS (Tailwind + daisyUI). Ionic styles are added by @nuxtjs/ionic.
   css: ["~/assets/css/main.css"],
 
-  modules: ["@pinia/nuxt", "nuxt-headlessui", "nuxt-charts", "@nuxtjs/ionic"],
+  modules: ["@pinia/nuxt", "nuxt-headlessui", "@nuxtjs/ionic"],
 
   ionic: {
     config: {

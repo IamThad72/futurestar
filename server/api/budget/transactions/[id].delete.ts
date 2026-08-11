@@ -2,7 +2,10 @@ import { createError } from "h3";
 import { createDbClient } from "../../../utils/db";
 import { getSessionUserId } from "../../../utils/auth";
 import { getUserGroupId, groupAccessClauseAt, soloUserClauseAt } from "../../../utils/group";
+import { getBudgetForPeriod } from "../../../utils/budgetAccess";
 import { reverseDebtPayment } from "../../../utils/debtPayment";
+import { applyFiscalTotalsForTransaction } from "../../../utils/fiscalAnnualTotals";
+import { adjustTaxAnnualTotalForClassification, yearFromDateString } from "../../../utils/taxAnnualTotals";
 
 export default defineEventHandler(async (event) => {
   const userId = await getSessionUserId(event);
@@ -26,7 +29,8 @@ export default defineEventHandler(async (event) => {
     const result = await client.query(
       `DELETE FROM budget_transactions
        WHERE transaction_id = $1 AND ${accessClause}
-       RETURNING transaction_id, debt_id, amount, principal_applied`,
+       RETURNING transaction_id, debt_id, amount, principal_applied, income_id, transaction_date,
+                 item_type, category, sub_category`,
       params,
     );
 
@@ -47,6 +51,60 @@ export default defineEventHandler(async (event) => {
             ? Number(row.amount)
             : 0;
       await reverseDebtPayment(client, debtId, principal);
+    }
+
+    const incomeId = row?.income_id != null ? Number(row.income_id) : null;
+    const itemType = String(row?.item_type || "").toLowerCase();
+    const dateStr =
+      row.transaction_date instanceof Date
+        ? row.transaction_date.toISOString().slice(0, 10)
+        : String(row.transaction_date || "");
+    const dateMatch = /^(\d{4})-(\d{2})/.exec(dateStr);
+    const periodYear = dateMatch ? Number(dateMatch[1]) : new Date(dateStr).getFullYear();
+    const periodMonth = dateMatch ? Number(dateMatch[2]) : new Date(dateStr).getMonth() + 1;
+    const category = row?.category != null ? String(row.category) : null;
+    const subCategory = row?.sub_category != null ? String(row.sub_category) : null;
+    const txAmount = row?.amount != null && !isNaN(Number(row.amount)) ? Math.abs(Number(row.amount)) : 0;
+    const fiscalYear = yearFromDateString(dateStr);
+
+    if (txAmount > 0) {
+      const { budget: periodBudget } = await getBudgetForPeriod(
+        client,
+        userId,
+        groupId,
+        periodYear,
+        periodMonth,
+      );
+
+      if (incomeId && !isNaN(incomeId) && incomeId > 0 && itemType === "tax") {
+        await adjustTaxAnnualTotalForClassification(
+          client,
+          periodBudget.budget_id,
+          userId,
+          groupId,
+          fiscalYear,
+          category,
+          subCategory,
+          -txAmount,
+        );
+      }
+
+      const itemKind =
+        incomeId && !isNaN(incomeId) && incomeId > 0 ? "income" : "expense";
+      await applyFiscalTotalsForTransaction(
+        client,
+        periodBudget.budget_id,
+        userId,
+        groupId,
+        fiscalYear,
+        {
+          itemKind,
+          itemType,
+          category,
+          subCategory,
+          signedAmount: -txAmount,
+        },
+      );
     }
 
     return { success: true };

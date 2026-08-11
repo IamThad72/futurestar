@@ -29,10 +29,11 @@ export default defineEventHandler(async (event) => {
     await client.connect();
     const groupId = await getUserGroupId(client, userId);
 
-    await client.query(
+    const inserted = await client.query(
       `INSERT INTO real_estate
         (number, street, city, state, zipcode, value, trust_designated, user_id, group_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING re_id`,
       [
         number,
         street,
@@ -46,7 +47,7 @@ export default defineEventHandler(async (event) => {
       ],
     );
 
-    return { success: true };
+    return { success: true, type: "real_estate", id: Number(inserted.rows[0].re_id) };
   } catch (error) {
     if (error?.statusCode) {
       throw error;

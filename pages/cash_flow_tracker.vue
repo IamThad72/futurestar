@@ -15,7 +15,12 @@
       <div class="relative isolate overflow-hidden">
         <header class="pb-4 pt-6 sm:pb-6">
           <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 sm:flex-nowrap sm:gap-6 sm:px-6 lg:px-8">
-            <h1 class="text-sm font-semibold text-gray-900 md:text-base dark:text-white">Budget Tracker</h1>
+            <div class="min-w-0">
+              <h1 class="text-sm font-semibold text-gray-900 md:text-base dark:text-white">Budget Tracker</h1>
+              <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                <NuxtLink to="/account_map" class="underline hover:no-underline">Manage budgets on Account Map</NuxtLink>
+              </p>
+            </div>
             <div class="flex flex-wrap items-center gap-3 text-xs md:gap-4 md:text-sm">
               <label class="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
                 <span class="font-medium">Month</span>
@@ -35,16 +40,89 @@
                   <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
                 </select>
               </label>
+              <label class="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
+                <span class="font-medium">Budget</span>
+                <select
+                  :value="periodBudgetId ?? ''"
+                  class="rounded-md border border-gray-300 bg-white py-1.5 pl-2 pr-7 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 md:text-sm dark:border-white/10 dark:bg-gray-900 dark:text-white"
+                  :disabled="budgetAssignBusy || !budgetOptions.length"
+                  @change="onPeriodBudgetChange($event)"
+                >
+                  <option v-for="b in budgetOptions" :key="b.budget_id" :value="b.budget_id">
+                    {{ b.name }}{{ b.is_active ? " (default)" : "" }}
+                  </option>
+                </select>
+              </label>
+              <span
+                v-if="periodBudgetName"
+                class="rounded-full px-2 py-0.5 text-[0.65rem] font-medium"
+                :class="
+                  periodIsOverride
+                    ? 'bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-200'
+                    : periodIsInferred
+                      ? 'bg-sky-100 text-sky-900 dark:bg-sky-500/20 dark:text-sky-200'
+                      : 'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-300'
+                "
+              >
+                {{
+                  periodIsOverride
+                    ? "Override for month"
+                    : periodIsInferred
+                      ? "Matched to this month’s spending"
+                      : "Using default"
+                }}
+              </span>
+              <button
+                v-if="periodIsOverride"
+                type="button"
+                class="text-xs font-medium text-indigo-600 underline hover:no-underline disabled:opacity-50 dark:text-indigo-300"
+                :disabled="budgetAssignBusy"
+                @click="clearPeriodBudgetOverride"
+              >
+                Use default
+              </button>
+              <button
+                v-else-if="periodIsInferred && periodBudgetId"
+                type="button"
+                class="text-xs font-medium text-indigo-600 underline hover:no-underline disabled:opacity-50 dark:text-indigo-300"
+                :disabled="budgetAssignBusy"
+                @click="pinInferredPeriodBudget"
+              >
+                Pin for this month
+              </button>
+              <button
+                v-if="canMoveToActiveBudget"
+                type="button"
+                class="text-xs font-medium text-indigo-600 underline hover:no-underline disabled:opacity-50 dark:text-indigo-300"
+                :disabled="budgetAssignBusy"
+                @click="moveMonthToBudget(activeBudgetId)"
+              >
+                Move spending to {{ activeBudgetLabel }}
+              </button>
             </div>
-            <div class="ml-auto flex w-full sm:w-auto">
+            <p
+              v-if="moveTxNotice"
+              class="mt-2 w-full text-xs text-sky-800 dark:text-sky-200"
+            >
+              {{ moveTxNotice }}
+            </p>
+            <div class="ml-auto flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               <input ref="csvFileInputRef" type="file" accept=".csv" class="hidden" @change="onCsvFileSelected" />
               <button
                 type="button"
                 class="estate-action-btn w-full sm:w-auto"
-                @click="csvFileInputRef?.click()"
+                @click="startCsvUpload('checking')"
               >
                 <ArrowUpTrayIcon class="size-4 shrink-0 md:size-5" aria-hidden="true" />
-                Upload Expenses
+                Checking Expenses
+              </button>
+              <button
+                type="button"
+                class="estate-action-btn w-full sm:w-auto"
+                @click="startCsvUpload('credit')"
+              >
+                <ArrowUpTrayIcon class="size-4 shrink-0 md:size-5" aria-hidden="true" />
+                Credit Expenses
               </button>
             </div>
           </div>
@@ -80,6 +158,31 @@
               <span class="text-base-content/50"> / </span>
               <span class="budget-tracker-budgeted">${{ formatAmount(sectionBudgetedTotal(section)) }}</span>
             </template>
+            <div
+              v-if="section.key === 'tax' && taxAnnualTotals.length"
+              class="tax-annual-totals mb-3 rounded-lg border border-base-200 bg-base-200/40 px-3 py-2"
+            >
+              <div class="flex flex-wrap items-baseline justify-between gap-2 mb-2">
+                <p class="text-xs font-semibold uppercase tracking-wide text-base-content/70">
+                  {{ selectedYear }} annual tax totals
+                </p>
+                <p class="text-sm font-semibold tabular-nums">
+                  Total ${{ formatAmount(taxAnnualGrandTotal) }}
+                </p>
+              </div>
+              <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+                <div
+                  v-for="t in taxAnnualTotals"
+                  :key="t.tax_kind"
+                  class="rounded-md bg-base-100 px-2 py-1.5 border border-base-200/80"
+                >
+                  <div class="text-[0.65rem] font-medium uppercase tracking-wide text-base-content/55">
+                    {{ t.label }}
+                  </div>
+                  <div class="text-sm font-semibold tabular-nums">${{ formatAmount(t.total_amount) }}</div>
+                </div>
+              </div>
+            </div>
             <EstateRecordList
               :items="budgetTrackerListItems(section)"
               item-key="_listKey"
@@ -88,12 +191,87 @@
             />
           </EstateSection>
         </template>
+
+          <EstateSection
+            v-if="orphans.length"
+            title="Orphans"
+            :show-add="false"
+            compact
+          >
+            <template #total>
+              <span>{{ orphans.length }}</span>
+              <span class="text-base-content/50"> · </span>
+              <span>${{ formatAmount(orphansTotal) }}</span>
+            </template>
+            <p class="mb-2 text-xs text-base-content/60">
+              Transactions this month that don’t match a line on the selected budget. Reclassify to attach them.
+            </p>
+            <ul class="divide-y divide-base-200">
+              <li
+                v-for="tx in orphans"
+                :key="tx.id"
+                class="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
+              >
+                <div class="min-w-0">
+                  <div class="font-medium truncate">
+                    {{ tx.category }}{{ tx.sub_category ? ` › ${tx.sub_category}` : "" }}
+                  </div>
+                  <div class="text-xs text-base-content/55">
+                    {{ formatDate(tx.date) }}
+                    <span v-if="tx.description"> · {{ tx.description }}</span>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                  <span class="tabular-nums font-semibold">${{ formatAmount(tx.amount) }}</span>
+                  <button
+                    type="button"
+                    class="btn btn-ghost btn-xs"
+                    @click="openReclassifyOrphan(tx)"
+                  >
+                    Reclassify
+                  </button>
+                </div>
+              </li>
+            </ul>
+          </EstateSection>
         </div>
 
         <p v-if="!loadError && !budgetTrackerDisplaySections.length" class="mx-auto max-w-7xl px-4 py-8 text-center text-xs text-gray-500 sm:px-6 md:text-sm lg:px-8 dark:text-gray-400">
           No budget items yet. Add budget items in Budget Setup first.
         </p>
       </div>
+
+      <dialog ref="reclassifyDialogRef" class="modal">
+        <div class="modal-box">
+          <h3 class="font-semibold text-lg mb-3">Reclassify transaction</h3>
+          <p v-if="reclassifyTx" class="text-sm text-base-content/70 mb-3">
+            {{ formatDate(reclassifyTx.date) }} · ${{ formatAmount(reclassifyTx.amount) }}
+            <span v-if="reclassifyTx.description"> · {{ reclassifyTx.description }}</span>
+          </p>
+          <label class="form-control w-full mb-4">
+            <span class="label-text text-sm">Budget line</span>
+            <select v-model="reclassifyBudgetItemKey" class="select select-bordered w-full">
+              <option value="">Select…</option>
+              <option v-for="opt in reclassifyBudgetOptions" :key="opt.key" :value="opt.key">
+                {{ opt.label }}
+              </option>
+            </select>
+          </label>
+          <p v-if="reclassifyError" class="text-sm text-error mb-2">{{ reclassifyError }}</p>
+          <div class="modal-action">
+            <button type="button" class="btn btn-ghost" @click="closeReclassifyOrphan">Cancel</button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              :disabled="reclassifySaving || !reclassifyBudgetItemKey"
+              @click="saveReclassifyOrphan"
+            >
+              {{ reclassifySaving ? "Saving…" : "Save" }}
+            </button>
+          </div>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+      </dialog>
       <!-- Add Transaction Modal -->
       <dialog ref="addDialogRef" class="modal">
         <div class="modal-box" :class="{ 'max-w-2xl max-h-[90vh] overflow-y-auto': isGrossIncomePaycheckMode }">
@@ -547,16 +725,45 @@
 
       <!-- CSV Upload Modal -->
       <dialog ref="csvUploadModalRef" class="modal" @close="closeCsvModal">
-        <div class="modal-box max-w-4xl max-h-[90vh] flex flex-col">
-          <h3 class="font-semibold text-lg mb-4">Upload Expenses from CSV</h3>
+        <div class="modal-box max-w-5xl max-h-[90vh] flex flex-col">
+          <h3 class="font-semibold text-lg mb-4">
+            {{ csvUploadKind === "credit" ? "Upload Credit Card Expenses" : "Upload Checking Expenses" }}
+          </h3>
           <p class="text-sm text-base-content/60 mb-4">
-            Expenses are imported by assigning an expense budget item to each row. CSV should have Transaction Date (or Date), Amount, and Description columns. Expense items are suggested from your past transactions; rows that match existing entries are flagged as potential duplicates.
+            Assign an expense budget item and the
+            {{ csvUploadKind === "credit" ? "credit card" : "checking account" }}
+            each row was paid from. CSV should have Transaction Date (or Date), Amount, and Description columns.
           </p>
+          <label v-if="csvRows.length && csvPaymentSourceOptions.length" class="form-control w-full max-w-md mb-4">
+            <span class="label-text text-sm">
+              Apply {{ csvUploadKind === "credit" ? "credit card" : "checking account" }} to all rows
+            </span>
+            <select
+              class="select select-bordered select-sm"
+              :value="csvBulkPaymentSourceId"
+              @change="applyBulkPaymentSource($event)"
+            >
+              <option value="">Select for all…</option>
+              <option
+                v-for="opt in csvPaymentSourceOptions"
+                :key="opt.value"
+                :value="opt.value"
+              >
+                {{ opt.label }}
+              </option>
+            </select>
+          </label>
           <div v-if="csvError" class="alert alert-error mb-4">
             <span>{{ csvError }}</span>
           </div>
           <div v-if="csvImportBanner" class="alert alert-info mb-4">
             <span>{{ csvImportBanner }}</span>
+          </div>
+          <div v-if="!csvPaymentSourceOptions.length" class="alert alert-warning mb-4">
+            <span>
+              No {{ csvUploadKind === "credit" ? "credit card" : "checking" }} accounts found in Estate Management.
+              Add one there, then try again.
+            </span>
           </div>
           <div v-if="csvRows.length" class="flex-1 overflow-y-auto min-h-0 border border-base-200 rounded-lg">
             <table class="table table-pin-rows table-xs">
@@ -566,6 +773,7 @@
                   <th>Date</th>
                   <th class="text-right">Amount</th>
                   <th>Description</th>
+                  <th>{{ csvUploadKind === "credit" ? "Credit Card" : "Checking Account" }}</th>
                   <th>Expense Item</th>
                   <th class="w-36">Status</th>
                   <th class="w-32">Actions</th>
@@ -582,6 +790,22 @@
                   <td class="whitespace-nowrap">{{ row.date }}</td>
                   <td class="text-right font-mono">{{ formatAmount(row.amount) }}</td>
                   <td class="max-w-48 truncate" :title="row.description">{{ row.description || "—" }}</td>
+                  <td>
+                    <select
+                      v-model="row.paymentSourceId"
+                      class="select select-bordered select-sm w-48"
+                      :disabled="row.ignored || row.csvImported"
+                    >
+                      <option value="">Select...</option>
+                      <option
+                        v-for="opt in csvPaymentSourceOptions"
+                        :key="opt.value"
+                        :value="opt.value"
+                      >
+                        {{ opt.label }}
+                      </option>
+                    </select>
+                  </td>
                   <td>
                     <select
                       v-model="row.budgetItemId"
@@ -610,7 +834,10 @@
                       Potential duplicate
                     </span>
                     <span v-else-if="row.csvImported && !row.ignored" class="text-xs text-success">Imported</span>
-                    <span v-else-if="!row.ignored && row.budgetItemId" class="text-xs text-base-content/50">Ready</span>
+                    <span
+                      v-else-if="!row.ignored && row.budgetItemId && (row.paymentSourceId || parseCsvBudgetItemKey(row.budgetItemId)?.kind === 'insurance')"
+                      class="text-xs text-base-content/50"
+                    >Ready</span>
                     <span v-else class="text-base-content/30">—</span>
                   </td>
                   <td>
@@ -618,7 +845,7 @@
                       v-if="row.csvDuplicateSkipped && !row.ignored"
                       type="button"
                       class="btn btn-outline btn-xs whitespace-nowrap"
-                      :disabled="row.csvForceAdding || !row.budgetItemId"
+                      :disabled="row.csvForceAdding || !row.budgetItemId || (!row.paymentSourceId && parseCsvBudgetItemKey(row.budgetItemId)?.kind !== 'insurance')"
                       @click="forceAddCsvExpenseRow(idx)"
                     >
                       {{ row.csvForceAdding ? "…" : "Add entry" }}
@@ -683,6 +910,7 @@ import {
   csvBudgetItemKey,
   parseCsvBudgetItemKey,
 } from "~/utils/csvExpenseImport";
+import { TAX_ANNUAL_KIND_LABELS } from "~/utils/taxAnnualKinds";
 
 useHead({ title: "Budget Tracker" });
 
@@ -692,6 +920,8 @@ const deleteDialogRef = ref(null);
 const subCategoryModalRef = ref(null);
 const csvFileInputRef = ref(null);
 const csvUploadModalRef = ref(null);
+const csvUploadKind = ref("checking");
+const csvBulkPaymentSourceId = ref("");
 const selectedBudgetItem = ref(null);
 const editingTxId = ref(null);
 const editTxForm = ref({ date: "", amount: null, description: "", budgetItemId: "", type: "income", cashInvestmentId: "", debtId: "" });
@@ -700,7 +930,23 @@ const editSourceDebtId = ref(null);
 const editTxError = ref("");
 const editTxSaving = ref(false);
 const budgets = ref({ income: [], expenses: [] });
+const budgetOptions = ref([]);
+const periodBudgetId = ref(null);
+const periodBudgetName = ref("");
+const periodIsOverride = ref(false);
+const periodIsInferred = ref(false);
+const activeBudgetId = ref(null);
+const budgetAssignBusy = ref(false);
+const moveTxNotice = ref("");
 const transactions = ref([]);
+const orphans = ref([]);
+const reclassifyDialogRef = ref(null);
+const reclassifyTx = ref(null);
+const reclassifyBudgetItemKey = ref("");
+const reclassifyError = ref("");
+const reclassifySaving = ref(false);
+const taxAnnualTotals = ref([]);
+const taxAnnualGrandTotal = ref(0);
 const cashAccounts = ref([]);
 const debtRecords = ref([]);
 const incomeSources = ref([]);
@@ -731,6 +977,18 @@ const yearOptions = computed(() => {
     years.push(y);
   }
   return years;
+});
+
+const activeBudgetLabel = computed(() => {
+  const id = activeBudgetId.value;
+  if (id == null) return "default";
+  const b = budgetOptions.value.find((row) => Number(row.budget_id) === Number(id));
+  return b?.name || "default";
+});
+
+const canMoveToActiveBudget = computed(() => {
+  if (activeBudgetId.value == null || periodBudgetId.value == null) return false;
+  return Number(activeBudgetId.value) !== Number(periodBudgetId.value);
 });
 
 const grossAllocationAmounts = ref({});
@@ -993,28 +1251,49 @@ function mapBudgetTrackerRow(section) {
     const sub = (item.sub_category || "").trim();
     const actual = getActualForItem(item.id, section.listType);
     const budgeted = item.monthly_amount;
+    const lines = [
+      {
+        label: "Budgeted",
+        segments: [
+          { text: `$${formatAmount(budgeted)}`, class: "estate-record-list__line-value--budgeted" },
+          { text: " / ", class: "estate-record-list__line-sep" },
+          { text: "Dif: ", class: "estate-record-list__line-dif-label" },
+          {
+            text: formatBudgetDifference(actual, budgeted, section.listType, section.key),
+            class: getBudgetDifferenceClass(actual, budgeted, section.listType, section.key),
+          },
+        ],
+      },
+    ];
+    if (section.key === "tax") {
+      const ytd = getTaxYtdForItem(item.id);
+      lines.push({
+        label: `${selectedYear.value} YTD`,
+        segments: [{ text: `$${formatAmount(ytd)}`, class: "estate-record-list__line-value--budgeted" }],
+      });
+    }
     return {
       title: group.category,
       titleSuffix: sub || undefined,
       titleSuffixBadgeClass: section.badgeClass,
       note: `$${formatAmount(actual)}`,
       noteClass: getBudgetNoteClass(actual, budgeted),
-      lines: [
-        {
-          label: "Budgeted",
-          segments: [
-            { text: `$${formatAmount(budgeted)}`, class: "estate-record-list__line-value--budgeted" },
-            { text: " / ", class: "estate-record-list__line-sep" },
-            { text: "Dif: ", class: "estate-record-list__line-dif-label" },
-            {
-              text: formatBudgetDifference(actual, budgeted, section.listType, section.key),
-              class: getBudgetDifferenceClass(actual, budgeted, section.listType, section.key),
-            },
-          ],
-        },
-      ],
+      lines,
     };
   };
+}
+
+function getTaxYtdForItem(itemId) {
+  const y = selectedYear.value;
+  let sum = 0;
+  for (const tx of transactions.value) {
+    if (Number(tx.income_id) !== Number(itemId)) continue;
+    const d = String(tx.date || "");
+    const year = Number(d.slice(0, 4));
+    if (year !== y) continue;
+    sum += Math.abs(Number(tx.amount) || 0);
+  }
+  return sum;
 }
 
 function onBudgetTrackerRowSelect(section, row) {
@@ -1095,19 +1374,55 @@ const editShowsCashDestination = computed(() => {
   return ex != null && (ex.expense_type === "savings" || ex.expense_type === "investment");
 });
 
-/** Actual totals by budget item for selected month */
+function txCalendarParts(dateVal) {
+  if (dateVal == null || dateVal === "") return null;
+  const s = String(dateVal);
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  if (m) {
+    return { year: Number(m[1]), month: Number(m[2]) };
+  }
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return null;
+  return { year: d.getFullYear(), month: d.getMonth() + 1 };
+}
+
+/** Actual totals by budget item for selected month (matched txs only) */
 const actualByItem = computed(() => {
   const byItem = {};
   const txList = transactions.value ?? [];
   const y = selectedYear.value;
   const m = selectedMonth.value;
   for (const tx of txList) {
-    const d = new Date(tx.date);
-    if (d.getFullYear() !== y || d.getMonth() + 1 !== m) continue;
-    const key = tx.income_id != null ? `income-${tx.income_id}` : `expense-${tx.expense_id}`;
+    const parts = txCalendarParts(tx.date);
+    if (!parts || parts.year !== y || parts.month !== m) continue;
+    const incomeId = tx.matched_income_id ?? tx.income_id;
+    const expenseId = tx.matched_expense_id ?? tx.expense_id;
+    if (incomeId == null && expenseId == null) continue;
+    const key = incomeId != null ? `income-${incomeId}` : `expense-${expenseId}`;
     byItem[key] = (byItem[key] || 0) + Number(tx.amount);
   }
   return byItem;
+});
+
+const orphansTotal = computed(() =>
+  (orphans.value ?? []).reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0),
+);
+
+const reclassifyBudgetOptions = computed(() => {
+  const opts = [];
+  for (const row of budgets.value.income ?? []) {
+    opts.push({
+      key: `income:${row.id}`,
+      label: `Income · ${row.category}${row.sub_category ? ` › ${row.sub_category}` : ""}`,
+    });
+  }
+  for (const row of budgets.value.expenses ?? []) {
+    opts.push({
+      key: `expense:${row.id}`,
+      label: `Expense · ${row.category}${row.sub_category ? ` › ${row.sub_category}` : ""}`,
+    });
+  }
+  return opts;
 });
 
 /** Transactions for the selected sub-category (budget item) */
@@ -1116,11 +1431,13 @@ const transactionsForModal = computed(() => {
   if (!item) return [];
   const txList = transactions.value ?? [];
   return txList
-    .filter((tx) =>
-      item.type === "income"
-        ? tx.income_id === item.id
-        : tx.expense_id === item.id,
-    )
+    .filter((tx) => {
+      const incomeId = tx.matched_income_id ?? tx.income_id;
+      const expenseId = tx.matched_expense_id ?? tx.expense_id;
+      return item.type === "income"
+        ? Number(incomeId) === Number(item.id)
+        : Number(expenseId) === Number(item.id);
+    })
     .sort((a, b) => new Date(b.date) - new Date(a.date));
 });
 
@@ -1188,22 +1505,31 @@ async function loadData() {
   loading.value = true;
   loadError.value = "";
   try {
-    const [budgetData, txData, cashData, debtData, srcData, invSrcData, savSrcData] = await Promise.all([
-      $fetch("/api/budget/list"),
-      $fetch("/api/budget/transactions/list"),
-      $fetch("/api/records/cash-and-investments"),
-      $fetch("/api/records/debt").then((d) => d?.records ?? []).catch(() => []),
-      $fetch("/api/budget/income-sources/list").then((d) => d?.sources ?? []).catch(() => []),
-      $fetch("/api/budget/investment-sources/list").then((d) => d?.sources ?? []).catch(() => []),
-      $fetch("/api/budget/savings-sources/list").then((d) => d?.sources ?? []).catch(() => []),
-    ]);
-    budgets.value = { income: budgetData.income ?? [], expenses: budgetData.expenses ?? [] };
-    transactions.value = txData.transactions ?? [];
-    cashAccounts.value = cashData.records ?? [];
-    debtRecords.value = Array.isArray(debtData) ? debtData : [];
-    incomeSources.value = Array.isArray(srcData) ? srcData : [];
-    investmentSources.value = Array.isArray(invSrcData) ? invSrcData : [];
-    savingsSources.value = Array.isArray(savSrcData) ? savSrcData : [];
+    const data = await $fetch("/api/budget/tracker", {
+      query: { year: selectedYear.value, month: selectedMonth.value },
+    });
+    budgetOptions.value = data?.budgets ?? [];
+    budgets.value = { income: data?.income ?? [], expenses: data?.expenses ?? [] };
+    periodBudgetId.value = data?.budget?.budget_id ?? null;
+    periodBudgetName.value = data?.budget?.name || "";
+    periodIsOverride.value = !!data?.is_override;
+    periodIsInferred.value = !!data?.is_inferred;
+    activeBudgetId.value = data?.active_budget_id ?? null;
+    transactions.value = data?.transactions ?? [];
+    orphans.value = data?.orphans ?? [];
+    taxAnnualTotals.value = Array.isArray(data?.tax?.totals)
+      ? data.tax.totals
+      : Object.keys(TAX_ANNUAL_KIND_LABELS).map((tax_kind) => ({
+          tax_kind,
+          label: TAX_ANNUAL_KIND_LABELS[tax_kind],
+          total_amount: 0,
+        }));
+    taxAnnualGrandTotal.value = Number(data?.tax?.grand_total) || 0;
+    cashAccounts.value = data?.cash_accounts ?? [];
+    debtRecords.value = data?.debt_records ?? [];
+    incomeSources.value = data?.income_sources ?? [];
+    investmentSources.value = data?.investment_sources ?? [];
+    savingsSources.value = data?.savings_sources ?? [];
   } catch (err) {
     console.error("Failed to load", err);
     loadError.value = parseFetchError(
@@ -1211,7 +1537,15 @@ async function loadData() {
       "Failed to load budget tracker. If you recently updated the app, run: npm run migrate",
     );
     budgets.value = { income: [], expenses: [] };
+    budgetOptions.value = [];
+    periodBudgetId.value = null;
+    periodBudgetName.value = "";
+    periodIsOverride.value = false;
+    periodIsInferred.value = false;
     transactions.value = [];
+    orphans.value = [];
+    taxAnnualTotals.value = [];
+    taxAnnualGrandTotal.value = 0;
     cashAccounts.value = [];
     debtRecords.value = [];
     incomeSources.value = [];
@@ -1219,6 +1553,164 @@ async function loadData() {
     savingsSources.value = [];
   } finally {
     loading.value = false;
+  }
+}
+
+function openReclassifyOrphan(tx) {
+  reclassifyTx.value = tx;
+  reclassifyBudgetItemKey.value = "";
+  reclassifyError.value = "";
+  nextTick(() => reclassifyDialogRef.value?.showModal());
+}
+
+function closeReclassifyOrphan() {
+  reclassifyDialogRef.value?.close();
+  reclassifyTx.value = null;
+  reclassifyBudgetItemKey.value = "";
+  reclassifyError.value = "";
+}
+
+async function saveReclassifyOrphan() {
+  if (!reclassifyTx.value || !reclassifyBudgetItemKey.value) return;
+  const [kind, idStr] = String(reclassifyBudgetItemKey.value).split(":");
+  const lineId = parseInt(idStr, 10);
+  if ((kind !== "income" && kind !== "expense") || !lineId) {
+    reclassifyError.value = "Select a valid budget line.";
+    return;
+  }
+  reclassifySaving.value = true;
+  reclassifyError.value = "";
+  try {
+    const d = new Date(reclassifyTx.value.date);
+    const dateStr = Number.isNaN(d.getTime())
+      ? String(reclassifyTx.value.date).slice(0, 10)
+      : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const body = {
+      transaction_date: dateStr,
+      amount: reclassifyTx.value.amount,
+      description: reclassifyTx.value.description || null,
+    };
+    if (kind === "income") body.income_id = lineId;
+    else body.expense_id = lineId;
+    await $fetch(`/api/budget/transactions/${reclassifyTx.value.id}`, {
+      method: "PUT",
+      body,
+    });
+    closeReclassifyOrphan();
+    await loadData();
+  } catch (err) {
+    reclassifyError.value = err?.data?.statusMessage || err?.message || "Failed to reclassify.";
+  } finally {
+    reclassifySaving.value = false;
+  }
+}
+
+function formatMoveResult(moveResult) {
+  if (!moveResult) return "";
+  const parts = [];
+  if (moveResult.moved > 0) parts.push(`Moved ${moveResult.moved} transaction${moveResult.moved === 1 ? "" : "s"}`);
+  if (moveResult.unmatched > 0) {
+    const sample = (moveResult.unmatched_samples || [])
+      .slice(0, 3)
+      .map((s) => [s.category, s.sub_category].filter(Boolean).join(" / "))
+      .filter(Boolean)
+      .join("; ");
+    parts.push(
+      `${moveResult.unmatched} could not be matched` + (sample ? ` (${sample})` : ""),
+    );
+  }
+  return parts.join(" · ");
+}
+
+async function onPeriodBudgetChange(event) {
+  const nextId = Number(event?.target?.value);
+  if (!Number.isFinite(nextId) || nextId <= 0 || nextId === periodBudgetId.value) return;
+  budgetAssignBusy.value = true;
+  loadError.value = "";
+  moveTxNotice.value = "";
+  try {
+    // Pin and remap this month's transactions onto matching lines of the chosen budget.
+    const res = await $fetch("/api/budgets/month-assignment", {
+      method: "PUT",
+      body: {
+        year: selectedYear.value,
+        month: selectedMonth.value,
+        budget_id: nextId,
+        move_transactions: true,
+      },
+    });
+    moveTxNotice.value = formatMoveResult(res?.move_result);
+    await loadData();
+  } catch (err) {
+    loadError.value = parseFetchError(err, "Failed to update budget for this month.");
+  } finally {
+    budgetAssignBusy.value = false;
+  }
+}
+
+async function clearPeriodBudgetOverride() {
+  if (!periodIsOverride.value) return;
+  budgetAssignBusy.value = true;
+  loadError.value = "";
+  try {
+    await $fetch("/api/budgets/month-assignment", {
+      method: "DELETE",
+      query: { year: selectedYear.value, month: selectedMonth.value },
+    });
+    await loadData();
+  } catch (err) {
+    loadError.value = parseFetchError(err, "Failed to clear month budget override.");
+  } finally {
+    budgetAssignBusy.value = false;
+  }
+}
+
+async function pinInferredPeriodBudget() {
+  if (!periodIsInferred.value || periodBudgetId.value == null) return;
+  budgetAssignBusy.value = true;
+  loadError.value = "";
+  moveTxNotice.value = "";
+  try {
+    const res = await $fetch("/api/budgets/month-assignment", {
+      method: "PUT",
+      body: {
+        year: selectedYear.value,
+        month: selectedMonth.value,
+        budget_id: periodBudgetId.value,
+        move_transactions: true,
+      },
+    });
+    moveTxNotice.value = formatMoveResult(res?.move_result);
+    await loadData();
+  } catch (err) {
+    loadError.value = parseFetchError(err, "Failed to pin budget for this month.");
+  } finally {
+    budgetAssignBusy.value = false;
+  }
+}
+
+async function moveMonthToBudget(budgetId) {
+  const nextId = Number(budgetId);
+  if (!Number.isFinite(nextId) || nextId <= 0) return;
+  budgetAssignBusy.value = true;
+  loadError.value = "";
+  moveTxNotice.value = "";
+  try {
+    const res = await $fetch("/api/budgets/move-month-transactions", {
+      method: "POST",
+      body: {
+        year: selectedYear.value,
+        month: selectedMonth.value,
+        budget_id: nextId,
+        pin_assignment: true,
+      },
+    });
+    moveTxNotice.value = formatMoveResult(res?.move_result);
+    await loadData();
+  } catch (err) {
+    loadError.value = parseFetchError(err, "Failed to move transactions for this month.");
+  } finally {
+    budgetAssignBusy.value = false;
   }
 }
 
@@ -1303,16 +1795,100 @@ async function addIncomeSourceFromForm() {
 /** Non-ignored CSV rows that will be imported */
 const csvRowsToImport = computed(() => csvRows.value.filter((r) => !r.ignored));
 
-/** All non-ignored rows have an expense item selected */
+function cashAccountLabel(acct) {
+  return [acct.institution, acct.acct_type].filter(Boolean).join(" — ") || `Account #${acct.ci_id}`;
+}
+
+function cashAccountSearchText(acct) {
+  return `${acct.acct_type || ""} ${acct.institution || ""} ${acct.asset_category || ""}`.toLowerCase();
+}
+
+function isCheckingLikeAccount(acct) {
+  const t = cashAccountSearchText(acct);
+  if (/credit\s*card|creditcard|\bcard\b|charge\s*card/.test(t)) return false;
+  return /check|cash|bank|money\s*market|debit|saving|hysa|deposit/.test(t);
+}
+
+function isCreditLikeAccount(acct) {
+  const t = cashAccountSearchText(acct);
+  return /credit\s*card|creditcard|\bcard\b|charge\s*card|revolving/.test(t);
+}
+
+function isCreditLikeDebt(row) {
+  if (inferIsRevolvingDebt(row)) return true;
+  const blob = `${row?.loan_type || ""} ${row?.institution || ""}`.toLowerCase();
+  return /credit\s*card|creditcard|revolving/.test(blob);
+}
+
+const csvPaymentSourceOptions = computed(() => {
+  if (csvUploadKind.value === "credit") {
+    const creditCash = cashAccounts.value.filter(isCreditLikeAccount);
+    const cashOpts = (creditCash.length ? creditCash : []).map((acct) => ({
+      value: `ci:${acct.ci_id}`,
+      label: cashAccountLabel(acct),
+      kind: "ci",
+      id: Number(acct.ci_id),
+    }));
+    const debtOpts = debtRecords.value.filter(isCreditLikeDebt).map((row) => ({
+      value: `debt:${row.dbt_id}`,
+      label: formatDebtRecordLabel(row),
+      kind: "debt",
+      id: Number(row.dbt_id),
+    }));
+    // If no typed credit cash accounts, still offer other cash accounts so users can pick a card stored as cash.
+    if (!cashOpts.length && !debtOpts.length) {
+      return cashAccounts.value.map((acct) => ({
+        value: `ci:${acct.ci_id}`,
+        label: cashAccountLabel(acct),
+        kind: "ci",
+        id: Number(acct.ci_id),
+      }));
+    }
+    if (!cashOpts.length) {
+      return [
+        ...debtOpts,
+        ...cashAccounts.value.map((acct) => ({
+          value: `ci:${acct.ci_id}`,
+          label: cashAccountLabel(acct),
+          kind: "ci",
+          id: Number(acct.ci_id),
+        })),
+      ];
+    }
+    return [...cashOpts, ...debtOpts];
+  }
+
+  const checking = cashAccounts.value.filter(isCheckingLikeAccount);
+  const list = checking.length ? checking : cashAccounts.value.filter((a) => !isCreditLikeAccount(a));
+  const finalList = list.length ? list : cashAccounts.value;
+  return finalList.map((acct) => ({
+    value: `ci:${acct.ci_id}`,
+    label: cashAccountLabel(acct),
+    kind: "ci",
+    id: Number(acct.ci_id),
+  }));
+});
+
+/** All non-ignored rows have an expense item and payment source selected */
 const allCsvRowsHaveType = computed(() => {
   const toImport = csvRowsToImport.value;
   if (!toImport.length) return false;
-  return toImport.every((r) => r.budgetItemId);
+  return toImport.every((r) => {
+    if (!r.budgetItemId) return false;
+    const parsed = parseCsvBudgetItemKey(r.budgetItemId);
+    if (parsed?.kind === "insurance") return true;
+    return Boolean(r.paymentSourceId);
+  });
 });
 
 /** Rows that still need a normal Save (excludes duplicate-skipped rows until expense changes or Add entry is used) */
 const csvRowsPendingImport = computed(() =>
-  csvRows.value.filter((r) => !r.ignored && r.budgetItemId && !r.csvImported && !r.csvDuplicateSkipped),
+  csvRows.value.filter((r) => {
+    if (r.ignored || r.csvImported || r.csvDuplicateSkipped || !r.budgetItemId) return false;
+    const parsed = parseCsvBudgetItemKey(r.budgetItemId);
+    if (parsed?.kind === "insurance") return true;
+    return Boolean(r.paymentSourceId);
+  }),
 );
 const csvPendingImportCount = computed(() => csvRowsPendingImport.value.length);
 const csvHasPendingImportRows = computed(() => csvPendingImportCount.value > 0);
@@ -1360,6 +1936,7 @@ function parseCsv(text) {
       description: descVal || null,
       type: "expense",
       budgetItemId: "",
+      paymentSourceId: "",
       ignored: false,
       csvImported: false,
       csvDuplicateSkipped: false,
@@ -1477,6 +2054,23 @@ function buildExistingExpenseCsvDedupeKeySet() {
   return buildExistingExpenseDedupeSets(transactions.value).keysWithExpense;
 }
 
+function csvRowClass(row) {
+  if (row.ignored) return "opacity-50 bg-base-200/50";
+  const parsed = parseCsvBudgetItemKey(row.budgetItemId);
+  const needsSource = parsed?.kind !== "insurance";
+  if (!row.budgetItemId || (needsSource && !row.paymentSourceId)) return "bg-error/10";
+  if (row.csvPotentialDuplicate && !row.csvImported) return "bg-warning/20";
+  if (row.csvImported) return "bg-success/10";
+  return "";
+}
+
+function parsePaymentSourceId(value) {
+  const raw = String(value || "");
+  const m = raw.match(/^(ci|debt):(\d+)$/);
+  if (!m) return null;
+  return { kind: m[1], id: Number(m[2]) };
+}
+
 function csvRowSubmitBody(row, dateStr) {
   const parsed = parseCsvBudgetItemKey(row.budgetItemId);
   if (!parsed) return null;
@@ -1488,15 +2082,44 @@ function csvRowSubmitBody(row, dateStr) {
   if (parsed.kind === "insurance") {
     return { ...base, type: "income", income_id: parsed.id };
   }
-  return { ...base, type: "expense", expense_id: parsed.id };
+  const source = parsePaymentSourceId(row.paymentSourceId);
+  if (!source) return null;
+  if (source.kind === "debt") {
+    return {
+      ...base,
+      type: "expense",
+      expense_id: parsed.id,
+      debt_id: source.id,
+      cash_investment_id: null,
+      from_cash_investment_id: null,
+      debt_charge: true,
+    };
+  }
+  return {
+    ...base,
+    type: "expense",
+    expense_id: parsed.id,
+    from_cash_investment_id: source.id,
+    cash_investment_id: source.id,
+    debt_id: null,
+  };
 }
 
-function csvRowClass(row) {
-  if (row.ignored) return "opacity-50 bg-base-200/50";
-  if (!row.budgetItemId) return "bg-error/10";
-  if (row.csvPotentialDuplicate && !row.csvImported) return "bg-warning/20";
-  if (row.csvImported) return "bg-success/10";
-  return "";
+function applyBulkPaymentSource(event) {
+  const value = String(event?.target?.value ?? "");
+  csvBulkPaymentSourceId.value = value;
+  if (!value) return;
+  for (const row of csvRows.value) {
+    if (!row.ignored && !row.csvImported) row.paymentSourceId = value;
+  }
+}
+
+function startCsvUpload(kind) {
+  csvUploadKind.value = kind === "credit" ? "credit" : "checking";
+  csvBulkPaymentSourceId.value = "";
+  csvError.value = "";
+  csvImportBanner.value = "";
+  csvFileInputRef.value?.click();
 }
 
 function onCsvExpenseItemChange() {
@@ -1536,11 +2159,17 @@ async function onCsvFileSelected(ev) {
         csvRows.value = [];
       } else {
         await loadData();
+        const defaultSource =
+          csvPaymentSourceOptions.value.length === 1 ? csvPaymentSourceOptions.value[0].value : "";
+        csvBulkPaymentSourceId.value = defaultSource;
         const enriched = enrichCsvExpenseRows(
           rows,
           transactions.value,
           validCsvBudgetItemKeys.value,
-        );
+        ).map((row) => ({
+          ...row,
+          paymentSourceId: row.paymentSourceId || defaultSource || "",
+        }));
         csvRows.value = enriched;
         csvError.value = "";
         csvImportBanner.value = csvImportSummary(enriched);
@@ -1559,12 +2188,18 @@ function closeCsvModal() {
   csvRows.value = [];
   csvError.value = "";
   csvImportBanner.value = "";
+  csvBulkPaymentSourceId.value = "";
 }
 
 async function forceAddCsvExpenseRow(idx) {
   const row = csvRows.value[idx];
   if (!row || row.ignored || !row.budgetItemId) return;
   csvError.value = "";
+  const parsedKey = parseCsvBudgetItemKey(row.budgetItemId);
+  if (parsedKey?.kind !== "insurance" && !row.paymentSourceId) {
+    csvError.value = "Select a payment account for this row.";
+    return;
+  }
   row.csvForceAdding = true;
   try {
     const dateStr = toISODateString(row.date);
@@ -2123,6 +2758,10 @@ watch(
   },
   { immediate: true },
 );
+
+watch([selectedYear, selectedMonth], () => {
+  if (auth.user) void loadData();
+});
 </script>
 
 <style scoped>

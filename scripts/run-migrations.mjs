@@ -62,6 +62,21 @@ const migrations = [
   "alter_expenses_add_group_id.sql",
   "alter_budget_transactions_add_group_id.sql",
   "backfill_group_budget_records.sql",
+  "create_vehicle_service_records.sql",
+  "create_vehicle_recommended_schedules.sql",
+  "alter_income_add_cash_investment_id.sql",
+  "create_account_map_layouts.sql",
+  "create_account_map_edges.sql",
+  "alter_account_map_edges_kinds.sql",
+  "alter_account_map_edges_add_debt_payment.sql",
+  "create_budgets.sql",
+  "alter_budget_tables_add_budget_id.sql",
+  "create_tax_annual_totals.sql",
+  "create_fiscal_annual_totals.sql",
+  "alter_fiscal_annual_totals_add_posttax.sql",
+  "alter_fiscal_annual_totals_add_stock_option_offset.sql",
+  "create_budget_month_assignments.sql",
+  "alter_budget_transactions_add_classification.sql",
 ];
 
 async function run() {

@@ -3,12 +3,20 @@
     class="mx-auto w-full max-w-[96rem] space-y-4 sm:space-y-6 px-0.5 pr-0 pt-[0.8rem] pb-4 sm:-mx-2 sm:pl-2 sm:pr-1.5 sm:pt-[1.2rem] sm:pb-6 overflow-x-hidden min-w-0"
   >
     <header class="flex flex-wrap items-center gap-4 sm:gap-6">
-      <h1 class="text-lg sm:text-xl font-semibold text-base-content">Budget Setup</h1>
+      <div class="min-w-0">
+        <h1 class="text-lg sm:text-xl font-semibold text-base-content">Budget Setup</h1>
+        <p v-if="activeBudgetName" class="mt-0.5 text-xs text-base-content/60">
+          Active budget:
+          <span class="font-medium text-base-content/80">{{ activeBudgetName }}</span>
+          ·
+          <NuxtLink to="/account_map" class="link link-hover">Manage on Account Map</NuxtLink>
+        </p>
+      </div>
       <button
         v-if="auth.user && auth.ready && !loadError"
         type="button"
         class="estate-action-btn ml-auto"
-        @click="openAddBudgetModal()"
+        @click="openAddBudget()"
       >
         Add Budget Item
       </button>
@@ -33,239 +41,11 @@
 
     <div v-else class="space-y-6">
       <!-- Add Budget Item modal -->
-      <dialog ref="addBudgetDialogRef" class="modal" @close="submitError = ''">
-        <div
-          class="modal-box max-h-[90vh] overflow-y-auto"
-          :class="form.type === 'income' ? 'max-w-2xl' : 'max-w-lg'"
-        >
-          <h3 class="font-semibold text-lg mb-4">{{ addBudgetModalTitle }}</h3>
-          <form @submit.prevent="submitBudget" class="space-y-4">
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <label class="form-control w-full">
-                <span class="label-text text-sm">Type</span>
-                <select v-model="form.type" class="select select-bordered w-full">
-                  <option v-for="opt in budgetTypeOptions" :key="opt.value" :value="opt.value">
-                    {{ opt.label }}
-                  </option>
-                </select>
-              </label>
-              <label class="form-control w-full">
-                <span class="label-text text-sm">Category <span class="text-error">*</span></span>
-                <input
-                  v-model.trim="form.category"
-                  class="input input-bordered w-full"
-                  type="text"
-                  :placeholder="addCategoryPlaceholder"
-                  required
-                />
-              </label>
-            </div>
-
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <label class="form-control w-full">
-                <span class="label-text text-sm">Sub-category</span>
-                <input
-                  v-model.trim="form.sub_category"
-                  class="input input-bordered w-full"
-                  type="text"
-                  placeholder="e.g. Rent, Utilities"
-                />
-              </label>
-              <label v-if="form.type !== 'savings' && form.type !== 'investment'" class="form-control w-full">
-                <span class="label-text text-sm">Description</span>
-                <input
-                  v-model.trim="form.description"
-                  class="input input-bordered w-full"
-                  type="text"
-                  placeholder="Optional notes"
-                />
-              </label>
-              <label v-if="form.type === 'expense'" class="form-control w-full md:col-span-2">
-                <span class="label-text text-sm">
-                  Estate Management debt
-                  <span v-if="addNeedsDebtLink" class="text-error">*</span>
-                </span>
-                <select
-                  v-model="form.debt_id"
-                  class="select select-bordered w-full"
-                  :required="addNeedsDebtLink"
-                >
-                  <option value="">
-                    {{ debtRecords.length ? "Select debt record…" : "No debt records — add in Estate Management" }}
-                  </option>
-                  <option v-for="row in debtRecords" :key="row.dbt_id" :value="String(row.dbt_id)">
-                    {{ formatDebtRecordLabel(row) }}
-                  </option>
-                </select>
-                <span class="label-text-alt text-base-content/60">
-                  Link this budget line to a loan or credit card from Estate Management (used in Budget Tracker).
-                </span>
-              </label>
-              <template v-else>
-                <label class="form-control w-full">
-                  <span class="label-text text-sm">From Account</span>
-                  <select v-model="form.from_cash_investment_id" class="select select-bordered w-full">
-                    <option value="">None</option>
-                    <option v-for="acct in cashAccounts" :key="`from-${acct.ci_id}`" :value="String(acct.ci_id)">
-                      {{ [acct.institution, acct.acct_type].filter(Boolean).join(" — ") || `Account #${acct.ci_id}` }}
-                    </option>
-                  </select>
-                  <span class="label-text-alt text-base-content/60">Cash or investment account the amount comes from</span>
-                </label>
-                <label class="form-control w-full">
-                  <span class="label-text text-sm">To Account</span>
-                  <select v-model="form.cash_investment_id" class="select select-bordered w-full">
-                    <option value="">None</option>
-                    <option v-for="acct in cashAccounts" :key="`to-${acct.ci_id}`" :value="String(acct.ci_id)">
-                      {{ [acct.institution, acct.acct_type].filter(Boolean).join(" — ") || `Account #${acct.ci_id}` }}
-                    </option>
-                  </select>
-                  <span class="label-text-alt text-base-content/60">Account to add this amount to</span>
-                </label>
-              </template>
-            </div>
-
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <label class="form-control w-full">
-                <span class="label-text text-sm">{{ form.type === 'income' ? 'Gross Income (monthly)' : 'Monthly Amount (default)' }}</span>
-                <input
-                  v-model.number="form.monthly_amount"
-                  class="input input-bordered w-full"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  @input="syncAnnualFromMonthly"
-                />
-              </label>
-              <label class="form-control w-full">
-                <span class="label-text text-sm">{{ form.type === 'income' ? 'Gross Income (annual)' : 'Annual Total' }}</span>
-                <input
-                  v-model.number="form.annual_amount"
-                  class="input input-bordered w-full"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  @input="syncMonthlyFromAnnual"
-                />
-              </label>
-            </div>
-
-            <div v-if="form.type === 'income'" class="space-y-4 rounded-lg border border-base-300 p-3">
-              <p class="text-sm text-base-content/70">
-                Allocate gross income to existing tax, insurance, retirement, and investment budget lines. The gross amount is saved on the line you are adding; the remainder updates your Net Income budget line when one exists.
-              </p>
-              <div v-if="!grossIncomeAllocatableLines.length" class="text-sm text-base-content/50 italic">
-                No tax, insurance, retirement, or investment lines yet. The full gross amount is saved on this line; add a Net Income line to track take-home separately.
-              </div>
-              <template v-else>
-                <div v-if="grossAllocTaxLines.length" class="space-y-2">
-                  <h4 class="text-sm font-semibold text-warning">Tax</h4>
-                  <div
-                    v-for="line in grossAllocTaxLines"
-                    :key="line.key"
-                    class="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_7rem] sm:items-center"
-                  >
-                    <span class="text-sm">{{ line.category }}{{ line.sub_category ? ` › ${line.sub_category}` : "" }}</span>
-                    <input
-                      v-model.number="grossAllocationAmounts[line.key]"
-                      class="input input-bordered input-sm w-full"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-                <div v-if="grossAllocInsuranceLines.length" class="space-y-2">
-                  <h4 class="text-sm font-semibold">Insurance</h4>
-                  <div
-                    v-for="line in grossAllocInsuranceLines"
-                    :key="line.key"
-                    class="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_7rem] sm:items-center"
-                  >
-                    <span class="text-sm">{{ line.category }}{{ line.sub_category ? ` › ${line.sub_category}` : "" }}</span>
-                    <input
-                      v-model.number="grossAllocationAmounts[line.key]"
-                      class="input input-bordered input-sm w-full"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-                <div v-if="grossAllocRetirementLines.length" class="space-y-2">
-                  <h4 class="text-sm font-semibold text-indigo-600 dark:text-indigo-400">Retirement</h4>
-                  <div
-                    v-for="line in grossAllocRetirementLines"
-                    :key="line.key"
-                    class="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_7rem] sm:items-center"
-                  >
-                    <span class="text-sm">{{ line.category }}{{ line.sub_category ? ` › ${line.sub_category}` : "" }}</span>
-                    <input
-                      v-model.number="grossAllocationAmounts[line.key]"
-                      class="input input-bordered input-sm w-full"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-                <div v-if="grossAllocInvestmentLines.length" class="space-y-2">
-                  <h4 class="text-sm font-semibold text-secondary">Investments</h4>
-                  <div
-                    v-for="line in grossAllocInvestmentLines"
-                    :key="line.key"
-                    class="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_7rem] sm:items-center"
-                  >
-                    <span class="text-sm">{{ line.category }}{{ line.sub_category ? ` › ${line.sub_category}` : "" }}</span>
-                    <input
-                      v-model.number="grossAllocationAmounts[line.key]"
-                      class="input input-bordered input-sm w-full"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-              </template>
-              <div class="flex flex-wrap items-baseline justify-between gap-2 border-t border-base-300 pt-3">
-                <span class="text-sm font-medium">Net Income (monthly)</span>
-                <span
-                  class="text-lg font-semibold tabular-nums"
-                  :class="grossIncomeNetMonthly < 0 ? 'text-error' : 'text-success'"
-                >
-                  ${{ formatAmount(Math.max(0, grossIncomeNetMonthly)) }}
-                </span>
-              </div>
-              <p v-if="grossIncomeNetMonthly < 0" class="text-xs text-error">
-                Allocations exceed gross income by ${{ formatAmount(-grossIncomeNetMonthly) }}.
-              </p>
-            </div>
-
-            <div v-if="submitError" class="text-sm text-error">{{ submitError }}</div>
-            <div class="modal-action flex-wrap gap-2 mt-2">
-              <button type="button" class="btn btn-ghost" @click="addBudgetDialogRef?.close()">Cancel</button>
-              <button type="submit" class="btn btn-primary gap-2" :disabled="submitting">
-                <template v-if="submitting">Adding...</template>
-                <template v-else>
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5 shrink-0">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                  </svg>
-                  Add item
-                </template>
-              </button>
-            </div>
-          </form>
-        </div>
-        <form method="dialog" class="modal-backdrop">
-          <button aria-label="Close">close</button>
-        </form>
-      </dialog>
+      <LazyAddBudgetItemModal
+        v-if="modalsMounted.addBudget"
+        ref="addBudgetModalRef"
+        @saved="loadBudgets"
+      />
 
       <!-- Budget summary (A–Z by section title; always expanded) -->
       <div class="grid w-full grid-cols-1 gap-6">
@@ -282,7 +62,7 @@
               <button
                 type="button"
                 class="btn btn-ghost btn-sm h-auto min-h-0 shrink-0 gap-2 py-1.5 pl-1 pr-2 font-medium normal-case text-base-content hover:bg-base-200"
-                @click="openAddBudgetModal('expense')"
+                @click="openAddBudget('expense')"
               >
                 <span class="flex size-[1.05rem] shrink-0 items-center justify-center rounded-full bg-primary text-primary-content">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="size-[0.525rem] shrink-0" aria-hidden="true">
@@ -403,7 +183,7 @@
               <button
                 type="button"
                 class="btn btn-ghost btn-sm h-auto min-h-0 shrink-0 gap-2 py-1.5 pl-1 pr-2 font-medium normal-case text-base-content hover:bg-base-200"
-                @click="openAddBudgetModal('income')"
+                @click="openAddBudget('income')"
               >
                 <span class="flex size-[1.05rem] shrink-0 items-center justify-center rounded-full bg-primary text-primary-content">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="size-[0.525rem] shrink-0" aria-hidden="true">
@@ -523,7 +303,7 @@
               <button
                 type="button"
                 class="btn btn-ghost btn-sm h-auto min-h-0 shrink-0 gap-2 py-1.5 pl-1 pr-2 font-medium normal-case text-base-content hover:bg-base-200"
-                @click="openAddBudgetModal('investment')"
+                @click="openAddBudget('investment')"
               >
                 <span class="flex size-[1.05rem] shrink-0 items-center justify-center rounded-full bg-primary text-primary-content">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="size-[0.525rem] shrink-0" aria-hidden="true">
@@ -637,7 +417,7 @@
               <button
                 type="button"
                 class="btn btn-ghost btn-sm h-auto min-h-0 shrink-0 gap-2 py-1.5 pl-1 pr-2 font-medium normal-case text-base-content hover:bg-base-200"
-                @click="openAddBudgetModal('savings')"
+                @click="openAddBudget('savings')"
               >
                 <span class="flex size-[1.05rem] shrink-0 items-center justify-center rounded-full bg-primary text-primary-content">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="size-[0.525rem] shrink-0" aria-hidden="true">
@@ -745,13 +525,16 @@
               <div class="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1">
                 <span class="shrink-0 text-warning">Tax</span>
                 <span v-if="!loading" class="text-xs font-normal text-base-content">
-                  Total: ${{ formatAmount(totals.tax.monthly) }}/mo
+                  Budgeted: ${{ formatAmount(totals.tax.monthly) }}/mo
+                  <span v-if="setupTaxAnnualGrandTotal != null" class="text-base-content/70">
+                    · {{ setupTaxYear }} YTD ${{ formatAmount(setupTaxAnnualGrandTotal) }}
+                  </span>
                 </span>
               </div>
               <button
                 type="button"
                 class="btn btn-ghost btn-sm h-auto min-h-0 shrink-0 gap-2 py-1.5 pl-1 pr-2 font-medium normal-case text-base-content hover:bg-base-200"
-                @click="openAddBudgetModal('tax')"
+                @click="openAddBudget('tax')"
               >
                 <span class="flex size-[1.05rem] shrink-0 items-center justify-center rounded-full bg-primary text-primary-content">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="size-[0.525rem] shrink-0" aria-hidden="true">
@@ -766,6 +549,15 @@
             <div v-if="loading" class="text-sm text-base-content/70">Loading...</div>
             <template v-else>
               <div v-if="taxGroupedByCategory.length" class="space-y-8">
+                <div
+                  v-if="setupTaxAnnualTotals.length"
+                  class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 rounded-lg border border-base-200 bg-base-200/30 p-3"
+                >
+                  <div v-for="t in setupTaxAnnualTotals" :key="t.tax_kind" class="rounded-md bg-base-100 px-2 py-1.5">
+                    <div class="text-[0.65rem] font-medium uppercase tracking-wide text-base-content/55">{{ t.label }}</div>
+                    <div class="text-sm font-semibold tabular-nums">${{ formatAmount(t.total_amount) }}</div>
+                  </div>
+                </div>
                 <div
                   v-for="group in taxGroupedByCategory"
                   :key="`tax-cat-${group.category}`"
@@ -863,7 +655,7 @@
               <button
                 type="button"
                 class="btn btn-ghost btn-sm h-auto min-h-0 shrink-0 gap-2 py-1.5 pl-1 pr-2 font-medium normal-case text-base-content hover:bg-base-200"
-                @click="openAddBudgetModal('insurance')"
+                @click="openAddBudget('insurance')"
               >
                 <span class="flex size-[1.05rem] shrink-0 items-center justify-center rounded-full bg-primary text-primary-content">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="size-[0.525rem] shrink-0" aria-hidden="true">
@@ -963,136 +755,12 @@
         </div>
       </div>
 
-      <!-- Edit Modal -->
-      <dialog ref="editDialogRef" class="modal">
-        <div class="modal-box max-h-[90vh] max-w-lg overflow-y-auto">
-          <h3 class="font-semibold text-lg mb-5">Edit Budget Item</h3>
-          <form v-if="editingItem" @submit.prevent="saveEdit" class="space-y-5">
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <label v-if="editingItem._type === 'income'" class="form-control w-full">
-                <span class="label-text text-sm">Type</span>
-                <select v-model="editForm.income_type" class="select select-bordered w-full">
-                  <option value="gross">Income</option>
-                  <option value="deduction">Insurance</option>
-                  <option value="tax">Tax</option>
-                  <option value="interest">Interest</option>
-                  <option value="other">Other</option>
-                </select>
-              </label>
-              <label v-else-if="editingItem._type === 'expense'" class="form-control w-full">
-                <span class="label-text text-sm">Type</span>
-                <select v-model="editForm.expense_type" class="select select-bordered w-full">
-                  <option value="expense">Expense</option>
-                  <option value="savings">Savings</option>
-                  <option value="investment">Investments</option>
-                </select>
-              </label>
-              <label class="form-control w-full">
-                <span class="label-text text-sm">Category</span>
-                <input
-                  v-model.trim="editForm.category"
-                  class="input input-bordered w-full"
-                  type="text"
-                  required
-                />
-              </label>
-            </div>
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <label class="form-control w-full">
-                <span class="label-text text-sm">Sub-category</span>
-                <input
-                  v-model.trim="editForm.sub_category"
-                  class="input input-bordered w-full"
-                  type="text"
-                />
-              </label>
-              <label v-if="editingItem._type !== 'expense' || (editForm.expense_type !== 'savings' && editForm.expense_type !== 'investment')" class="form-control w-full">
-                <span class="label-text text-sm">Description</span>
-                <input
-                  v-model.trim="editForm.description"
-                  class="input input-bordered w-full"
-                  type="text"
-                />
-              </label>
-              <label
-                v-if="editingItem._type === 'expense' && editForm.expense_type === 'expense'"
-                class="form-control w-full md:col-span-2"
-              >
-                <span class="label-text text-sm">
-                  Estate Management debt
-                  <span v-if="editNeedsDebtLink" class="text-error">*</span>
-                </span>
-                <select
-                  v-model="editForm.debt_id"
-                  class="select select-bordered w-full"
-                  :required="editNeedsDebtLink"
-                >
-                  <option value="">
-                    {{ debtRecords.length ? "Select debt record…" : "No debt records — add in Estate Management" }}
-                  </option>
-                  <option v-for="row in debtRecords" :key="`edit-debt-${row.dbt_id}`" :value="String(row.dbt_id)">
-                    {{ formatDebtRecordLabel(row) }}
-                  </option>
-                </select>
-              </label>
-              <template v-else>
-                <label class="form-control w-full">
-                  <span class="label-text text-sm">From Account</span>
-                  <select v-model="editForm.from_cash_investment_id" class="select select-bordered w-full">
-                    <option value="">None</option>
-                    <option v-for="acct in cashAccounts" :key="`edit-from-${acct.ci_id}`" :value="String(acct.ci_id)">
-                      {{ [acct.institution, acct.acct_type].filter(Boolean).join(" — ") || `Account #${acct.ci_id}` }}
-                    </option>
-                  </select>
-                </label>
-                <label class="form-control w-full">
-                  <span class="label-text text-sm">To Account</span>
-                  <select v-model="editForm.cash_investment_id" class="select select-bordered w-full">
-                    <option value="">None</option>
-                    <option v-for="acct in cashAccounts" :key="`edit-to-${acct.ci_id}`" :value="String(acct.ci_id)">
-                      {{ [acct.institution, acct.acct_type].filter(Boolean).join(" — ") || `Account #${acct.ci_id}` }}
-                    </option>
-                  </select>
-                </label>
-              </template>
-            </div>
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <label class="form-control w-full">
-                <span class="label-text text-sm">Monthly Amount</span>
-                <input
-                  v-model.number="editForm.monthly_amount"
-                  class="input input-bordered w-full"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  @input="syncEditAnnualFromMonthly"
-                />
-              </label>
-              <label class="form-control w-full">
-                <span class="label-text text-sm">Annual Total</span>
-                <input
-                  v-model.number="editForm.annual_amount"
-                  class="input input-bordered w-full"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  @input="syncEditMonthlyFromAnnual"
-                />
-              </label>
-            </div>
-            <div v-if="editError" class="text-sm text-error">{{ editError }}</div>
-            <div class="modal-action flex-wrap gap-2 mt-2">
-              <button type="button" class="btn btn-ghost" @click="editDialogRef?.close()">Cancel</button>
-              <button type="submit" class="btn btn-primary" :disabled="saving">
-                {{ saving ? "Saving..." : "Save" }}
-              </button>
-            </div>
-          </form>
-        </div>
-        <form method="dialog" class="modal-backdrop">
-          <button>close</button>
-        </form>
-      </dialog>
+      <!-- Edit Budget Item modal -->
+      <LazyEditBudgetItemModal
+        v-if="modalsMounted.editBudget"
+        ref="editBudgetModalRef"
+        @saved="loadBudgets"
+      />
 
       <!-- Delete Confirm Modal -->
       <dialog ref="deleteDialogRef" class="modal">
@@ -1123,130 +791,48 @@
 
 <script setup>
 import { EllipsisVerticalIcon } from "@heroicons/vue/20/solid";
-import {
-  budgetExpenseNeedsDebtLink,
-  formatDebtRecordLabel,
-} from "~/utils/budgetDebt";
+import { formatDebtRecordLabel } from "~/utils/budgetDebt";
 import { isNetIncomeBudgetLine } from "~/utils/budgetChart";
-import {
-  buildGrossAllocatableLines,
-  computeNetFromGross,
-  findNetIncomeBudgetLine,
-  getPositiveGrossAllocations,
-  grossAllocationKey,
-  partitionSavingsInvestmentForGrossAlloc,
-  sumGrossAllocationAmounts,
-} from "~/utils/grossIncomeAllocation";
 
 const auth = useAuthStore();
-const addBudgetDialogRef = ref(null);
-const editDialogRef = ref(null);
+const addBudgetModalRef = ref(null);
+const editBudgetModalRef = ref(null);
 const deleteDialogRef = ref(null);
+const modalsMounted = reactive({ addBudget: false, editBudget: false });
+
+async function ensureModal(key) {
+  if (!modalsMounted[key]) {
+    modalsMounted[key] = true;
+    await nextTick();
+  }
+}
+
+async function openAddBudget(type) {
+  await ensureModal("addBudget");
+  addBudgetModalRef.value?.open(type);
+}
+
+async function openEdit(item, type) {
+  await ensureModal("editBudget");
+  editBudgetModalRef.value?.open(item, type);
+}
 const budgets = ref({ income: [], expenses: [] });
+const activeBudgetName = ref("");
+const setupTaxYear = ref(new Date().getFullYear());
+const setupTaxAnnualGrandTotal = ref(null);
+const setupTaxAnnualTotals = ref([]);
 const loading = ref(true);
 const loadError = ref("");
-const submitting = ref(false);
-const saving = ref(false);
 const deleting = ref(false);
-const submitError = ref("");
-const editError = ref("");
-const editingItem = ref(null);
 const deletingItem = ref(null);
 
-const cashAccounts = ref([]);
 const debtRecords = ref([]);
-
-const grossAllocationAmounts = ref({});
-
-const form = ref({
-  type: "income",
-  category: "",
-  sub_category: "",
-  description: "",
-  debt_id: "",
-  from_cash_investment_id: "",
-  cash_investment_id: "",
-  monthly_amount: null,
-  annual_amount: null,
-});
-
-const editForm = ref({
-  income_type: "gross",
-  expense_type: "expense",
-  category: "",
-  sub_category: "",
-  description: "",
-  debt_id: "",
-  from_cash_investment_id: "",
-  cash_investment_id: "",
-  monthly_amount: null,
-  annual_amount: null,
-});
-
-const addNeedsDebtLink = computed(() =>
-  form.value.type === "expense" &&
-  budgetExpenseNeedsDebtLink(form.value.category, form.value.sub_category, form.value.description),
-);
-
-const editNeedsDebtLink = computed(() => {
-  if (!editingItem.value || editingItem.value._type !== "expense") return false;
-  if (editForm.value.expense_type !== "expense") return false;
-  return budgetExpenseNeedsDebtLink(
-    editForm.value.category,
-    editForm.value.sub_category,
-    editForm.value.description,
-  );
-});
 
 function debtLabelForBudgetItem(item) {
   if (!item?.debt_id) return null;
   const row = debtRecords.value.find((r) => String(r.dbt_id) === String(item.debt_id));
   return row ? formatDebtRecordLabel(row) : null;
 }
-
-/** Add-form Type dropdown: maps to income (gross/tax/deduction) or expense rows on submit */
-const budgetTypeOptions = [
-  { value: "expense", label: "Expense" },
-  { value: "income", label: "Income" },
-  { value: "insurance", label: "Insurance" },
-  { value: "investment", label: "Investments" },
-  { value: "savings", label: "Savings" },
-  { value: "tax", label: "Tax" },
-];
-
-const addBudgetModalTitle = computed(() => {
-  const opt = budgetTypeOptions.find((o) => o.value === form.value.type);
-  if (form.value.type === "income") return "Add Gross Income";
-  return opt ? `Add ${opt.label}` : "Add Budget Item";
-});
-
-function isIncomeBudgetFormType(t) {
-  return t === "income" || t === "tax" || t === "insurance";
-}
-
-function incomeTypeForBudgetFormType(t) {
-  if (t === "income") return "gross";
-  if (t === "tax") return "tax";
-  if (t === "insurance") return "deduction";
-  return undefined;
-}
-
-const addCategoryPlaceholder = computed(() => {
-  switch (form.value.type) {
-    case "tax":
-      return "e.g. Federal, State, FICA";
-    case "insurance":
-      return "e.g. Health, Dental, Life";
-    case "expense":
-      return "e.g. Housing, Transportation";
-    case "savings":
-      return "e.g. Emergency Fund, Vacation";
-    case "investment":
-      return "e.g. Brokerage, IRA";
-    default:
-      return "e.g. Salary, Wages";
-  }
-});
 
 const incomeByType = computed(() => {
   const income = budgets.value.income ?? [];
@@ -1407,70 +993,9 @@ const investmentsBudgetTotals = computed(() => {
   };
 });
 
-const grossAllocExpensePartition = computed(() =>
-  partitionSavingsInvestmentForGrossAlloc(
-    savingsGroupedByCategory.value,
-    investmentsGroupedByCategory.value,
-  ),
-);
-
-const grossIncomeAllocatableLines = computed(() =>
-  buildGrossAllocatableLines(
-    taxGroupedByCategory.value,
-    insuranceGroupedByCategory.value,
-    grossAllocExpensePartition.value.retirementGroups,
-    [],
-    grossAllocExpensePartition.value.investmentGroups,
-  ).map((line) => ({
-    ...line,
-    key: grossAllocationKey(line.kind, line.id),
-  })),
-);
-
-const grossAllocTaxLines = computed(() => grossIncomeAllocatableLines.value.filter((l) => l.kind === "tax"));
-const grossAllocInsuranceLines = computed(() => grossIncomeAllocatableLines.value.filter((l) => l.kind === "insurance"));
-const grossAllocRetirementLines = computed(() => grossIncomeAllocatableLines.value.filter((l) => l.kind === "retirement"));
-const grossAllocInvestmentLines = computed(() =>
-  grossIncomeAllocatableLines.value.filter((l) => l.kind === "investment"),
-);
-
-const grossIncomeAllocatedTotal = computed(() => sumGrossAllocationAmounts(grossAllocationAmounts.value));
-
-const grossIncomeNetMonthly = computed(() =>
-  computeNetFromGross(form.value.monthly_amount, grossIncomeAllocatedTotal.value),
-);
-
 function formatAmount(val) {
   if (val == null || val === "" || isNaN(val)) return "0.00";
   return Number(val).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function syncAnnualFromMonthly() {
-  const m = form.value.monthly_amount;
-  if (m != null && !isNaN(m)) {
-    form.value.annual_amount = Math.round(m * 12 * 100) / 100;
-  }
-}
-
-function syncMonthlyFromAnnual() {
-  const a = form.value.annual_amount;
-  if (a != null && !isNaN(a)) {
-    form.value.monthly_amount = Math.round((a / 12) * 100) / 100;
-  }
-}
-
-function syncEditAnnualFromMonthly() {
-  const m = editForm.value.monthly_amount;
-  if (m != null && !isNaN(m)) {
-    editForm.value.annual_amount = Math.round(m * 12 * 100) / 100;
-  }
-}
-
-function syncEditMonthlyFromAnnual() {
-  const a = editForm.value.annual_amount;
-  if (a != null && !isNaN(a)) {
-    editForm.value.monthly_amount = Math.round((a / 12) * 100) / 100;
-  }
 }
 
 async function loadBudgets() {
@@ -1480,12 +1005,19 @@ async function loadBudgets() {
   try {
     const budgetData = await $fetch("/api/budget/list");
     budgets.value = { income: budgetData.income ?? [], expenses: budgetData.expenses ?? [] };
+    activeBudgetName.value = budgetData.budget?.name || "";
+    try {
+      const taxTotals = await $fetch("/api/budget/tax-annual-totals", {
+        query: { year: setupTaxYear.value },
+      });
+      setupTaxAnnualTotals.value = taxTotals?.totals ?? [];
+      setupTaxAnnualGrandTotal.value = Number(taxTotals?.grand_total) || 0;
+    } catch {
+      setupTaxAnnualTotals.value = [];
+      setupTaxAnnualGrandTotal.value = null;
+    }
 
-    const [cashData, debtData] = await Promise.all([
-      $fetch("/api/records/cash-and-investments").catch(() => ({ records: [] })),
-      $fetch("/api/records/debt").then((d) => d?.records ?? []).catch(() => []),
-    ]);
-    cashAccounts.value = cashData?.records ?? [];
+    const debtData = await $fetch("/api/records/debt").then((d) => d?.records ?? []).catch(() => []);
     debtRecords.value = Array.isArray(debtData) ? debtData : [];
   } catch (err) {
     console.error("Failed to load budgets", err);
@@ -1494,205 +1026,9 @@ async function loadBudgets() {
       "Failed to load budget. If you recently updated the app, run: npm run migrate",
     );
     budgets.value = { income: [], expenses: [] };
-    cashAccounts.value = [];
     debtRecords.value = [];
   } finally {
     loading.value = false;
-  }
-}
-
-async function submitBudget() {
-  submitError.value = "";
-  let monthly = form.value.monthly_amount;
-  let annual = form.value.annual_amount;
-  if ((monthly == null || isNaN(monthly)) && (annual == null || isNaN(annual))) {
-    submitError.value = "Enter a monthly or annual amount.";
-    return;
-  }
-  if (form.value.type === "income") {
-    if (grossIncomeNetMonthly.value < 0) {
-      submitError.value = "Allocations cannot exceed gross income.";
-      return;
-    }
-  }
-  if (
-    form.value.type === "expense" &&
-    addNeedsDebtLink.value &&
-    !form.value.debt_id
-  ) {
-    submitError.value = "Select the Estate Management debt record for this expense line.";
-    return;
-  }
-
-  submitting.value = true;
-  try {
-    if (form.value.type === "income") {
-      const allocations = getPositiveGrossAllocations(grossAllocationAmounts.value);
-      for (const alloc of allocations) {
-        const allocAnnual = Math.round(alloc.amount * 12 * 100) / 100;
-        if (alloc.kind === "tax" || alloc.kind === "insurance") {
-          await $fetch(`/api/budget/income/${alloc.id}`, {
-            method: "PUT",
-            body: { monthly_amount: alloc.amount, annual_amount: allocAnnual },
-          });
-        } else {
-          await $fetch(`/api/budget/expenses/${alloc.id}`, {
-            method: "PUT",
-            body: { monthly_amount: alloc.amount, annual_amount: allocAnnual },
-          });
-        }
-      }
-    }
-
-    await $fetch("/api/budget/submit", {
-      method: "POST",
-      body: {
-        type: isIncomeBudgetFormType(form.value.type) ? "income" : "expense",
-        income_type: incomeTypeForBudgetFormType(form.value.type),
-        expense_type:
-          form.value.type === "savings"
-            ? "savings"
-            : form.value.type === "investment"
-              ? "investment"
-              : form.value.type === "expense"
-                ? "expense"
-                : undefined,
-        category: form.value.category,
-        sub_category: form.value.sub_category || null,
-        description: form.value.type === "savings" || form.value.type === "investment" ? null : form.value.description || null,
-        cash_investment_id: (form.value.type === "savings" || form.value.type === "investment") && form.value.cash_investment_id ? parseInt(String(form.value.cash_investment_id), 10) : null,
-        from_cash_investment_id:
-          (form.value.type === "savings" || form.value.type === "investment") && form.value.from_cash_investment_id
-            ? parseInt(String(form.value.from_cash_investment_id), 10)
-            : null,
-        debt_id:
-          form.value.type === "expense" && form.value.debt_id
-            ? parseInt(String(form.value.debt_id), 10)
-            : null,
-        monthly_amount: monthly != null && !isNaN(monthly) ? monthly : null,
-        annual_amount: annual != null && !isNaN(annual) ? annual : null,
-      },
-    });
-
-    if (form.value.type === "income") {
-      const netMonthly = grossIncomeNetMonthly.value;
-      const netLine = findNetIncomeBudgetLine(budgets.value.income, {
-        category: form.value.category,
-      });
-      if (netLine?.id != null && netMonthly >= 0) {
-        const netAnnual = Math.round(netMonthly * 12 * 100) / 100;
-        await $fetch(`/api/budget/income/${netLine.id}`, {
-          method: "PUT",
-          body: { monthly_amount: netMonthly, annual_amount: netAnnual },
-        });
-      }
-    }
-
-    grossAllocationAmounts.value = {};
-    form.value = {
-      type: form.value.type,
-      category: "",
-      sub_category: "",
-      description: "",
-      debt_id: "",
-      from_cash_investment_id: "",
-      cash_investment_id: "",
-      monthly_amount: null,
-      annual_amount: null,
-    };
-    await loadBudgets();
-    addBudgetDialogRef.value?.close();
-  } catch (err) {
-    submitError.value = err?.data?.message || err?.message || "Failed to add budget.";
-  } finally {
-    submitting.value = false;
-  }
-}
-
-function openAddBudgetModal(type) {
-  submitError.value = "";
-  grossAllocationAmounts.value = {};
-  if (typeof type === "string" && type.length > 0) {
-    form.value.type = type;
-  }
-  nextTick(() => addBudgetDialogRef.value?.showModal());
-}
-
-function openEdit(item, type) {
-  editingItem.value = { ...item, _type: type };
-  editForm.value = {
-    income_type: ["gross", "tax", "deduction", "interest", "other"].includes(item.income_type)
-      ? item.income_type
-      : "gross",
-    expense_type: item.expense_type || "expense",
-    category: item.category,
-    sub_category: item.sub_category || "",
-    description: item.description || "",
-    debt_id: item.debt_id ? String(item.debt_id) : "",
-    from_cash_investment_id: item.from_cash_investment_id ? String(item.from_cash_investment_id) : "",
-    cash_investment_id: item.cash_investment_id ? String(item.cash_investment_id) : "",
-    monthly_amount: item.monthly_amount,
-    annual_amount: item.annual_amount,
-  };
-  editError.value = "";
-  nextTick(() => editDialogRef.value?.showModal());
-}
-
-async function saveEdit() {
-  editError.value = "";
-  const item = editingItem.value;
-  if (!item) return;
-
-  const monthly = editForm.value.monthly_amount;
-  const annual = editForm.value.annual_amount;
-  if ((monthly == null || isNaN(monthly)) && (annual == null || isNaN(annual))) {
-    editError.value = "Enter a monthly or annual amount.";
-    return;
-  }
-  if (item._type === "expense" && editNeedsDebtLink.value && !editForm.value.debt_id) {
-    editError.value = "Select the Estate Management debt record for this expense line.";
-    return;
-  }
-
-  saving.value = true;
-  try {
-    const path = item._type === "income"
-      ? `/api/budget/income/${item.id}`
-      : `/api/budget/expenses/${item.id}`;
-    await $fetch(path, {
-      method: "PUT",
-      body: {
-        income_type: item._type === "income" ? editForm.value.income_type : undefined,
-        expense_type: item._type === "expense" ? editForm.value.expense_type : undefined,
-        category: editForm.value.category,
-        sub_category: editForm.value.sub_category || null,
-        description: (item._type !== "expense" || (editForm.value.expense_type !== "savings" && editForm.value.expense_type !== "investment")) ? editForm.value.description || null : null,
-        cash_investment_id: item._type === "expense" && (editForm.value.expense_type === "savings" || editForm.value.expense_type === "investment") && editForm.value.cash_investment_id ? parseInt(String(editForm.value.cash_investment_id), 10) : null,
-        from_cash_investment_id:
-          item._type === "expense" && (editForm.value.expense_type === "savings" || editForm.value.expense_type === "investment")
-            ? editForm.value.from_cash_investment_id
-              ? parseInt(String(editForm.value.from_cash_investment_id), 10)
-              : null
-            : null,
-        debt_id:
-          item._type === "expense"
-            ? editForm.value.expense_type === "expense"
-              ? editForm.value.debt_id
-                ? parseInt(String(editForm.value.debt_id), 10)
-                : null
-              : null
-            : undefined,
-        monthly_amount: monthly != null && !isNaN(monthly) ? monthly : null,
-        annual_amount: annual != null && !isNaN(annual) ? annual : null,
-      },
-    });
-    editDialogRef.value?.close();
-    editingItem.value = null;
-    await loadBudgets();
-  } catch (err) {
-    editError.value = err?.data?.message || err?.message || "Failed to update budget.";
-  } finally {
-    saving.value = false;
   }
 }
 

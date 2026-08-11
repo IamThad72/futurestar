@@ -36,10 +36,11 @@ export default defineEventHandler(async (event) => {
     await client.connect();
     const groupId = await getUserGroupId(client, userId);
 
-    await client.query(
+    const inserted = await client.query(
       `INSERT INTO debt
         (institution, loan_number, loan_type, customer_support_no, address_url, borrower, loan_ammount, linked_asset_type, linked_asset_id, user_id, group_id, is_revolving, interest_rate_annual, term_months, scheduled_monthly_payment, loan_start_date)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, COALESCE($12, TRUE), $13, $14, $15, $16::date)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, COALESCE($12, TRUE), $13, $14, $15, $16::date)
+       RETURNING dbt_id`,
       [
         institution,
         loanNumber,
@@ -60,7 +61,7 @@ export default defineEventHandler(async (event) => {
       ],
     );
 
-    return { success: true };
+    return { success: true, type: "debt", id: Number(inserted.rows[0].dbt_id) };
   } catch (error) {
     if (error?.statusCode) {
       throw error;

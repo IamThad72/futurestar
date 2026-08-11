@@ -37,10 +37,11 @@ export default defineEventHandler(async (event) => {
     const groupId = await getUserGroupId(client, userId);
 
     if (assetCategory === "Asset") {
-      await client.query(
+      const inserted = await client.query(
         `INSERT INTO asset_inventory
           (user_id, group_id, asset_classification, title, description, value, location)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING ai_id`,
         [
           userId,
           groupId,
@@ -51,6 +52,24 @@ export default defineEventHandler(async (event) => {
           location || null,
         ],
       );
+
+      await client.query(
+        `INSERT INTO estate_entries
+          (user_id, group_id, asset_category, classification_type, title, description, value, location)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          userId,
+          groupId,
+          assetCategory,
+          classificationType,
+          title || null,
+          description || null,
+          value || null,
+          location || null,
+        ],
+      );
+
+      return { success: true, type: "asset_inventory", id: Number(inserted.rows[0].ai_id) };
     }
 
     await client.query(

@@ -1,10 +1,12 @@
-import { createError } from "h3";
+import { createError, getQuery } from "h3";
 import { createDbClient } from "../../utils/db";
 import { getSessionUserId } from "../../utils/auth";
 import { getUserGroupId, groupAccessClause, soloUserClause } from "../../utils/group";
+import { getActiveBudget, getBudgetForPeriod, resolveBudgetId } from "../../utils/budgetAccess";
 
 export default defineEventHandler(async (event) => {
   const userId = await getSessionUserId(event);
+  const query = getQuery(event);
 
   const client = createDbClient();
 
@@ -25,13 +27,46 @@ export default defineEventHandler(async (event) => {
   try {
     await client.connect();
     const groupId = await getUserGroupId(client, userId);
-    const accessClause = groupId ? groupAccessClause() : soloUserClause();
-    const params = groupId ? [userId, groupId] : [userId];
+
+    const yearNum = query.year != null && query.year !== "" ? Number(query.year) : NaN;
+    const monthNum = query.month != null && query.month !== "" ? Number(query.month) : NaN;
+    const usePeriod =
+      Number.isFinite(yearNum) &&
+      yearNum >= 2000 &&
+      yearNum <= 2100 &&
+      Number.isFinite(monthNum) &&
+      monthNum >= 1 &&
+      monthNum <= 12;
+
+    let budget;
+    let is_override = false;
+    let is_inferred = false;
+    if (usePeriod) {
+      const period = await getBudgetForPeriod(
+        client,
+        userId,
+        groupId,
+        Math.trunc(yearNum),
+        Math.trunc(monthNum),
+      );
+      budget = period.budget;
+      is_override = period.is_override;
+      is_inferred = period.is_inferred;
+    } else {
+      budget = await resolveBudgetId(client, userId, groupId, query.budget_id);
+    }
+
+    const active = await getActiveBudget(client, userId, groupId);
+    const ownerAccess = groupId ? groupAccessClause() : soloUserClause();
+    const budgetParam = groupId ? "$3" : "$2";
+    const accessClause = `${ownerAccess} AND budget_id = ${budgetParam}`;
+    const params = groupId ? [userId, groupId, budget.budget_id] : [userId, budget.budget_id];
 
     const incomeResult = await client.query(
       `SELECT income_id as id, 'income' as type, COALESCE(income_type, 'gross') as income_type,
           income_category as category, sub_category,
           income_category_desc as description,
+          cash_investment_id,
           income_category_monthly_amt as monthly_amount,
           income_category_annual_amt as annual_amount,
           created_at
@@ -60,6 +95,10 @@ export default defineEventHandler(async (event) => {
     return {
       income: incomeResult.rows,
       expenses: expensesResult.rows,
+      budget,
+      is_override,
+      is_inferred,
+      active_budget_id: active.budget_id,
     };
   } catch (error) {
     if (error?.statusCode) {

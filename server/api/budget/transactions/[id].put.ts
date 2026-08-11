@@ -2,7 +2,10 @@ import { createError, readBody } from "h3";
 import { createDbClient } from "../../../utils/db";
 import { getSessionUserId } from "../../../utils/auth";
 import { getUserGroupId, groupAccessClause, groupAccessClauseAt, soloUserClauseAt } from "../../../utils/group";
+import { getBudgetForPeriod } from "../../../utils/budgetAccess";
 import { applyDebtPayment, reverseDebtPayment } from "../../../utils/debtPayment";
+import { applyFiscalTotalsForTransaction } from "../../../utils/fiscalAnnualTotals";
+import { adjustTaxAnnualTotalForClassification, yearFromDateString } from "../../../utils/taxAnnualTotals";
 
 function principalToRestore(row: Record<string, unknown>): number {
   const debtId = row.debt_id != null ? Number(row.debt_id) : null;
@@ -72,7 +75,8 @@ export default defineEventHandler(async (event) => {
     const budgetAccessParams = groupId ? [userId, groupId] : [userId];
 
     const existingRes = await client.query(
-      `SELECT debt_id, amount, principal_applied, expense_id, income_id
+      `SELECT debt_id, amount, principal_applied, expense_id, income_id, transaction_date,
+              item_type, category, sub_category
        FROM budget_transactions WHERE transaction_id = $1 AND ${accessClause}`,
       accessParams,
     );
@@ -89,6 +93,9 @@ export default defineEventHandler(async (event) => {
     let finalDebtId = oldDebtId != null && !isNaN(oldDebtId) && oldDebtId > 0 ? oldDebtId : null;
     let finalExpenseId = oldRow.expense_id != null ? Number(oldRow.expense_id) : null;
     let finalIncomeId = oldRow.income_id != null ? Number(oldRow.income_id) : null;
+    let finalItemType = oldRow.item_type != null ? String(oldRow.item_type) : null;
+    let finalCategory = oldRow.category != null ? String(oldRow.category) : null;
+    let finalSubCategory = oldRow.sub_category != null ? String(oldRow.sub_category) : null;
 
     let setClause = "transaction_date = $1::date, amount = $2, description = $3";
     const params: unknown[] = [dateStr, amount, description || null];
@@ -96,7 +103,8 @@ export default defineEventHandler(async (event) => {
 
     if (incomeId != null && expenseId == null) {
       const checkIncome = await client.query(
-        `SELECT 1 FROM income WHERE income_id = $1 AND ${budgetAccessClause}`,
+        `SELECT COALESCE(income_type, 'gross') as item_type, income_category as category, sub_category
+         FROM income WHERE income_id = $1 AND ${budgetAccessClause}`,
         [incomeId, ...budgetAccessParams],
       );
       if (checkIncome.rowCount === 0) {
@@ -105,15 +113,20 @@ export default defineEventHandler(async (event) => {
           statusMessage: "Invalid income budget item.",
         });
       }
-      setClause += `, income_id = $${paramIndex}, expense_id = NULL`;
-      params.push(incomeId);
-      paramIndex++;
+      const row = checkIncome.rows[0];
+      setClause += `, income_id = $${paramIndex}, expense_id = NULL, item_kind = 'income', item_type = $${paramIndex + 1}, category = $${paramIndex + 2}, sub_category = $${paramIndex + 3}`;
+      params.push(incomeId, row.item_type, row.category || "Uncategorized", row.sub_category ?? null);
+      paramIndex += 4;
       finalIncomeId = incomeId;
       finalExpenseId = null;
       finalDebtId = null;
+      finalItemType = row.item_type != null ? String(row.item_type) : null;
+      finalCategory = row.category != null ? String(row.category || "Uncategorized") : "Uncategorized";
+      finalSubCategory = row.sub_category != null ? String(row.sub_category) : null;
     } else if (expenseId != null && incomeId == null) {
       const checkExpense = await client.query(
-        `SELECT 1 FROM expenses WHERE expense_id = $1 AND ${budgetAccessClause}`,
+        `SELECT COALESCE(expense_type, 'expense') as item_type, expense_category as category, sub_category
+         FROM expenses WHERE expense_id = $1 AND ${budgetAccessClause}`,
         [expenseId, ...budgetAccessParams],
       );
       if (checkExpense.rowCount === 0) {
@@ -122,11 +135,15 @@ export default defineEventHandler(async (event) => {
           statusMessage: "Invalid expense budget item.",
         });
       }
-      setClause += `, income_id = NULL, expense_id = $${paramIndex}`;
-      params.push(expenseId);
-      paramIndex++;
+      const row = checkExpense.rows[0];
+      setClause += `, income_id = NULL, expense_id = $${paramIndex}, item_kind = 'expense', item_type = $${paramIndex + 1}, category = $${paramIndex + 2}, sub_category = $${paramIndex + 3}`;
+      params.push(expenseId, row.item_type, row.category || "Uncategorized", row.sub_category ?? null);
+      paramIndex += 4;
       finalExpenseId = expenseId;
       finalIncomeId = null;
+      finalItemType = row.item_type != null ? String(row.item_type) : null;
+      finalCategory = row.category != null ? String(row.category || "Uncategorized") : "Uncategorized";
+      finalSubCategory = row.sub_category != null ? String(row.sub_category) : null;
     } else if (incomeId != null && expenseId != null) {
       throw createError({
         statusCode: 400,
@@ -299,6 +316,87 @@ export default defineEventHandler(async (event) => {
         statusMessage: "Transaction not found.",
       });
     }
+
+    const oldItemType = String(oldRow.item_type || "").toLowerCase();
+    const newItemType = String(finalItemType || "").toLowerCase();
+    const oldWasTax = oldItemType === "tax";
+    const newIsTax = newItemType === "tax";
+    const oldDate =
+      oldRow.transaction_date instanceof Date
+        ? oldRow.transaction_date.toISOString().slice(0, 10)
+        : String(oldRow.transaction_date || "");
+    const oldAmount =
+      oldRow.amount != null && !isNaN(Number(oldRow.amount)) ? Math.abs(Number(oldRow.amount)) : 0;
+    const newAmount = amount != null && !isNaN(amount) ? Math.abs(amount) : 0;
+    const oldCategory = oldRow.category != null ? String(oldRow.category) : null;
+    const oldSubCategory = oldRow.sub_category != null ? String(oldRow.sub_category) : null;
+    const oldItemKind =
+      oldRow.income_id != null && Number(oldRow.income_id) > 0 ? "income" : "expense";
+    const newItemKind = finalIncomeId != null && finalIncomeId > 0 ? "income" : "expense";
+
+    const oldMatch = /^(\d{4})-(\d{2})/.exec(oldDate);
+    const oldYear = oldMatch ? Number(oldMatch[1]) : new Date(oldDate).getFullYear();
+    const oldMonth = oldMatch ? Number(oldMatch[2]) : new Date(oldDate).getMonth() + 1;
+    const { budget: oldBudget } = await getBudgetForPeriod(client, userId, groupId, oldYear, oldMonth);
+
+    const newMatch = /^(\d{4})-(\d{2})/.exec(dateStr);
+    const newYear = newMatch ? Number(newMatch[1]) : new Date(dateStr).getFullYear();
+    const newMonth = newMatch ? Number(newMatch[2]) : new Date(dateStr).getMonth() + 1;
+    const { budget: newBudget } = await getBudgetForPeriod(client, userId, groupId, newYear, newMonth);
+
+    if (oldWasTax) {
+      await adjustTaxAnnualTotalForClassification(
+        client,
+        oldBudget.budget_id,
+        userId,
+        groupId,
+        yearFromDateString(oldDate),
+        oldCategory,
+        oldSubCategory,
+        -oldAmount,
+      );
+    }
+    if (newIsTax) {
+      await adjustTaxAnnualTotalForClassification(
+        client,
+        newBudget.budget_id,
+        userId,
+        groupId,
+        yearFromDateString(dateStr),
+        finalCategory,
+        finalSubCategory,
+        newAmount,
+      );
+    }
+
+    await applyFiscalTotalsForTransaction(
+      client,
+      oldBudget.budget_id,
+      userId,
+      groupId,
+      yearFromDateString(oldDate),
+      {
+        itemKind: oldItemKind,
+        itemType: oldItemType,
+        category: oldCategory,
+        subCategory: oldSubCategory,
+        signedAmount: -oldAmount,
+      },
+    );
+    await applyFiscalTotalsForTransaction(
+      client,
+      newBudget.budget_id,
+      userId,
+      groupId,
+      yearFromDateString(dateStr),
+      {
+        itemKind: newItemKind,
+        itemType: newItemType,
+        category: finalCategory,
+        subCategory: finalSubCategory,
+        signedAmount: newAmount,
+      },
+    );
 
     return { success: true };
   } catch (error) {

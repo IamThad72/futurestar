@@ -21,9 +21,9 @@
         v-for="{ item, view } in displayItems"
         :key="String(item[itemKey])"
         button
-        detail
+        :detail="!showEditButton"
         class="estate-record-list__item"
-        @click="$emit('edit', item)"
+        @click="onRowClick(item)"
       >
         <ion-label>
           <h2 class="estate-record-list__title">
@@ -59,13 +59,22 @@
             <span v-else :class="['estate-record-list__line-value', line.valueClass]">{{ line.value }}</span>
           </p>
         </ion-label>
-        <ion-note
-          v-if="view.note"
-          slot="end"
-          :class="['estate-record-list__note', view.noteClass]"
-        >
-          {{ view.note }}
-        </ion-note>
+        <div v-if="showEditButton || view.note" slot="end" class="estate-record-list__end">
+          <ion-note
+            v-if="view.note"
+            :class="['estate-record-list__note', view.noteClass]"
+          >
+            {{ view.note }}
+          </ion-note>
+          <button
+            v-if="showEditButton"
+            type="button"
+            class="estate-record-list__edit-btn"
+            @click.stop="$emit('edit', item)"
+          >
+            Edit
+          </button>
+        </div>
       </ion-item>
     </ion-list>
 
@@ -84,9 +93,13 @@ const props = defineProps({
   sortState: { type: Object, default: () => ({ key: "", dir: "asc" }) },
   mapRow: { type: Function, required: true },
   emptyText: { type: String, default: "No records" },
+  /** Primary row click emit: "edit" (default) or "select" */
+  clickEmits: { type: String, default: "edit" },
+  /** Show a secondary Edit control when primary click is select/navigation */
+  showEditButton: { type: Boolean, default: false },
 });
 
-defineEmits(["edit", "sort"]);
+const emit = defineEmits(["edit", "select", "sort"]);
 
 const displayItems = computed(() =>
   props.items.map((item) => ({
@@ -94,6 +107,14 @@ const displayItems = computed(() =>
     view: props.mapRow(item) ?? { title: "—", lines: [] },
   })),
 );
+
+function onRowClick(item) {
+  if (props.clickEmits === "select") {
+    emit("select", item);
+    return;
+  }
+  emit("edit", item);
+}
 </script>
 
 <style scoped>
@@ -278,13 +299,37 @@ const displayItems = computed(() =>
   font-weight: 600;
 }
 
+.estate-record-list__end {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-inline-start: 0.75rem;
+}
+
 .estate-record-list__note {
   align-self: center;
   font-size: 0.875rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--color-base-content, #151616);
-  padding-inline-start: 0.75rem;
+}
+
+.estate-record-list__edit-btn {
+  border: 1px solid color-mix(in srgb, var(--color-base-content, #151616) 18%, transparent);
+  border-radius: 9999px;
+  background: var(--color-base-100, #fbffff);
+  color: var(--color-base-content, #151616);
+  padding: 0.2rem 0.55rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.estate-record-list__edit-btn:hover {
+  border-color: var(--color-primary, #1e3a8a);
+  color: var(--color-primary, #1e3a8a);
 }
 
 .estate-record-list__note--over {

@@ -2,7 +2,16 @@
   <section>
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div class="flex flex-wrap items-center justify-between gap-2 md:gap-3">
-        <h2 class="text-sm font-semibold text-gray-900 md:text-base dark:text-white">{{ title }}</h2>
+        <h2 class="text-sm font-semibold text-gray-900 md:text-base dark:text-white">
+          <NuxtLink
+            v-if="titleTo"
+            :to="titleTo"
+            class="hover:text-primary underline-offset-2 hover:underline"
+          >
+            {{ title }}
+          </NuxtLink>
+          <template v-else>{{ title }}</template>
+        </h2>
         <div class="flex items-center gap-2 md:gap-3">
           <span v-if="total || $slots.total" class="text-xs font-semibold tabular-nums text-gray-900 md:text-sm dark:text-white">
             <slot name="total">{{ total }}</slot>
@@ -37,6 +46,8 @@ defineProps({
   title: { type: String, required: true },
   total: { type: String, default: "" },
   showAdd: { type: Boolean, default: true },
+  /** When set, section title links to this route */
+  titleTo: { type: String, default: "" },
   /** Tighter gap between heading and content (e.g. Budget Tracker tables) */
   compact: { type: Boolean, default: false },
 });

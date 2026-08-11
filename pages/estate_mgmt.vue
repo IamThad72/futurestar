@@ -64,18 +64,26 @@
             :sort-state="sortState.assetInventory"
             :map-row="mapAssetInventoryRow"
             @sort="setSort('assetInventory', $event)"
-            @edit="openEditModal('asset_inventory', $event)"
+            @edit="openEditModal('asset', $event)"
           />
         </EstateSection>
-        <EstateSection title="Asset Vehicles" :total="formatMoney(totalAssetVehicles)" @add="openAddModal('vehicle')">
+        <EstateSection
+          title="Asset Vehicles"
+          title-to="/garage"
+          :total="formatMoney(totalAssetVehicles)"
+          @add="openAddModal('vehicle')"
+        >
           <EstateRecordList
             :items="sortedAssetVehicles"
             item-key="vh_id"
             :columns="assetVehicleColumns"
             :sort-state="sortState.assetVehicles"
             :map-row="mapAssetVehicleRow"
+            click-emits="select"
+            show-edit-button
             @sort="setSort('assetVehicles', $event)"
-            @edit="openEditModal('asset_vehicles', $event)"
+            @select="openVehicleGarage"
+            @edit="openEditModal('vehicle', $event)"
           />
         </EstateSection>
         <EstateSection title="Cash and Investments" :total="formatMoney(totalCashAndInvestments)" @add="openAddModal('cash')">
@@ -86,7 +94,7 @@
             :sort-state="sortState.cashAndInvestments"
             :map-row="mapCashRow"
             @sort="setSort('cashAndInvestments', $event)"
-            @edit="openEditModal('cash_and_investments', $event)"
+            @edit="openEditModal('cash', $event)"
           />
         </EstateSection>
         <EstateSection title="Debt" :total="formatMoney(totalDebtTable)" @add="openAddModal('debt')">
@@ -125,317 +133,18 @@
       </div>
     </template>
 
-    <!-- Add Record Modal -->
-    <dialog ref="addModalRef" class="modal" @close="addModalType = null">
-      <div class="modal-box w-[calc(100%-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto overscroll-contain sm:w-full">
-        <h3 class="text-lg font-bold">{{ addModalTitle }}</h3>
+    <LazyAddEstateRecordModal
+      v-if="modalsMounted.addEstate"
+      ref="addEstateModalRef"
+      @saved="loadSummary"
+    />
 
-        <!-- Add Asset -->
-        <form v-if="addModalType === 'asset'" class="mt-4 space-y-3" @submit.prevent="submitAddAsset">
-          <label class="form-control w-full"><span class="label-text text-sm">Classification</span>
-            <select class="select select-bordered select-sm w-full" v-model="addAssetForm.classification_type" required>
-              <option disabled value="">Select classification...</option>
-              <option v-for="c in addAssetClassifications" :key="c" :value="c">{{ c }}</option>
-            </select>
-          </label>
-          <label class="form-control w-full"><span class="label-text text-sm">Title</span><input v-model.trim="addAssetForm.title" class="input input-bordered input-sm w-full" required /></label>
-          <label class="form-control w-full"><span class="label-text text-sm">Value</span><input v-model.number="addAssetForm.value" class="input input-bordered input-sm w-full" type="number" step="0.01" min="0" required /></label>
-          <label class="form-control w-full"><span class="label-text text-sm">Description</span><textarea v-model.trim="addAssetForm.description" class="textarea textarea-bordered textarea-sm w-full" rows="2" required /></label>
-          <label class="form-control w-full"><span class="label-text text-sm">Location</span><input v-model.trim="addAssetForm.location" class="input input-bordered input-sm w-full" /></label>
-          <div v-if="addError" class="text-sm text-error">{{ addError }}</div>
-          <div class="modal-action">
-            <button type="button" class="btn btn-ghost btn-sm min-h-9" @click="addModalRef?.close()">Cancel</button>
-            <button type="submit" class="btn btn-primary btn-sm min-h-9" :disabled="addSaving">{{ addSaving ? 'Saving...' : 'Save' }}</button>
-          </div>
-        </form>
-
-        <!-- Add Real Estate -->
-        <form v-else-if="addModalType === 'real_estate'" class="mt-4 space-y-3" @submit.prevent="submitAddRealEstate">
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label class="form-control"><span class="label-text text-sm">Number</span><input v-model.trim="addRealEstateForm.number" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control"><span class="label-text text-sm">Street</span><input v-model.trim="addRealEstateForm.street" class="input input-bordered input-sm w-full" required /></label>
-          </div>
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <label class="form-control"><span class="label-text text-sm">City</span><input v-model.trim="addRealEstateForm.city" class="input input-bordered input-sm w-full" required /></label>
-            <label class="form-control"><span class="label-text text-sm">State</span><input v-model.trim="addRealEstateForm.state" class="input input-bordered input-sm w-full" required /></label>
-            <label class="form-control"><span class="label-text text-sm">Zipcode</span><input v-model.trim="addRealEstateForm.zipcode" class="input input-bordered input-sm w-full" required /></label>
-          </div>
-          <label class="form-control"><span class="label-text text-sm">Value</span><input v-model.number="addRealEstateForm.value" class="input input-bordered input-sm w-full" type="number" step="0.01" min="0" required /></label>
-          <label class="form-control"><span class="label-text text-sm">Trust (Y/N)</span><select v-model="addRealEstateForm.trust_designated" class="select select-bordered select-sm w-full" required><option value="">Select...</option><option value="Y">Y</option><option value="N">N</option></select></label>
-          <div v-if="addError" class="text-sm text-error">{{ addError }}</div>
-          <div class="modal-action">
-            <button type="button" class="btn btn-ghost btn-sm min-h-9" @click="addModalRef?.close()">Cancel</button>
-            <button type="submit" class="btn btn-primary btn-sm min-h-9" :disabled="addSaving">{{ addSaving ? 'Saving...' : 'Save' }}</button>
-          </div>
-        </form>
-
-        <!-- Add Insurance -->
-        <form v-else-if="addModalType === 'insurance'" class="mt-4 space-y-3" @submit.prevent="submitAddInsurance">
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label class="form-control"><span class="label-text text-sm">Policy Holder</span><input v-model.trim="addInsuranceForm.policy_holder" class="input input-bordered input-sm w-full" required /></label>
-            <label class="form-control"><span class="label-text text-sm">Policy #</span><input v-model.trim="addInsuranceForm.polocy_number" class="input input-bordered input-sm w-full" /></label>
-          </div>
-          <label class="form-control"><span class="label-text text-sm">Entity Covered</span><input v-model.trim="addInsuranceForm.entity_covered" class="input input-bordered input-sm w-full" /></label>
-          <label class="form-control"><span class="label-text text-sm">Amount</span><input v-model="addInsuranceForm.policy_amt" class="input input-bordered input-sm w-full" type="number" step="0.01" min="0" /></label>
-          <label class="form-control"><span class="label-text text-sm">Intent</span><input v-model.trim="addInsuranceForm.intent" class="input input-bordered input-sm w-full" placeholder="e.g. Life, Auto, Home" /></label>
-          <label class="form-control"><span class="label-text text-sm">Institution URL</span><input v-model.trim="addInsuranceForm.institution_url" class="input input-bordered input-sm w-full" type="url" /></label>
-          <div v-if="addError" class="text-sm text-error">{{ addError }}</div>
-          <div class="modal-action">
-            <button type="button" class="btn btn-ghost btn-sm min-h-9" @click="addModalRef?.close()">Cancel</button>
-            <button type="submit" class="btn btn-primary btn-sm min-h-9" :disabled="addSaving">{{ addSaving ? 'Saving...' : 'Save' }}</button>
-          </div>
-        </form>
-
-        <!-- Add Debt -->
-        <form v-else-if="addModalType === 'debt'" class="mt-4 space-y-3" @submit.prevent="submitAddDebt">
-          <label class="form-control"><span class="label-text text-sm">Debt Type</span>
-            <select class="select select-bordered select-sm w-full" v-model="addDebtForm.loan_type">
-              <option value="">Select debt type...</option>
-              <option v-for="t in addDebtTypes" :key="t" :value="t">{{ t }}</option>
-            </select>
-          </label>
-          <label class="form-control"><span class="label-text text-sm">Debt structure</span>
-            <select v-model="addDebtForm.is_revolving" class="select select-bordered select-sm w-full">
-              <option :value="true">Revolving (credit card, line of credit)</option>
-              <option :value="false">Installment (mortgage, auto loan, etc.)</option>
-            </select>
-          </label>
-          <label class="form-control"><span class="label-text text-sm">Institution</span><input v-model.trim="addDebtForm.institution" class="input input-bordered input-sm w-full" required /></label>
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label class="form-control"><span class="label-text text-sm">Loan #</span><input v-model.trim="addDebtForm.loan_number" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control">
-              <span class="label-text text-sm">{{ addDebtForm.is_revolving ? "Current balance" : "Principal balance" }}</span>
-              <input v-model="addDebtForm.loan_ammount" class="input input-bordered input-sm w-full" type="number" step="0.01" min="0" />
-            </label>
-          </div>
-          <div
-            v-if="!addDebtForm.is_revolving"
-            class="grid grid-cols-1 gap-3 sm:grid-cols-2 rounded-lg border border-base-300 p-3"
-          >
-            <label class="form-control"><span class="label-text text-sm">Annual interest rate (%)</span><input v-model="addDebtForm.interest_rate_annual" class="input input-bordered input-sm w-full" type="number" step="0.001" min="0" placeholder="e.g. 6.5" /></label>
-            <label class="form-control"><span class="label-text text-sm">Term (months)</span><input v-model="addDebtForm.term_months" class="input input-bordered input-sm w-full" type="number" step="1" min="1" placeholder="e.g. 360" /></label>
-            <label class="form-control"><span class="label-text text-sm">Scheduled monthly payment</span><input v-model="addDebtForm.scheduled_monthly_payment" class="input input-bordered input-sm w-full" type="number" step="0.01" min="0" /></label>
-            <label class="form-control"><span class="label-text text-sm">Loan start date</span><input v-model="addDebtForm.loan_start_date" class="input input-bordered input-sm w-full" type="date" /></label>
-          </div>
-          <label class="form-control"><span class="label-text text-sm">Link to Asset</span>
-            <select class="select select-bordered select-sm w-full" v-model="addDebtForm.linked_asset">
-              <option value="">None (no link)</option>
-              <option v-for="a in linkedAssets" :key="a.type + ':' + a.id" :value="a.type + ':' + a.id">{{ a.label }}</option>
-            </select>
-          </label>
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label class="form-control"><span class="label-text text-sm">Borrower</span><input v-model.trim="addDebtForm.borrower" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control"><span class="label-text text-sm">Support #</span><input v-model.trim="addDebtForm.customer_support_no" class="input input-bordered input-sm w-full" /></label>
-          </div>
-          <label class="form-control"><span class="label-text text-sm">URL</span><input v-model.trim="addDebtForm.address_url" class="input input-bordered input-sm w-full" type="url" /></label>
-          <div v-if="addError" class="text-sm text-error">{{ addError }}</div>
-          <div class="modal-action">
-            <button type="button" class="btn btn-ghost btn-sm min-h-9" @click="addModalRef?.close()">Cancel</button>
-            <button type="submit" class="btn btn-primary btn-sm min-h-9" :disabled="addSaving">{{ addSaving ? 'Saving...' : 'Save' }}</button>
-          </div>
-        </form>
-
-        <!-- Add Cash/Investment -->
-        <form v-else-if="addModalType === 'cash'" class="mt-4 space-y-3" @submit.prevent="submitAddCash">
-          <label class="form-control"><span class="label-text text-sm">Category</span>
-            <div class="flex gap-4">
-              <label class="label cursor-pointer gap-2">
-                <input type="radio" name="cash-category" value="Cash" v-model="addCashForm.asset_category" class="radio radio-sm" @change="onAddCashCategoryChange" />
-                <span class="label-text">Cash</span>
-              </label>
-              <label class="label cursor-pointer gap-2">
-                <input type="radio" name="cash-category" value="Investment" v-model="addCashForm.asset_category" class="radio radio-sm" @change="onAddCashCategoryChange" />
-                <span class="label-text">Investment</span>
-              </label>
-            </div>
-          </label>
-          <label class="form-control"><span class="label-text text-sm">Classification (Type)</span>
-            <select class="select select-bordered select-sm w-full" v-model="addCashForm.classification_type" required>
-              <option disabled value="">Select type...</option>
-              <option v-for="c in addCashClassifications" :key="c" :value="c">{{ c }}</option>
-            </select>
-          </label>
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label class="form-control"><span class="label-text text-sm">Institution</span><input v-model.trim="addCashForm.institution" class="input input-bordered input-sm w-full" required /></label>
-            <label class="form-control"><span class="label-text text-sm">Account #</span><input v-model.trim="addCashForm.account_number" class="input input-bordered input-sm w-full" required /></label>
-          </div>
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label class="form-control"><span class="label-text text-sm">Value</span><input v-model.number="addCashForm.value" class="input input-bordered input-sm w-full" type="number" step="0.01" min="0" required /></label>
-            <label class="form-control"><span class="label-text text-sm">Support #</span><input v-model.trim="addCashForm.account_support_number" class="input input-bordered input-sm w-full" required /></label>
-          </div>
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label class="form-control"><span class="label-text text-sm">Institution URL</span><input v-model.trim="addCashForm.institution_url" class="input input-bordered input-sm w-full" type="url" required /></label>
-            <label class="form-control"><span class="label-text text-sm">Account Holder</span><input v-model.trim="addCashForm.account_holder" class="input input-bordered input-sm w-full" required /></label>
-          </div>
-          <label class="form-control"><span class="label-text text-sm">Account Intent</span><input v-model.trim="addCashForm.account_intent" class="input input-bordered input-sm w-full" required /></label>
-          <label class="form-control"><span class="label-text text-sm">Trust (Y/N)</span><select v-model="addCashForm.trust_designated" class="select select-bordered select-sm w-full" required><option value="">Select...</option><option value="Y">Y</option><option value="N">N</option></select></label>
-          <div v-if="addError" class="text-sm text-error">{{ addError }}</div>
-          <div class="modal-action">
-            <button type="button" class="btn btn-ghost btn-sm min-h-9" @click="addModalRef?.close()">Cancel</button>
-            <button type="submit" class="btn btn-primary btn-sm min-h-9" :disabled="addSaving">{{ addSaving ? 'Saving...' : 'Save' }}</button>
-          </div>
-        </form>
-
-        <!-- Add Vehicle (same as Estate Management) -->
-        <form v-else-if="addModalType === 'vehicle'" class="mt-4 space-y-3" @submit.prevent="submitAddVehicle">
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <label class="form-control"><span class="label-text text-sm">Year</span>
-              <select class="select select-bordered select-sm w-full" v-model.number="addVehicleYear" required>
-                <option disabled value="">Select year...</option>
-                <option v-for="y in addVehicleYears" :key="y" :value="y">{{ y }}</option>
-              </select>
-            </label>
-            <label class="form-control"><span class="label-text text-sm">Make</span>
-              <input v-model.trim="addVehicleMakeFilter" class="input input-bordered input-sm w-full" type="text" placeholder="Filter makes..." />
-              <select class="select select-bordered select-sm w-full mt-1" v-model="addVehicleMake" :disabled="addVehicleMakesLoading || !addVehicleYear">
-                <option disabled value="">{{ addVehicleMakesLoading ? "Loading makes..." : "Select make..." }}</option>
-                <option v-for="m in filteredAddVehicleMakes" :key="m" :value="m">{{ m }}</option>
-              </select>
-            </label>
-            <label class="form-control"><span class="label-text text-sm">Type</span>
-              <select class="select select-bordered select-sm w-full" v-model="addVehicleType" :disabled="!addVehicleMake || addVehicleTypesLoading">
-                <option disabled value="">{{ addVehicleTypesLoading ? "Loading types..." : "Select type..." }}</option>
-                <option v-for="t in addVehicleTypes" :key="t" :value="t">{{ t }}</option>
-              </select>
-            </label>
-          </div>
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label class="form-control"><span class="label-text text-sm">Model</span>
-              <select v-if="addVehicleModels.length > 0" class="select select-bordered select-sm w-full" v-model="addVehicleModel" :disabled="!addVehicleYear || !addVehicleMake || !addVehicleType || addVehicleModelsLoading">
-                <option disabled value="">{{ addVehicleModelsLoading ? "Loading models..." : "Select model..." }}</option>
-                <option v-for="m in addVehicleModels" :key="m" :value="m">{{ m }}</option>
-              </select>
-              <input v-else v-model.trim="addVehicleModel" class="input input-bordered input-sm w-full" type="text" :disabled="!addVehicleYear || !addVehicleMake || !addVehicleType" placeholder="Enter model..." />
-            </label>
-          </div>
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <label class="form-control"><span class="label-text text-sm">VIN</span><input ref="addVehicleVinInputRef" v-model.trim="addVehicleVin" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control"><span class="label-text text-sm">Value</span><input v-model.trim="addVehicleValue" class="input input-bordered input-sm w-full" type="text" /></label>
-            <label class="form-control"><span class="label-text text-sm">Vehicle Age</span><input class="input input-bordered input-sm w-full" :value="addVehicleAge" readonly /></label>
-          </div>
-          <label class="form-control"><span class="label-text text-sm">Description</span><textarea v-model.trim="addVehicleDescription" class="textarea textarea-bordered textarea-sm w-full" rows="2" required /></label>
-          <label class="form-control"><span class="label-text text-sm">Trust Designated (Y/N)</span>
-            <select class="select select-bordered select-sm w-full" v-model="addVehicleTrustDesignated" required>
-              <option disabled value="">Select...</option>
-              <option value="Y">Y</option>
-              <option value="N">N</option>
-            </select>
-          </label>
-          <div v-if="addError" class="text-sm text-error">{{ addError }}</div>
-          <div class="modal-action">
-            <button type="button" class="btn btn-ghost btn-sm min-h-9" @click="addModalRef?.close()">Cancel</button>
-            <button type="submit" class="btn btn-primary btn-sm min-h-9" :disabled="addSaving || !canSubmitAddVehicle">{{ addSaving ? 'Saving...' : 'Save' }}</button>
-          </div>
-        </form>
-      </div>
-      <form method="dialog" class="modal-backdrop">
-        <button type="submit">close</button>
-      </form>
-    </dialog>
-
-    <dialog ref="addVehicleVinDuplicateRef" class="modal" @close="onAddVehicleVinDuplicateClose">
-      <div class="modal-box">
-        <p class="py-2">This vehicle already exists in the database. Please try again.</p>
-        <div class="modal-action">
-          <form method="dialog">
-            <button type="submit" class="btn btn-primary">Okay</button>
-          </form>
-        </div>
-      </div>
-      <form method="dialog" class="modal-backdrop">
-        <button type="submit">close</button>
-      </form>
-    </dialog>
-
-    <!-- Update Record Modal -->
-    <dialog ref="updateModalRef" class="modal" @close="editRecord = null">
-      <div class="modal-box w-[calc(100%-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto overscroll-contain sm:w-full">
-        <h3 class="text-lg font-bold">Update Record</h3>
-        <div v-if="editRecord" class="mt-4 space-y-3">
-          <div v-if="editRecordType === 'asset_inventory'" class="grid grid-cols-1 gap-3 sm:grid-cols-2" :key="'ai-' + (editRecord?.ai_id ?? '')">
-            <label class="form-control sm:col-span-2"><span class="label-text text-sm">Title</span><input v-model="editRecord.title" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control"><span class="label-text text-sm">Classification</span><input v-model="editRecord.classification" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control"><span class="label-text text-sm">Value</span><input :value="editRecord.assetValue" @input="e => { const v = e.target.value; editRecord.assetValue = v === '' ? '' : (parseFloat(v) || '') }" class="input input-bordered input-sm w-full" type="number" step="0.01" /></label>
-            <label class="form-control sm:col-span-2"><span class="label-text text-sm">Description</span><textarea v-model="editRecord.description" class="textarea textarea-bordered textarea-sm w-full" rows="2" /></label>
-            <label class="form-control sm:col-span-2"><span class="label-text text-sm">Location</span><input v-model="editRecord.location" class="input input-bordered input-sm w-full" /></label>
-          </div>
-          <div v-else-if="editRecordType === 'asset_vehicles'" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label class="form-control"><span class="label-text text-sm">Year</span><input v-model.number="editRecord.year" class="input input-bordered input-sm w-full" type="number" /></label>
-            <label class="form-control"><span class="label-text text-sm">Make</span><input v-model="editRecord.make" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control"><span class="label-text text-sm">Model</span><input v-model="editRecord.model" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control"><span class="label-text text-sm">VIN</span><input v-model="editRecord.vin" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control"><span class="label-text text-sm">Value</span><input v-model.number="editRecord.value" class="input input-bordered input-sm w-full" type="number" step="0.01" /></label>
-            <label class="form-control"><span class="label-text text-sm">Trust (Y/N)</span><select v-model="editRecord.trust_designated" class="select select-bordered select-sm w-full"><option :value="true">Y</option><option :value="false">N</option></select></label>
-            <label class="form-control sm:col-span-2"><span class="label-text text-sm">Description</span><textarea v-model="editRecord.description" class="textarea textarea-bordered textarea-sm w-full" rows="2" /></label>
-          </div>
-          <div v-else-if="editRecordType === 'cash_and_investments'" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label class="form-control"><span class="label-text text-sm">Institution</span><input v-model="editRecord.institution" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control"><span class="label-text text-sm">Account #</span><input v-model="editRecord.acct_number" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control"><span class="label-text text-sm">Type</span><input v-model="editRecord.acct_type" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control"><span class="label-text text-sm">Value</span><input :value="editRecord.cashValue" @input="e => { const v = e.target.value; editRecord.cashValue = v === '' ? '' : (parseFloat(v) || '') }" class="input input-bordered input-sm w-full" type="number" step="0.01" /></label>
-            <label class="form-control"><span class="label-text text-sm">Trust (Y/N)</span><select v-model="editRecord.trust_designated" class="select select-bordered select-sm w-full"><option :value="true">Y</option><option :value="false">N</option></select></label>
-            <label class="form-control"><span class="label-text text-sm">Support #</span><input v-model="editRecord.acct_support_number" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control sm:col-span-2"><span class="label-text text-sm">URL</span><input v-model="editRecord.institution_url" class="input input-bordered input-sm w-full" type="url" /></label>
-          </div>
-          <div v-else-if="editRecordType === 'debt'" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label class="form-control"><span class="label-text text-sm">Institution</span><input v-model="editRecord.institution" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control"><span class="label-text text-sm">Loan #</span><input v-model="editRecord.loan_number" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control"><span class="label-text text-sm">Loan Type</span><input v-model="editRecord.loan_type" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control sm:col-span-2"><span class="label-text text-sm">Debt structure</span>
-              <select v-model="editRecord.is_revolving" class="select select-bordered select-sm w-full">
-                <option :value="true">Revolving</option>
-                <option :value="false">Installment</option>
-              </select>
-            </label>
-            <label class="form-control">
-              <span class="label-text text-sm">{{ editRecord.is_revolving ? "Current balance" : "Principal balance" }}</span>
-              <input v-model="editRecord.debtLoanAmmount" class="input input-bordered input-sm w-full" type="number" step="0.01" min="0" />
-            </label>
-            <label v-if="!editRecord.is_revolving" class="form-control"><span class="label-text text-sm">Annual interest rate (%)</span><input v-model="editRecord.interest_rate_annual" class="input input-bordered input-sm w-full" type="number" step="0.001" min="0" /></label>
-            <label v-if="!editRecord.is_revolving" class="form-control"><span class="label-text text-sm">Term (months)</span><input v-model="editRecord.term_months" class="input input-bordered input-sm w-full" type="number" step="1" min="1" /></label>
-            <label v-if="!editRecord.is_revolving" class="form-control"><span class="label-text text-sm">Scheduled monthly payment</span><input v-model="editRecord.scheduled_monthly_payment" class="input input-bordered input-sm w-full" type="number" step="0.01" min="0" /></label>
-            <label v-if="!editRecord.is_revolving" class="form-control"><span class="label-text text-sm">Loan start date</span><input v-model="editRecord.loan_start_date" class="input input-bordered input-sm w-full" type="date" /></label>
-            <label class="form-control sm:col-span-2"><span class="label-text text-sm">Link to Asset</span><select v-model="editRecord.linked_asset" class="select select-bordered select-sm w-full"><option value="">None (no link)</option><option v-for="a in linkedAssets" :key="a.type + ':' + a.id" :value="a.type + ':' + a.id">{{ a.label }}</option></select></label>
-            <label class="form-control"><span class="label-text text-sm">Borrower</span><input v-model="editRecord.borrower" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control"><span class="label-text text-sm">Support #</span><input v-model="editRecord.customer_support_no" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control"><span class="label-text text-sm">URL</span><input v-model="editRecord.address_url" class="input input-bordered input-sm w-full" type="url" /></label>
-          </div>
-          <div v-else-if="editRecordType === 'real_estate'" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label class="form-control"><span class="label-text text-sm">Number</span><input v-model="editRecord.number" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control"><span class="label-text text-sm">Street</span><input v-model="editRecord.street" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control"><span class="label-text text-sm">City</span><input v-model="editRecord.city" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control"><span class="label-text text-sm">State</span><input v-model="editRecord.state" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control"><span class="label-text text-sm">Zipcode</span><input v-model="editRecord.zipcode" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control"><span class="label-text text-sm">Value</span><input v-model.number="editRecord.value" class="input input-bordered input-sm w-full" type="number" step="0.01" /></label>
-            <label class="form-control"><span class="label-text text-sm">Trust (Y/N)</span><select v-model="editRecord.trust_designated" class="select select-bordered select-sm w-full"><option :value="true">Y</option><option :value="false">N</option></select></label>
-          </div>
-          <div v-else-if="editRecordType === 'insurance'" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label class="form-control"><span class="label-text text-sm">Policy Holder</span><input v-model="editRecord.policy_holder" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control"><span class="label-text text-sm">Policy #</span><input v-model="editRecord.polocy_number" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control"><span class="label-text text-sm">Entity Covered</span><input v-model="editRecord.entity_covered" class="input input-bordered input-sm w-full" /></label>
-            <label class="form-control"><span class="label-text text-sm">Amount</span><input :value="editRecord.insurancePolicyAmt" @input="e => { const v = e.target.value; editRecord.insurancePolicyAmt = v === '' ? '' : (parseFloat(v) || ''); editRecord.policy_amt = editRecord.insurancePolicyAmt !== '' && !Number.isNaN(Number(editRecord.insurancePolicyAmt)) ? Number(editRecord.insurancePolicyAmt) : null }" class="input input-bordered input-sm w-full" type="number" step="0.01" /></label>
-            <label class="form-control sm:col-span-2"><span class="label-text text-sm">Intent</span><input v-model="editRecord.intent" class="input input-bordered input-sm w-full" /></label>
-          </div>
-        </div>
-        <div v-if="error" class="mt-2 text-sm text-error">{{ error }}</div>
-        <div class="modal-action justify-between">
-          <button type="button" class="btn btn-error btn-outline btn-sm min-h-9" :disabled="updateSaving || deleteSaving" @click="deleteRecord">
-            {{ deleteSaving ? "Deleting..." : "Delete" }}
-          </button>
-          <div class="flex gap-2">
-            <form method="dialog">
-              <button type="button" class="btn btn-ghost min-h-9" @click="updateModalRef?.close()">Cancel</button>
-            </form>
-            <button type="button" class="btn btn-primary min-h-9" :disabled="updateSaving || deleteSaving" @click="saveEdit">
-              {{ updateSaving ? "Saving..." : "Save" }}
-            </button>
-          </div>
-        </div>
-      </div>
-      <form method="dialog" class="modal-backdrop">
-        <button type="submit">close</button>
-      </form>
-    </dialog>
+    <LazyEditEstateRecordModal
+      v-if="modalsMounted.editEstate"
+      ref="editEstateModalRef"
+      @saved="loadSummary"
+      @deleted="loadSummary"
+    />
 
     <dialog ref="manageAssetCategoriesModalRef" class="modal">
       <div
@@ -445,7 +154,11 @@
         <p class="text-sm text-base-content/70 mt-1 mb-4">
           Choose a category and classification, then enter details for your entry.
         </p>
-        <EstateAssetCategoriesPanel layout="modal" @records-updated="onEstatePanelRecordsUpdated" />
+        <LazyEstateAssetCategoriesPanel
+          v-if="modalsMounted.categories"
+          layout="modal"
+          @records-updated="onEstatePanelRecordsUpdated"
+        />
         <div class="modal-action">
           <form method="dialog">
             <button type="submit" class="btn btn-outline">Close</button>
@@ -460,6 +173,7 @@
 </template>
 
 <script setup>
+import { nextTick } from "vue";
 import { inferIsRevolvingDebt } from "~/utils/debtPayment";
 
 useHead({ title: "Estate Management" });
@@ -515,16 +229,21 @@ const insuranceColumns = [
 
 const auth = useAuthStore();
 const loading = ref(true);
-const updateModalRef = ref(null);
-const addModalRef = ref(null);
+const addEstateModalRef = ref(null);
+const editEstateModalRef = ref(null);
 const manageAssetCategoriesModalRef = ref(null);
-const addModalType = ref(null);
-const addSaving = ref(false);
-const addError = ref("");
-const updateSaving = ref(false);
-const deleteSaving = ref(false);
-const editRecord = ref(null);
-const editRecordType = ref("");
+const modalsMounted = reactive({
+  addEstate: false,
+  editEstate: false,
+  categories: false,
+});
+
+async function ensureModal(key) {
+  if (!modalsMounted[key]) {
+    modalsMounted[key] = true;
+    await nextTick();
+  }
+}
 const assetInventory = ref([]);
 const assetVehicles = ref([]);
 const cashAndInvestments = ref([]);
@@ -532,95 +251,6 @@ const debt = ref([]);
 const realEstate = ref([]);
 const insurance = ref([]);
 const linkedAssets = ref([]);
-const error = ref("");
-
-// Add modal state
-const addAssetForm = reactive({ classification_type: "", title: "", value: "", description: "", location: "" });
-const addAssetClassifications = ref([]);
-const addRealEstateForm = reactive({ number: "", street: "", city: "", state: "", zipcode: "", value: "", trust_designated: "" });
-const addInsuranceForm = reactive({ policy_holder: "", polocy_number: "", entity_covered: "", policy_amt: "", intent: "", institution_url: "" });
-const addDebtForm = reactive({
-  institution: "",
-  loan_number: "",
-  loan_ammount: "",
-  loan_type: "",
-  linked_asset: "",
-  borrower: "",
-  customer_support_no: "",
-  address_url: "",
-  is_revolving: false,
-  interest_rate_annual: "",
-  term_months: "",
-  scheduled_monthly_payment: "",
-  loan_start_date: "",
-});
-const addDebtTypes = ref([]);
-const addCashForm = reactive({
-  asset_category: "Cash",
-  classification_type: "",
-  institution: "",
-  account_number: "",
-  value: "",
-  account_support_number: "",
-  institution_url: "",
-  account_holder: "",
-  account_intent: "",
-  trust_designated: "",
-});
-const addCashClassifications = ref([]);
-const addVehicleYear = ref("");
-const addVehicleMake = ref("");
-const addVehicleMakeFilter = ref("");
-const addVehicleModel = ref("");
-const addVehicleType = ref("");
-const addVehicleVin = ref("");
-const addVehicleValue = ref("");
-const addVehicleDescription = ref("");
-const addVehicleTrustDesignated = ref("");
-const addVehicleMakes = ref([]);
-const addVehicleModels = ref([]);
-const addVehicleTypes = ref([]);
-const addVehicleMakesLoading = ref(false);
-const addVehicleModelsLoading = ref(false);
-const addVehicleTypesLoading = ref(false);
-const addVehicleVinDuplicateRef = ref(null);
-const addVehicleVinInputRef = ref(null);
-const addVehicleYears = computed(() => {
-  const y = new Date().getFullYear();
-  return Array.from({ length: 31 }, (_, i) => y - i);
-});
-const addVehicleAge = computed(() => {
-  if (!addVehicleYear.value) return "";
-  return String(new Date().getFullYear() - Number(addVehicleYear.value));
-});
-const filteredAddVehicleMakes = computed(() => {
-  const f = addVehicleMakeFilter.value.trim().toLowerCase();
-  if (!f) return addVehicleMakes.value;
-  return addVehicleMakes.value.filter((m) => m.toLowerCase().includes(f));
-});
-const canSubmitAddVehicle = computed(() =>
-  Boolean(
-    addVehicleYear.value &&
-    addVehicleMake.value &&
-    addVehicleModel.value &&
-    addVehicleType.value &&
-    addVehicleValue.value !== "" &&
-    addVehicleAge.value &&
-    addVehicleDescription.value &&
-    addVehicleTrustDesignated.value,
-  ),
-);
-
-const addModalTitle = computed(() => {
-  const t = addModalType.value;
-  if (t === "asset") return "Add Asset";
-  if (t === "vehicle") return "Add Vehicle";
-  if (t === "cash") return "Add Cash or Investment";
-  if (t === "debt") return "Add Debt";
-  if (t === "real_estate") return "Add Real Estate";
-  if (t === "insurance") return "Add Insurance";
-  return "Add Record";
-});
 
 function formatDebtTermsLine(r) {
   if (inferIsRevolvingDebt(r)) return "";
@@ -665,6 +295,11 @@ function mapAssetVehicleRow(r) {
     note: formatMoney(r.value),
     lines: estateDetailLines([{ label: "Trust", value: r.trust_designated ? "Y" : "N" }]),
   };
+}
+
+function openVehicleGarage(item) {
+  if (!item?.vh_id) return;
+  void navigateTo(`/garage/${item.vh_id}`);
 }
 
 function mapCashRow(r) {
@@ -866,96 +501,14 @@ const totalDebtTable = computed(() =>
 );
 const totalRealEstateValue = computed(() => sumByKey(realEstate.value, 'value'));
 
-const API_PATH_MAP = {
-  asset_inventory: "asset-inventory",
-  asset_vehicles: "asset-vehicles",
-  cash_and_investments: "cash-and-investments",
-  debt: "debt",
-  real_estate: "real-estate",
-  insurance: "insurance",
-};
-
-const ID_KEY_MAP = {
-  asset_inventory: "ai_id",
-  asset_vehicles: "vh_id",
-  cash_and_investments: "ci_id",
-  debt: "dbt_id",
-  real_estate: "re_id",
-  insurance: "ins_id",
-};
-
 async function openAddModal(type) {
-  addModalType.value = type;
-  addError.value = "";
-  if (type === "asset") {
-    const r = await $fetch("/api/asset-classifications", { params: { category: "Asset" } });
-    addAssetClassifications.value = r?.classifications ?? [];
-    addAssetForm.classification_type = "";
-    addAssetForm.title = "";
-    addAssetForm.value = "";
-    addAssetForm.description = "";
-    addAssetForm.location = "";
-  } else if (type === "real_estate") {
-    addRealEstateForm.number = "";
-    addRealEstateForm.street = "";
-    addRealEstateForm.city = "";
-    addRealEstateForm.state = "";
-    addRealEstateForm.zipcode = "";
-    addRealEstateForm.value = "";
-    addRealEstateForm.trust_designated = "";
-  } else if (type === "insurance") {
-    addInsuranceForm.policy_holder = "";
-    addInsuranceForm.polocy_number = "";
-    addInsuranceForm.entity_covered = "";
-    addInsuranceForm.policy_amt = "";
-    addInsuranceForm.intent = "";
-    addInsuranceForm.institution_url = "";
-  } else if (type === "debt") {
-    const r = await $fetch("/api/debt-types");
-    addDebtTypes.value = r?.debtTypes ?? [];
-    addDebtForm.institution = "";
-    addDebtForm.loan_number = "";
-    addDebtForm.loan_ammount = "";
-    addDebtForm.loan_type = "";
-    addDebtForm.linked_asset = "";
-    addDebtForm.borrower = "";
-    addDebtForm.customer_support_no = "";
-    addDebtForm.address_url = "";
-    addDebtForm.is_revolving = false;
-    addDebtForm.interest_rate_annual = "";
-    addDebtForm.term_months = "";
-    addDebtForm.scheduled_monthly_payment = "";
-    addDebtForm.loan_start_date = "";
-  } else if (type === "cash") {
-    await loadAddCashClassifications();
-    addCashForm.asset_category = "Cash";
-    addCashForm.classification_type = "";
-    addCashForm.institution = "";
-    addCashForm.account_number = "";
-    addCashForm.value = "";
-    addCashForm.account_support_number = "";
-    addCashForm.institution_url = "";
-    addCashForm.account_holder = "";
-    addCashForm.account_intent = "";
-    addCashForm.trust_designated = "";
-  } else if (type === "vehicle") {
-    addVehicleYear.value = "";
-    addVehicleMake.value = "";
-    addVehicleMakeFilter.value = "";
-    addVehicleModel.value = "";
-    addVehicleType.value = "";
-    addVehicleVin.value = "";
-    addVehicleValue.value = "";
-    addVehicleDescription.value = "";
-    addVehicleTrustDesignated.value = "";
-    addVehicleModels.value = [];
-    addVehicleTypes.value = [];
-    if (addVehicleMakes.value.length === 0) void loadAddVehicleMakes();
-  }
-  addModalRef.value?.showModal();
+  await ensureModal("addEstate");
+  addEstateModalRef.value?.open(type);
 }
 
-function openManageAssetCategoriesModal() {
+async function openManageAssetCategoriesModal() {
+  await ensureModal("categories");
+  await nextTick();
   manageAssetCategoriesModalRef.value?.showModal();
 }
 
@@ -963,392 +516,9 @@ function onEstatePanelRecordsUpdated() {
   void loadSummary();
 }
 
-async function loadAddCashClassifications() {
-  let cat = addCashForm.asset_category || "Cash";
-  if (cat === "Investments") cat = "Investment"; // DB uses Investment
-  const r = await $fetch("/api/asset-classifications", { params: { category: cat } });
-  addCashClassifications.value = r?.classifications ?? [];
-}
-
-function onAddCashCategoryChange() {
-  addCashForm.classification_type = "";
-  void loadAddCashClassifications();
-}
-
-const VIN_DUPLICATE_MSG = "This vehicle already exists in the database. Please try again.";
-
-async function loadAddVehicleMakes() {
-  addVehicleMakesLoading.value = true;
-  try {
-    const res = await fetch("https://vpic.nhtsa.dot.gov/api/vehicles/GetAllMakes?format=json");
-    if (!res.ok) throw new Error(`Failed: ${res.status}`);
-    const data = await res.json();
-    addVehicleMakes.value = Array.isArray(data?.Results)
-      ? data.Results.map((r) => r.Make_Name).filter(Boolean)
-      : [];
-  } catch {
-    addVehicleMakes.value = [];
-  } finally {
-    addVehicleMakesLoading.value = false;
-  }
-}
-
-async function loadAddVehicleTypes() {
-  if (!addVehicleMake.value) return;
-  addVehicleTypesLoading.value = true;
-  try {
-    const make = encodeURIComponent(addVehicleMake.value);
-    const res = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/GetVehicleTypesForMake/${make}?format=json`);
-    if (!res.ok) throw new Error(`Failed: ${res.status}`);
-    const data = await res.json();
-    addVehicleTypes.value = Array.isArray(data?.Results)
-      ? data.Results.map((r) => r.VehicleTypeName).filter(Boolean)
-      : [];
-  } catch {
-    addVehicleTypes.value = [];
-  } finally {
-    addVehicleTypesLoading.value = false;
-  }
-}
-
-async function loadAddVehicleModels() {
-  if (!addVehicleMake.value || !addVehicleYear.value || !addVehicleType.value) return;
-  addVehicleModelsLoading.value = true;
-  try {
-    const make = encodeURIComponent(addVehicleMake.value);
-    const year = encodeURIComponent(String(addVehicleYear.value));
-    const type = encodeURIComponent(addVehicleType.value);
-    const res = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMakeYear/make/${make}/modelyear/${year}/vehicletype/${type}?format=json`);
-    if (!res.ok) throw new Error(`Failed: ${res.status}`);
-    const data = await res.json();
-    const results = Array.isArray(data?.Results) ? data.Results : [];
-    addVehicleModels.value = results.map((r) => r.Model_Name || r.Model_Name?.trim()).filter(Boolean);
-  } catch {
-    addVehicleModels.value = [];
-  } finally {
-    addVehicleModelsLoading.value = false;
-  }
-}
-
-function onAddVehicleVinDuplicateClose() {
-  nextTick(() => {
-    addVehicleVinInputRef.value?.focus();
-  });
-}
-
-async function submitAddAsset() {
-  addError.value = "";
-  addSaving.value = true;
-  try {
-    await $fetch("/api/estate-mgmt/submit", {
-      method: "POST",
-      body: {
-        classification_type: addAssetForm.classification_type,
-        title: addAssetForm.title,
-        description: addAssetForm.description,
-        value: addAssetForm.value,
-        location: addAssetForm.location || undefined,
-      },
-    });
-    addModalRef.value?.close();
-    void loadSummary();
-  } catch (err) {
-    addError.value = err?.data?.statusMessage || err?.message || "Failed to add asset.";
-  } finally {
-    addSaving.value = false;
-  }
-}
-
-async function submitAddRealEstate() {
-  addError.value = "";
-  addSaving.value = true;
-  try {
-    await $fetch("/api/estate-mgmt/real-estate", {
-      method: "POST",
-      body: {
-        number: addRealEstateForm.number || undefined,
-        street: addRealEstateForm.street,
-        city: addRealEstateForm.city,
-        state: addRealEstateForm.state,
-        zipcode: addRealEstateForm.zipcode,
-        value: addRealEstateForm.value,
-        trust_designated: addRealEstateForm.trust_designated,
-      },
-    });
-    addModalRef.value?.close();
-    void loadSummary();
-  } catch (err) {
-    addError.value = err?.data?.statusMessage || err?.message || "Failed to add real estate.";
-  } finally {
-    addSaving.value = false;
-  }
-}
-
-async function submitAddInsurance() {
-  addError.value = "";
-  addSaving.value = true;
-  try {
-    await $fetch("/api/estate-mgmt/insurance", {
-      method: "POST",
-      body: {
-        policy_holder: addInsuranceForm.policy_holder,
-        polocy_number: addInsuranceForm.polocy_number || undefined,
-        entity_covered: addInsuranceForm.entity_covered || undefined,
-        policy_amt: addInsuranceForm.policy_amt !== "" ? addInsuranceForm.policy_amt : undefined,
-        intent: addInsuranceForm.intent || undefined,
-        institution_url: addInsuranceForm.institution_url || undefined,
-      },
-    });
-    addModalRef.value?.close();
-    void loadSummary();
-  } catch (err) {
-    addError.value = err?.data?.statusMessage || err?.message || "Failed to add insurance.";
-  } finally {
-    addSaving.value = false;
-  }
-}
-
-async function submitAddDebt() {
-  addError.value = "";
-  addSaving.value = true;
-  try {
-    const [linkedType, linkedId] = addDebtForm.linked_asset ? addDebtForm.linked_asset.split(":") : [null, null];
-    await $fetch("/api/estate-mgmt/debt", {
-      method: "POST",
-      body: {
-        institution: addDebtForm.institution,
-        loan_number: addDebtForm.loan_number || undefined,
-        loan_type: addDebtForm.loan_type || undefined,
-        loan_ammount: addDebtForm.loan_ammount !== "" ? addDebtForm.loan_ammount : undefined,
-        linked_asset_type: linkedType || undefined,
-        linked_asset_id: linkedId ? Number(linkedId) : undefined,
-        customer_support_no: addDebtForm.customer_support_no || undefined,
-        address_url: addDebtForm.address_url || undefined,
-        borrower: addDebtForm.borrower || undefined,
-        is_revolving: addDebtForm.is_revolving,
-        interest_rate_annual: addDebtForm.interest_rate_annual !== "" ? addDebtForm.interest_rate_annual : undefined,
-        term_months: addDebtForm.term_months !== "" ? addDebtForm.term_months : undefined,
-        scheduled_monthly_payment:
-          addDebtForm.scheduled_monthly_payment !== "" ? addDebtForm.scheduled_monthly_payment : undefined,
-        loan_start_date: addDebtForm.loan_start_date || undefined,
-      },
-    });
-    addModalRef.value?.close();
-    void loadSummary();
-  } catch (err) {
-    addError.value = err?.data?.statusMessage || err?.message || "Failed to add debt.";
-  } finally {
-    addSaving.value = false;
-  }
-}
-
-async function submitAddCash() {
-  addError.value = "";
-  addSaving.value = true;
-  try {
-    await $fetch("/api/estate-mgmt/cash-investment", {
-      method: "POST",
-      body: {
-        asset_category: addCashForm.asset_category,
-        classification_type: addCashForm.classification_type,
-        institution: addCashForm.institution,
-        account_number: addCashForm.account_number,
-        value: addCashForm.value,
-        account_support_number: addCashForm.account_support_number,
-        institution_url: addCashForm.institution_url,
-        account_holder: addCashForm.account_holder,
-        account_intent: addCashForm.account_intent,
-        trust_designated: addCashForm.trust_designated,
-      },
-    });
-    addModalRef.value?.close();
-    void loadSummary();
-  } catch (err) {
-    addError.value = err?.data?.statusMessage || err?.message || "Failed to add cash/investment.";
-  } finally {
-    addSaving.value = false;
-  }
-}
-
-async function submitAddVehicle() {
-  addError.value = "";
-  addSaving.value = true;
-  try {
-    await $fetch("/api/estate-mgmt/vehicle", {
-      method: "POST",
-      body: {
-        classification_type: addVehicleType.value,
-        year: addVehicleYear.value,
-        make: addVehicleMake.value,
-        model: addVehicleModel.value,
-        vin: addVehicleVin.value || undefined,
-        value: addVehicleValue.value,
-        age: addVehicleAge.value,
-        description: addVehicleDescription.value,
-        trust_designated: addVehicleTrustDesignated.value,
-      },
-    });
-    addModalRef.value?.close();
-    void loadSummary();
-  } catch (err) {
-    const msg = err?.data?.statusMessage || err?.message || "Failed to add vehicle.";
-    if (msg === VIN_DUPLICATE_MSG) {
-      addVehicleVinDuplicateRef.value?.showModal();
-    } else {
-      addError.value = msg;
-    }
-  } finally {
-    addSaving.value = false;
-  }
-}
-
-function openEditModal(type, record) {
-  error.value = "";
-  editRecordType.value = type;
-  const cloned = JSON.parse(JSON.stringify(record));
-  if (type === "asset_inventory") {
-    cloned.classification = cloned.asset_classification ?? cloned.classification_type ?? "";
-    const val = cloned.value ?? cloned.asset_value;
-    const num = val != null && val !== "" ? toNumber(val) : NaN;
-    cloned.assetValue = Number.isNaN(num) ? "" : num;
-  }
-  if (type === "cash_and_investments") {
-    const val = cloned.value ?? cloned.asset_value;
-    const num = val != null && val !== "" ? toNumber(val) : NaN;
-    cloned.cashValue = Number.isNaN(num) ? "" : num;
-  }
-  if (type === "debt") {
-    const val = cloned.loan_ammount;
-    const num = val != null && val !== "" ? toNumber(val) : NaN;
-    cloned.debtLoanAmmount = Number.isNaN(num) ? "" : num;
-    cloned.linked_asset = (cloned.linked_asset_type && cloned.linked_asset_id)
-      ? cloned.linked_asset_type + ":" + cloned.linked_asset_id
-      : "";
-    cloned.is_revolving = inferIsRevolvingDebt(cloned);
-    cloned.interest_rate_annual =
-      cloned.interest_rate_annual != null && cloned.interest_rate_annual !== ""
-        ? String(cloned.interest_rate_annual)
-        : "";
-    cloned.term_months =
-      cloned.term_months != null && cloned.term_months !== "" ? String(cloned.term_months) : "";
-    cloned.scheduled_monthly_payment =
-      cloned.scheduled_monthly_payment != null && cloned.scheduled_monthly_payment !== ""
-        ? String(cloned.scheduled_monthly_payment)
-        : "";
-    cloned.loan_start_date = cloned.loan_start_date
-      ? String(cloned.loan_start_date).slice(0, 10)
-      : "";
-  }
-  if (type === "insurance") {
-    const val = cloned.policy_amt;
-    const num = val != null && val !== "" ? toNumber(String(val).replace(/[$,]/g, "")) : NaN;
-    cloned.insurancePolicyAmt = Number.isNaN(num) ? "" : num;
-  }
-  editRecord.value = cloned;
-  updateModalRef.value?.showModal();
-}
-
-async function saveEdit() {
-  if (!editRecord.value || !editRecordType.value) return;
-  const type = editRecordType.value;
-  const idKey = ID_KEY_MAP[type];
-  const id = editRecord.value[idKey];
-  if (!id) return;
-
-  const path = API_PATH_MAP[type];
-  const url = `/api/records/${path}/${id}`;
-
-  let body;
-  if (type === "debt") {
-    const r = editRecord.value;
-    const av = r.debtLoanAmmount;
-    const loanAmt = (av !== "" && av != null && !Number.isNaN(Number(av)))
-      ? Number(av)
-      : (r.loan_ammount != null && r.loan_ammount !== "" ? r.loan_ammount : null);
-    const [linkedType, linkedId] = r.linked_asset ? r.linked_asset.split(":") : [null, null];
-    body = {
-      institution: r.institution ?? null,
-      loan_number: r.loan_number ?? null,
-      loan_type: r.loan_type ?? null,
-      customer_support_no: r.customer_support_no ?? null,
-      address_url: r.address_url ?? null,
-      borrower: r.borrower ?? null,
-      loan_ammount: loanAmt,
-      linked_asset_type: linkedType || null,
-      linked_asset_id: linkedId ? Number(linkedId) : null,
-      is_revolving: r.is_revolving === true || r.is_revolving === "true" ? true : r.is_revolving === false || r.is_revolving === "false" ? false : inferIsRevolvingDebt(r),
-      interest_rate_annual:
-        r.interest_rate_annual !== "" && r.interest_rate_annual != null ? Number(r.interest_rate_annual) : null,
-      term_months: r.term_months !== "" && r.term_months != null ? Number(r.term_months) : null,
-      scheduled_monthly_payment:
-        r.scheduled_monthly_payment !== "" && r.scheduled_monthly_payment != null
-          ? Number(r.scheduled_monthly_payment)
-          : null,
-      loan_start_date: r.loan_start_date || null,
-    };
-  } else {
-    body = { ...editRecord.value };
-    delete body[idKey];
-    delete body.user_id;
-    delete body.group_id;
-    delete body.created_at;
-
-    if (type === "asset_inventory") {
-      body.classification_type = body.classification ?? body.asset_classification ?? body.classification_type;
-      body.asset_category = body.asset_category ?? "Asset";
-      const av = body.assetValue;
-      body.value = (av !== "" && av != null && !Number.isNaN(Number(av))) ? Number(av) : body.value;
-    }
-    if (type === "cash_and_investments") {
-      const cv = body.cashValue;
-      body.value = (cv !== "" && cv != null && !Number.isNaN(Number(cv))) ? Number(cv) : body.value;
-    }
-    if (type === "asset_vehicles") body.age = editRecord.value.age ?? (editRecord.value.year ? new Date().getFullYear() - editRecord.value.year : null);
-    if (type === "insurance") {
-      const av = body.insurancePolicyAmt;
-      body.policy_amt = (av !== "" && av != null && !Number.isNaN(Number(av)))
-        ? Number(av)
-        : (body.policy_amt != null ? toNumber(String(body.policy_amt).replace(/[$,]/g, "")) : null);
-      delete body.insurancePolicyAmt;
-    }
-  }
-
-  updateSaving.value = true;
-  try {
-    await $fetch(url, { method: "PUT", body });
-    updateModalRef.value?.close();
-    void loadSummary();
-  } catch (err) {
-    error.value = err?.data?.statusMessage || err?.data?.message || err?.message || "Update failed.";
-    return;
-  } finally {
-    updateSaving.value = false;
-  }
-}
-
-async function deleteRecord() {
-  if (!editRecord.value || !editRecordType.value) return;
-  if (!confirm("Are you sure you want to delete this record? This cannot be undone.")) return;
-
-  const type = editRecordType.value;
-  const idKey = ID_KEY_MAP[type];
-  const id = editRecord.value[idKey];
-  if (!id) return;
-
-  const path = API_PATH_MAP[type];
-  const url = `/api/records/${path}/${id}`;
-
-  deleteSaving.value = true;
-  error.value = "";
-  try {
-    await $fetch(url, { method: "DELETE" });
-    updateModalRef.value?.close();
-    void loadSummary();
-  } catch (err) {
-    error.value = err?.data?.statusMessage || err?.message || "Delete failed.";
-  } finally {
-    deleteSaving.value = false;
-  }
+async function openEditModal(type, record) {
+  await ensureModal("editEstate");
+  editEstateModalRef.value?.open(type, record);
 }
 
 async function loadSummary() {
@@ -1376,34 +546,9 @@ async function loadSummary() {
   }
 }
 
-watch(addVehicleYear, () => {
-  addVehicleMake.value = "";
-  addVehicleMakeFilter.value = "";
-  addVehicleModel.value = "";
-  addVehicleModels.value = [];
-  addVehicleType.value = "";
-  addVehicleTypes.value = [];
-});
-
-watch(addVehicleMake, () => {
-  addVehicleModel.value = "";
-  addVehicleModels.value = [];
-  addVehicleType.value = "";
-  addVehicleTypes.value = [];
-  if (addVehicleMake.value && addVehicleYear.value) void loadAddVehicleModels();
-  if (addVehicleMake.value) void loadAddVehicleTypes();
-});
-
-watch(addVehicleType, () => {
-  addVehicleModel.value = "";
-  addVehicleModels.value = [];
-  if (addVehicleMake.value && addVehicleYear.value && addVehicleType.value) void loadAddVehicleModels();
-});
-
 onMounted(() => {
   if (!auth.ready) auth.fetchSession();
   void loadSummary();
-  void loadAddVehicleMakes();
 });
 
 watch(() => auth.user, (user) => {

@@ -15,16 +15,14 @@
       </button>
     </div>
 
-    <AccountManagementModal v-model="showAccountManagement" />
-    <LinkedAccountsModal v-model="showLinkedAccounts" />
+    <LazyAccountManagementModal v-if="showAccountManagement" v-model="showAccountManagement" />
+    <LazyLinkedAccountsModal v-if="showLinkedAccounts" v-model="showLinkedAccounts" />
   </div>
 </template>
 
 <script setup>
 import { ref } from "vue";
 import { useAuthStore } from "~/stores/auth";
-import AccountManagementModal from "~/components/AccountManagementModal.vue";
-import LinkedAccountsModal from "~/components/LinkedAccountsModal.vue";
 
 const auth = useAuthStore();
 const router = useRouter();

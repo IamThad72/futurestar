@@ -55,10 +55,11 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    await client.query(
+    const inserted = await client.query(
       `INSERT INTO asset_vehicles
         (year, make, model, vin, value, age, description, trust_designated, user_id, group_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       RETURNING vh_id`,
       [
         year,
         make,
@@ -89,7 +90,7 @@ export default defineEventHandler(async (event) => {
       ],
     );
 
-    return { success: true };
+    return { success: true, type: "asset_vehicles", id: Number(inserted.rows[0].vh_id) };
   } catch (error) {
     if (error?.statusCode) {
       throw error;

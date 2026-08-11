@@ -1,7 +1,8 @@
-import { createError } from "h3";
+import { createError, getQuery, readBody } from "h3";
 import { createDbClient } from "../../../utils/db";
 import { getSessionUserId } from "../../../utils/auth";
 import { getUserGroupId, groupAccessClauseAt, soloUserClauseAt } from "../../../utils/group";
+import { resolveBudgetId } from "../../../utils/budgetAccess";
 
 export default defineEventHandler(async (event) => {
   const userId = await getSessionUserId(event);
@@ -14,16 +15,22 @@ export default defineEventHandler(async (event) => {
     });
   }
 
+  const query = getQuery(event);
+  const body = await readBody(event).catch(() => null);
+  const requestedBudgetId = body?.budget_id ?? query.budget_id;
+
   const client = createDbClient();
 
   try {
     await client.connect();
     const groupId = await getUserGroupId(client, userId);
+    const budget = await resolveBudgetId(client, userId, groupId, requestedBudgetId);
     const accessClause = groupId ? groupAccessClauseAt("", 2, 3) : soloUserClauseAt("", 2);
-    const params = groupId ? [id, userId, groupId] : [id, userId];
+    const budgetParam = groupId ? "$4" : "$3";
+    const params = groupId ? [id, userId, groupId, budget.budget_id] : [id, userId, budget.budget_id];
 
     const result = await client.query(
-      `DELETE FROM income WHERE income_id = $1 AND ${accessClause} RETURNING income_id`,
+      `DELETE FROM income WHERE income_id = $1 AND ${accessClause} AND budget_id = ${budgetParam} RETURNING income_id`,
       params,
     );
 

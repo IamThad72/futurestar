@@ -10,8 +10,8 @@ these objects (estate tables, groups, auth sessions, record shares, etc.).
 
 Run with: `npm run migrate`
 
-See the `migrations` array in `scripts/run-migrations.mjs` (budget + income/expense
-incremental changes only).
+See the `migrations` array in `scripts/run-migrations.mjs` (budget, income/expense,
+and garage vehicle service tables).
 
 ## Archived files (this folder)
 
