@@ -84,6 +84,8 @@ export default defineNuxtConfig({
             },
             continue: true,
           },
+          // Keep API serverless functions off the SPA fallback rewrite.
+          { src: "/api/(.*)", continue: true },
           { handle: "filesystem" },
           { src: "/(.*)", dest: "/__fallback" },
         ],

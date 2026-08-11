@@ -15,8 +15,22 @@ export function parseFetchError(error, fallback = "Something went wrong. Please 
   const isNetworkMessage =
     /failed to fetch|network error|load failed|networkrequestfailed|fetch failed/i.test(msg);
 
+  // Prefer HTTP status handling before treating FetchError as a network outage.
+  // (ofetch uses FetchError for 4xx/5xx as well as true connectivity failures.)
+  if (status === 401 || status === 403) {
+    return msg || "Your session may have expired. Please sign in again.";
+  }
+
+  if (status === 404) {
+    return msg || "The requested resource was not found.";
+  }
+
+  if (typeof status === "number" && status >= 500) {
+    return msg || "The server had a problem. Please try again in a moment.";
+  }
+
   if (
-    error?.name === "FetchError" ||
+    (!status && error?.name === "FetchError") ||
     isNetworkMessage ||
     causeCode === "ECONNREFUSED" ||
     causeCode === "ENOTFOUND" ||
@@ -30,18 +44,6 @@ export function parseFetchError(error, fallback = "Something went wrong. Please 
 
   if (/timeout|timed out|aborted/i.test(msg) || error?.name === "AbortError") {
     return "The request timed out. Check your connection and try again.";
-  }
-
-  if (status === 401 || status === 403) {
-    return msg || "Your session may have expired. Please sign in again.";
-  }
-
-  if (status === 404) {
-    return msg || "The requested resource was not found.";
-  }
-
-  if (typeof status === "number" && status >= 500) {
-    return msg || "The server had a problem. Please try again in a moment.";
   }
 
   return msg || fallback;
