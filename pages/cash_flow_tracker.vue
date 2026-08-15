@@ -158,31 +158,6 @@
               <span class="text-base-content/50"> / </span>
               <span class="budget-tracker-budgeted">${{ formatAmount(sectionBudgetedTotal(section)) }}</span>
             </template>
-            <div
-              v-if="section.key === 'tax' && taxAnnualTotals.length"
-              class="tax-annual-totals mb-3 rounded-lg border border-base-200 bg-base-200/40 px-3 py-2"
-            >
-              <div class="flex flex-wrap items-baseline justify-between gap-2 mb-2">
-                <p class="text-xs font-semibold uppercase tracking-wide text-base-content/70">
-                  {{ selectedYear }} annual tax totals
-                </p>
-                <p class="text-sm font-semibold tabular-nums">
-                  Total ${{ formatAmount(taxAnnualGrandTotal) }}
-                </p>
-              </div>
-              <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-                <div
-                  v-for="t in taxAnnualTotals"
-                  :key="t.tax_kind"
-                  class="rounded-md bg-base-100 px-2 py-1.5 border border-base-200/80"
-                >
-                  <div class="text-[0.65rem] font-medium uppercase tracking-wide text-base-content/55">
-                    {{ t.label }}
-                  </div>
-                  <div class="text-sm font-semibold tabular-nums">${{ formatAmount(t.total_amount) }}</div>
-                </div>
-              </div>
-            </div>
             <EstateRecordList
               :items="budgetTrackerListItems(section)"
               item-key="_listKey"
@@ -910,7 +885,6 @@ import {
   csvBudgetItemKey,
   parseCsvBudgetItemKey,
 } from "~/utils/csvExpenseImport";
-import { TAX_ANNUAL_KIND_LABELS } from "~/utils/taxAnnualKinds";
 
 useHead({ title: "Budget Tracker" });
 
@@ -945,8 +919,6 @@ const reclassifyTx = ref(null);
 const reclassifyBudgetItemKey = ref("");
 const reclassifyError = ref("");
 const reclassifySaving = ref(false);
-const taxAnnualTotals = ref([]);
-const taxAnnualGrandTotal = ref(0);
 const cashAccounts = ref([]);
 const debtRecords = ref([]);
 const incomeSources = ref([]);
@@ -1517,14 +1489,6 @@ async function loadData() {
     activeBudgetId.value = data?.active_budget_id ?? null;
     transactions.value = data?.transactions ?? [];
     orphans.value = data?.orphans ?? [];
-    taxAnnualTotals.value = Array.isArray(data?.tax?.totals)
-      ? data.tax.totals
-      : Object.keys(TAX_ANNUAL_KIND_LABELS).map((tax_kind) => ({
-          tax_kind,
-          label: TAX_ANNUAL_KIND_LABELS[tax_kind],
-          total_amount: 0,
-        }));
-    taxAnnualGrandTotal.value = Number(data?.tax?.grand_total) || 0;
     cashAccounts.value = data?.cash_accounts ?? [];
     debtRecords.value = data?.debt_records ?? [];
     incomeSources.value = data?.income_sources ?? [];
@@ -1544,8 +1508,6 @@ async function loadData() {
     periodIsInferred.value = false;
     transactions.value = [];
     orphans.value = [];
-    taxAnnualTotals.value = [];
-    taxAnnualGrandTotal.value = 0;
     cashAccounts.value = [];
     debtRecords.value = [];
     incomeSources.value = [];

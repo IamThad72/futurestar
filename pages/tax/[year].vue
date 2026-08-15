@@ -152,11 +152,58 @@
           </ul>
         </section>
       </div>
+
+      <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <section
+          v-for="section in estimateSections"
+          :key="section.key"
+          class="overflow-hidden rounded-lg border border-primary bg-transparent"
+        >
+          <div class="border-b border-primary px-3 py-3 sm:px-4">
+            <h2 class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-lg font-semibold text-base-content">
+              <span>{{ section.title }}</span>
+              <span
+                class="text-sm font-semibold tabular-nums"
+                :class="balanceClass(section.balance)"
+              >
+                <span v-if="loading" class="text-base-content/40">…</span>
+                <template v-else>{{ balanceLabel(section.balance) }} ${{ formatAmount(Math.abs(section.balance)) }}</template>
+              </span>
+            </h2>
+            <p class="mt-1 text-xs text-base-content/60">
+              {{ section.subtitle }}
+            </p>
+          </div>
+          <ul class="divide-y divide-base-200">
+            <li
+              v-for="row in section.rows"
+              :key="row.key"
+              class="flex items-center justify-between gap-3 px-3 py-3 sm:px-4"
+              :class="row.emphasis ? 'bg-base-200/40' : ''"
+            >
+              <span class="text-sm" :class="row.emphasis ? 'font-medium text-base-content' : 'text-base-content/80'">
+                {{ row.label }}
+              </span>
+              <span
+                class="text-sm font-semibold tabular-nums"
+                :class="row.amountClass || 'text-base-content'"
+              >
+                <span v-if="loading" class="text-base-content/40">…</span>
+                <template v-else>{{ formatSignedAmount(row.amount, row.signed) }}</template>
+              </span>
+            </li>
+          </ul>
+        </section>
+      </div>
     </template>
   </section>
 </template>
 
 <script setup>
+import { estimateFederalTaxMfjStandardOneChild } from "~/utils/federalTaxEstimate";
+import { estimateOhioTaxMfjOneDependent } from "~/utils/ohioTaxEstimate";
+import { estimateWoosterLocalTax, woosterQualifyingWages } from "~/utils/ohioLocalTaxEstimate";
+
 const FISCAL_YEARS = [2026, 2027, 2028, 2029, 2030, 2031];
 
 const INCOME_KIND_ORDER = [
@@ -242,6 +289,201 @@ const taxSectionTotal = computed(() => sumRowAmounts(taxRows.value));
 const preTaxSectionTotal = computed(() => sumRowAmounts(preTaxRows.value));
 const postTaxSectionTotal = computed(() => sumRowAmounts(postTaxRows.value));
 
+const federalEstimate = computed(() =>
+  estimateFederalTaxMfjStandardOneChild({
+    incomeAfterPretax: Number(incomeTotalsByKind.value.taxable) || 0,
+    federalWithheld: Number(taxTotalsByKind.value.federal) || 0,
+    year: selectedYear.value,
+  }),
+);
+
+const ohioEstimate = computed(() =>
+  estimateOhioTaxMfjOneDependent({
+    incomeAfterPretax: Number(incomeTotalsByKind.value.taxable) || 0,
+    stateWithheld: Number(taxTotalsByKind.value.state) || 0,
+    year: selectedYear.value,
+  }),
+);
+
+const localEstimate = computed(() =>
+  estimateWoosterLocalTax({
+    qualifyingWages: woosterQualifyingWages({
+      gross: Number(incomeTotalsByKind.value.gross) || 0,
+      medical: Number(pretaxTotalsByKind.value.medical) || 0,
+      dental: Number(pretaxTotalsByKind.value.dental) || 0,
+      vision: Number(pretaxTotalsByKind.value.vision) || 0,
+      hsa: Number(pretaxTotalsByKind.value.hsa) || 0,
+      taxableFallback: Number(incomeTotalsByKind.value.taxable) || 0,
+    }),
+    localWithheld: Number(taxTotalsByKind.value.local) || 0,
+  }),
+);
+
+function balanceLabel(balance) {
+  if (balance > 0) return "Owed";
+  if (balance < 0) return "Refund";
+  return "Settled";
+}
+
+function balanceClass(balance) {
+  if (balance > 0) return "text-warning";
+  if (balance < 0) return "text-success";
+  return "text-base-content";
+}
+
+function balanceRow(est) {
+  return {
+    key: "balance",
+    label: est.balance >= 0 ? "Estimated amount owed" : "Estimated refund",
+    amount: Math.abs(est.balance),
+    emphasis: true,
+    amountClass:
+      est.balance > 0 ? "text-warning" : est.balance < 0 ? "text-success" : "text-base-content",
+  };
+}
+
+const federalEstimateRows = computed(() => {
+  const est = federalEstimate.value;
+  const rows = [
+    { key: "agi", label: "Income after pre-tax", amount: est.incomeAfterPretax },
+    { key: "std", label: "Standard deduction (MFJ)", amount: -est.standardDeduction, signed: true },
+    { key: "taxable", label: "Taxable income", amount: est.taxableIncome, emphasis: true },
+    { key: "before", label: "Tax before credits", amount: est.taxBeforeCredits },
+    { key: "ctc", label: "Child tax credit (1)", amount: -est.childTaxCredit, signed: true },
+    {
+      key: "est",
+      label: "Estimated federal tax",
+      amount: est.estimatedFederalTax,
+      emphasis: true,
+    },
+  ];
+  if (est.refundableChildTaxCredit > 0) {
+    rows.push({
+      key: "actc",
+      label: "Refundable child tax credit",
+      amount: -est.refundableChildTaxCredit,
+      signed: true,
+    });
+  }
+  rows.push(
+    { key: "withheld", label: "Federal withheld", amount: -est.federalWithheld, signed: true },
+    balanceRow(est),
+  );
+  return rows;
+});
+
+const ohioEstimateRows = computed(() => {
+  const est = ohioEstimate.value;
+  const exemptionLabel =
+    est.exemptionPerPerson > 0
+      ? `Personal exemptions (${est.exemptionCount} × $${est.exemptionPerPerson.toLocaleString("en-US")})`
+      : "Personal exemptions";
+  const rows = [
+    { key: "agi", label: "Ohio AGI (after pre-tax)", amount: est.incomeAfterPretax },
+    { key: "exemptions", label: exemptionLabel, amount: -est.personalExemptions, signed: true },
+    { key: "taxable", label: "Ohio taxable income", amount: est.taxableIncome, emphasis: true },
+    { key: "before", label: "Tax before credits", amount: est.taxBeforeCredits },
+  ];
+  if (est.personalExemptionCredit > 0) {
+    rows.push({
+      key: "pec",
+      label: "Personal exemption credit",
+      amount: -est.personalExemptionCredit,
+      signed: true,
+    });
+  }
+  if (est.jointFilingCredit > 0) {
+    const pct = Math.round(est.jointFilingCreditRate * 100);
+    rows.push({
+      key: "jfc",
+      label: `Joint filing credit (${pct}%)`,
+      amount: -est.jointFilingCredit,
+      signed: true,
+    });
+  }
+  rows.push(
+    {
+      key: "est",
+      label: "Estimated Ohio tax",
+      amount: est.estimatedOhioTax,
+      emphasis: true,
+    },
+    { key: "withheld", label: "State withheld", amount: -est.stateWithheld, signed: true },
+    balanceRow(est),
+  );
+  return rows;
+});
+
+const localEstimateRows = computed(() => {
+  const est = localEstimate.value;
+  const cityPct = (est.cityRate * 100).toFixed(1);
+  const rows = [
+    { key: "wages", label: "Qualifying wages", amount: est.qualifyingWages },
+    {
+      key: "city",
+      label: `City of ${est.city} (${cityPct}%)`,
+      amount: est.cityTax,
+    },
+  ];
+  if (est.schoolDistrictRate > 0) {
+    rows.push({
+      key: "sd",
+      label: `${est.schoolDistrict} (${(est.schoolDistrictRate * 100).toFixed(2)}%)`,
+      amount: est.schoolDistrictTax,
+    });
+  } else {
+    rows.push({
+      key: "sd",
+      label: `${est.schoolDistrict} income tax`,
+      amount: 0,
+    });
+  }
+  rows.push(
+    {
+      key: "est",
+      label: "Estimated local tax",
+      amount: est.estimatedLocalTax,
+      emphasis: true,
+    },
+    { key: "withheld", label: "Local withheld", amount: -est.localWithheld, signed: true },
+    balanceRow(est),
+  );
+  return rows;
+});
+
+const estimateSections = computed(() => {
+  const fed = federalEstimate.value;
+  const oh = ohioEstimate.value;
+  const loc = localEstimate.value;
+  const fedNote =
+    fed.paramsYear !== selectedYear.value ? ` · Using ${fed.paramsYear} IRS figures` : "";
+  const ohNote =
+    oh.paramsYear !== selectedYear.value ? ` · Using ${oh.paramsYear} Ohio figures` : "";
+  return [
+    {
+      key: "federal",
+      title: "Estimated Federal Tax",
+      subtitle: `${fed.filingStatusLabel} · Standard deduction · ${fed.qualifyingChildren} child tax credit${fedNote}`,
+      balance: fed.balance,
+      rows: federalEstimateRows.value,
+    },
+    {
+      key: "ohio",
+      title: "Estimated Ohio Tax",
+      subtitle: `${oh.filingStatusLabel} · Personal exemptions · ${oh.dependents} dependent${ohNote}`,
+      balance: oh.balance,
+      rows: ohioEstimateRows.value,
+    },
+    {
+      key: "local",
+      title: "Estimated Local Tax",
+      subtitle: `${loc.city}, ${loc.county} · ZIP ${loc.zip} · ${loc.schoolDistrict}`,
+      balance: loc.balance,
+      rows: localEstimateRows.value,
+    },
+  ];
+});
+
 useHead(() => ({
   title: `Tax ${selectedYear.value}`,
 }));
@@ -252,6 +494,12 @@ function formatAmount(val) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+function formatSignedAmount(val, signed) {
+  const n = Number(val) || 0;
+  if (signed && n < 0) return `-$${formatAmount(Math.abs(n))}`;
+  return `$${formatAmount(n)}`;
 }
 
 async function loadTotals() {

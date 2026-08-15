@@ -4,7 +4,6 @@ import { getSessionUserId } from "../../utils/auth";
 import { getUserGroupId, groupAccessClause, soloUserClause } from "../../utils/group";
 import { ensureActiveBudget, getBudgetForPeriod, listBudgets, monthDateRange, parseYearMonth } from "../../utils/budgetAccess";
 import { partitionTransactionsForBudget } from "../../utils/budgetTransactions";
-import { TAX_ANNUAL_KIND_LABELS, TAX_ANNUAL_KINDS, type TaxAnnualKind } from "../../utils/taxAnnualTotals";
 
 /**
  * Single-request bootstrap for Budget Tracker.
@@ -50,7 +49,6 @@ export default defineEventHandler(async (event) => {
       incomeSrcResult,
       invSrcResult,
       savSrcResult,
-      taxResult,
     ] = await Promise.all([
       client.query(
         `SELECT income_id as id, 'income' as type, COALESCE(income_type, 'gross') as income_type,
@@ -125,14 +123,6 @@ export default defineEventHandler(async (event) => {
           recordParams,
         )
         .catch(() => ({ rows: [] })),
-      client
-        .query(
-          `SELECT tax_kind, total_amount, updated_at
-         FROM tax_annual_totals
-         WHERE budget_id = $1 AND tax_year = $2`,
-          [budget.budget_id, year],
-        )
-        .catch(() => ({ rows: [] })),
     ]);
 
     const { transactions, orphans } = partitionTransactionsForBudget(
@@ -140,15 +130,6 @@ export default defineEventHandler(async (event) => {
       incomeResult.rows,
       expensesResult.rows,
     );
-
-    const byKind = Object.fromEntries(
-      taxResult.rows.map((r) => [String(r.tax_kind), Number(r.total_amount) || 0]),
-    ) as Record<string, number>;
-    const taxTotals = TAX_ANNUAL_KINDS.map((kind: TaxAnnualKind) => ({
-      tax_kind: kind,
-      label: TAX_ANNUAL_KIND_LABELS[kind],
-      total_amount: byKind[kind] ?? 0,
-    }));
 
     return {
       year,
@@ -167,12 +148,6 @@ export default defineEventHandler(async (event) => {
       income_sources: incomeSrcResult.rows,
       investment_sources: invSrcResult.rows,
       savings_sources: savSrcResult.rows,
-      tax: {
-        tax_year: year,
-        budget_id: budget.budget_id,
-        totals: taxTotals,
-        grand_total: taxTotals.reduce((sum, t) => sum + t.total_amount, 0),
-      },
     };
   } catch (error: unknown) {
     if (error && typeof error === "object" && "statusCode" in error) throw error;
