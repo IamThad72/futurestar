@@ -2,7 +2,7 @@ import { createError, readBody } from "h3";
 import { createDbClient } from "../../../utils/db";
 import { getSessionUserId } from "../../../utils/auth";
 import { getUserGroupId, groupAccessClauseAt, soloUserClauseAt } from "../../../utils/group";
-import { getBudgetForPeriod } from "../../../utils/budgetAccess";
+import { getActiveBudget, getBudgetForPeriod } from "../../../utils/budgetAccess";
 import { applyDebtPayment } from "../../../utils/debtPayment";
 import { applyFiscalTotalsForTransaction } from "../../../utils/fiscalAnnualTotals";
 import { adjustTaxAnnualTotalForClassification, yearFromDateString } from "../../../utils/taxAnnualTotals";
@@ -397,11 +397,14 @@ export default defineEventHandler(async (event) => {
 
     const txAmount = amount != null && !isNaN(amount) ? Math.abs(amount) : 0;
     const fiscalYear = yearFromDateString(dateStr);
+    // Tax / Income cards read the active budget. Add onto that stored
+    // baseline — never write a period-budget copy or rebuild from rows.
+    const active = await getActiveBudget(client, userId, groupId);
 
     if (type === "income" && incomeTypeForAdjust === "tax") {
       await adjustTaxAnnualTotalForClassification(
         client,
-        periodBudget.budget_id,
+        active.budget_id,
         userId,
         groupId,
         fiscalYear,
@@ -411,10 +414,9 @@ export default defineEventHandler(async (event) => {
       );
     }
 
-    // Income / Pre-Tax / Post-Tax YTD for new transactions (gross, net, insurance, 401k, HSA, etc.).
     await applyFiscalTotalsForTransaction(
       client,
-      periodBudget.budget_id,
+      active.budget_id,
       userId,
       groupId,
       fiscalYear,

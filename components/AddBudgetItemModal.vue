@@ -163,7 +163,7 @@
               </div>
             </div>
             <div v-if="grossAllocRetirementLines.length" class="space-y-2">
-              <h4 class="text-sm font-semibold text-indigo-600 dark:text-indigo-400">Retirement</h4>
+              <h4 class="text-sm font-semibold text-primary">Retirement</h4>
               <div
                 v-for="line in grossAllocRetirementLines"
                 :key="line.key"

@@ -17,13 +17,27 @@ export default defineNuxtConfig({
   app: {
     head: {
       viewport: "width=device-width, initial-scale=1, viewport-fit=cover",
-      meta: [{ name: "theme-color", content: "#1e3a8a" }],
+      meta: [{ name: "theme-color", content: "#fafafa" }],
+      link: [
+        { rel: "preconnect", href: "https://fonts.googleapis.com" },
+        { rel: "preconnect", href: "https://fonts.gstatic.com", crossorigin: "" },
+        {
+          rel: "stylesheet",
+          href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
+        },
+      ],
     },
   },
   runtimeConfig: {
     // Server-only (never exposed to client). Override via NUXT_MCP_BASE_URL, NUXT_MCP_TOKEN
     mcpBaseUrl: "",
     mcpToken: "",
+    // ExerciseDB RapidAPI key (optional). OSS v1 is used when empty.
+    // NUXT_EXERCISE_DB_API_KEY, NUXT_EXERCISE_DB_BASE_URL
+    exerciseDbApiKey: "",
+    exerciseDbBaseUrl: "",
+    // USDA FoodData Central search (Foundation + Branded). FDC_API_KEY or USDA_FDC_API_KEY.
+    fdcApiKey: process.env.FDC_API_KEY || process.env.USDA_FDC_API_KEY || "",
     public: {
       supabaseUrl: process.env.SUPABASE_URL,
       supabasePublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY,

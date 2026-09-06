@@ -16,15 +16,25 @@
       <div class="relative isolate overflow-hidden">
         <header class="pb-4 pt-6 sm:pb-6">
           <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-6 px-4 sm:flex-nowrap sm:px-6 lg:px-8">
-            <h1 class="text-sm font-semibold text-gray-900 md:text-base dark:text-white">Estate Management</h1>
-            <button
-              v-if="auth.user"
-              type="button"
-              class="estate-action-btn ml-auto"
-              @click="openManageAssetCategoriesModal"
-            >
-              Manage Asset Categories
-            </button>
+            <h1 class="text-lg font-semibold text-base-content md:text-xl">Estate Management</h1>
+            <div class="ml-auto flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+              <button
+                v-if="auth.user"
+                type="button"
+                class="estate-action-btn"
+                @click="openUploadDocument"
+              >
+                Upload document
+              </button>
+              <button
+                v-if="auth.user"
+                type="button"
+                class="estate-action-btn"
+                @click="openManageAssetCategoriesModal"
+              >
+                Manage Asset Categories
+              </button>
+            </div>
           </div>
         </header>
         <div class="border-b border-gray-900/10 lg:border-t lg:border-t-gray-900/5 dark:border-white/10 dark:lg:border-t-white/5">
@@ -47,15 +57,22 @@
           aria-hidden="true"
         >
           <div
-            class="aspect-[1154/678] w-[72.125rem] bg-gradient-to-br from-[#FF80B5] to-[#9089FC]"
+            class="aspect-[1154/678] w-[72.125rem] bg-gradient-to-br from-primary/40 to-secondary/40"
             style="clip-path: polygon(100% 38.5%, 82.6% 100%, 60.2% 37.7%, 52.4% 32.1%, 47.5% 41.8%, 45.2% 65.6%, 27.5% 23.4%, 0.1% 35.3%, 17.9% 0%, 27.7% 23.4%, 76.2% 2.5%, 74.2% 56%, 100% 38.5%)"
           ></div>
         </div>
       </div>
 
-      <div v-if="loading" class="mx-auto max-w-7xl px-4 py-8 text-xs text-gray-500 sm:px-6 md:py-12 md:text-sm lg:px-8 dark:text-gray-400">Loading records...</div>
+      <div class="space-y-10 py-8 md:space-y-16 md:py-16 xl:space-y-20">
+        <div id="estate-documents">
+          <EstateSection title="Documents" add-label="Upload" @add="openUploadDocument">
+            <EstateDocumentsPanel ref="docsPanelRef" />
+          </EstateSection>
+        </div>
 
-      <div v-else class="space-y-10 py-8 md:space-y-16 md:py-16 xl:space-y-20">
+        <div v-if="loading" class="mx-auto max-w-7xl px-4 py-4 text-xs text-gray-500 sm:px-6 md:text-sm lg:px-8 dark:text-gray-400">Loading records...</div>
+
+        <template v-else>
         <EstateSection title="Asset Inventory" :total="formatMoney(totalAssetInventory)" @add="openAddModal('asset')">
           <EstateRecordList
             :items="sortedAssetInventory"
@@ -130,6 +147,7 @@
             @edit="openEditModal('insurance', $event)"
           />
         </EstateSection>
+        </template>
       </div>
     </template>
 
@@ -175,6 +193,7 @@
 <script setup>
 import { nextTick } from "vue";
 import { inferIsRevolvingDebt } from "~/utils/debtPayment";
+import { isEstateDocumentsView } from "~/utils/financialNav";
 
 useHead({ title: "Estate Management" });
 
@@ -228,10 +247,12 @@ const insuranceColumns = [
 ];
 
 const auth = useAuthStore();
+const route = useRoute();
 const loading = ref(true);
 const addEstateModalRef = ref(null);
 const editEstateModalRef = ref(null);
 const manageAssetCategoriesModalRef = ref(null);
+const docsPanelRef = ref(null);
 const modalsMounted = reactive({
   addEstate: false,
   editEstate: false,
@@ -512,6 +533,17 @@ async function openManageAssetCategoriesModal() {
   manageAssetCategoriesModalRef.value?.showModal();
 }
 
+function openUploadDocument() {
+  docsPanelRef.value?.openUpload();
+}
+
+function scrollToDocumentsIfNeeded() {
+  if (!isEstateDocumentsView(route.query, route.hash)) return;
+  nextTick(() => {
+    document.getElementById("estate-documents")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
 function onEstatePanelRecordsUpdated() {
   void loadSummary();
 }
@@ -549,11 +581,19 @@ async function loadSummary() {
 onMounted(() => {
   if (!auth.ready) auth.fetchSession();
   void loadSummary();
+  scrollToDocumentsIfNeeded();
 });
 
 watch(() => auth.user, (user) => {
   if (user) void loadSummary();
 }, { immediate: false });
+
+watch(
+  () => [route.query.docs, route.hash],
+  () => {
+    scrollToDocumentsIfNeeded();
+  },
+);
 </script>
 
 <style scoped>

@@ -1,0 +1,2 @@
+-- Superseded by drop_nutrition_tables.sql + create_nutrition_foundation.sql.
+-- Foundation-only catalog. Left in the migration list as a no-op.

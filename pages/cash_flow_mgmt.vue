@@ -1,6 +1,6 @@
 <template>
   <section
-    class="mx-auto w-full max-w-[96rem] space-y-4 sm:space-y-6 px-0.5 pr-0 pt-[0.8rem] pb-4 sm:-mx-2 sm:pl-2 sm:pr-1.5 sm:pt-[1.2rem] sm:pb-6 overflow-x-hidden min-w-0"
+    class="app-page-wide space-y-4 sm:space-y-6"
   >
     <header class="flex flex-wrap items-center gap-4 sm:gap-6">
       <div class="min-w-0">
@@ -8,8 +8,10 @@
         <p v-if="activeBudgetName" class="mt-0.5 text-xs text-base-content/60">
           Active budget:
           <span class="font-medium text-base-content/80">{{ activeBudgetName }}</span>
-          ·
-          <NuxtLink to="/account_map" class="link link-hover">Manage on Account Map</NuxtLink>
+          <span class="hidden lg:inline">
+            ·
+            <NuxtLink to="/account_map" class="link link-hover">Manage on Account Map</NuxtLink>
+          </span>
         </p>
       </div>
       <button
@@ -85,7 +87,7 @@
             >
               <ul
                 role="list"
-                class="divide-y divide-gray-100 rounded-md bg-white shadow-sm ring-1 ring-gray-900/5 dark:divide-white/5 dark:bg-gray-900/50 dark:shadow-none dark:ring-white/10"
+                class="divide-y divide-base-200 rounded-md bg-base-100 shadow-sm ring-1 ring-base-300"
               >
                 <li
                   v-for="item in group.items"
@@ -204,7 +206,7 @@
               >
                 <ul
                   role="list"
-                  class="divide-y divide-gray-100 rounded-md bg-white shadow-sm ring-1 ring-gray-900/5 dark:divide-white/5 dark:bg-gray-900/50 dark:shadow-none dark:ring-white/10"
+                  class="divide-y divide-base-200 rounded-md bg-base-100 shadow-sm ring-1 ring-base-300"
                 >
                   <li
                     v-for="item in group.items"
@@ -324,7 +326,7 @@
                 >
                   <ul
                     role="list"
-                    class="divide-y divide-gray-100 rounded-md bg-white shadow-sm ring-1 ring-gray-900/5 dark:divide-white/5 dark:bg-gray-900/50 dark:shadow-none dark:ring-white/10"
+                    class="divide-y divide-base-200 rounded-md bg-base-100 shadow-sm ring-1 ring-base-300"
                   >
                     <li
                       v-for="item in group.items"
@@ -438,7 +440,7 @@
                 >
                   <ul
                     role="list"
-                    class="divide-y divide-gray-100 rounded-md bg-white shadow-sm ring-1 ring-gray-900/5 dark:divide-white/5 dark:bg-gray-900/50 dark:shadow-none dark:ring-white/10"
+                    class="divide-y divide-base-200 rounded-md bg-base-100 shadow-sm ring-1 ring-base-300"
                   >
                     <li
                       v-for="item in group.items"
@@ -564,7 +566,7 @@
                 >
                   <ul
                     role="list"
-                    class="divide-y divide-gray-100 rounded-md bg-white shadow-sm ring-1 ring-gray-900/5 dark:divide-white/5 dark:bg-gray-900/50 dark:shadow-none dark:ring-white/10"
+                    class="divide-y divide-base-200 rounded-md bg-base-100 shadow-sm ring-1 ring-base-300"
                   >
                     <li
                       v-for="item in group.items"
@@ -676,7 +678,7 @@
                 >
                   <ul
                     role="list"
-                    class="divide-y divide-gray-100 rounded-md bg-white shadow-sm ring-1 ring-gray-900/5 dark:divide-white/5 dark:bg-gray-900/50 dark:shadow-none dark:ring-white/10"
+                    class="divide-y divide-base-200 rounded-md bg-base-100 shadow-sm ring-1 ring-base-300"
                   >
                     <li
                       v-for="item in group.items"

@@ -135,7 +135,7 @@ function onRowClick(item) {
   gap: 0.25rem;
   border: 1px solid color-mix(in srgb, var(--color-base-content, #151616) 18%, transparent);
   border-radius: 9999px;
-  background: var(--color-base-100, #fbffff);
+  background: var(--color-base-100, #ffffff);
   color: var(--color-base-content, #151616);
   padding: 0.25rem 0.625rem;
   font-size: 0.6875rem;
@@ -152,9 +152,9 @@ function onRowClick(item) {
 }
 
 .estate-record-list__sort-btn--active {
-  border-color: var(--color-primary, #1e3a8a);
-  background: color-mix(in srgb, var(--color-primary, #1e3a8a) 10%, var(--color-base-100, #fbffff));
-  color: var(--color-primary, #1e3a8a);
+  border-color: var(--color-primary, #06b6d4);
+  background: color-mix(in srgb, var(--color-primary, #06b6d4) 10%, var(--color-base-100, #ffffff));
+  color: var(--color-primary, #06b6d4);
 }
 
 .estate-record-list__sort-dir {
@@ -184,11 +184,12 @@ function onRowClick(item) {
 }
 
 .estate-record-list__item {
-  --background: var(--color-base-100, #fbffff);
+  --background: var(--color-base-100, #ffffff);
   --color: var(--color-base-content, #151616);
   --border-color: color-mix(in srgb, var(--color-base-content, #151616) 10%, transparent);
-  --padding-start: 0;
-  --inner-padding-end: 0;
+  --padding-start: 0.75rem;
+  --padding-end: 0.75rem;
+  --inner-padding-end: 0.25rem;
 }
 
 .estate-record-list__title {
@@ -269,7 +270,7 @@ function onRowClick(item) {
 }
 
 .estate-record-list__line-value--budgeted {
-  color: var(--color-primary, #1e3a8a);
+  color: var(--color-primary, #06b6d4);
   font-weight: 600;
 }
 
@@ -317,7 +318,7 @@ function onRowClick(item) {
 .estate-record-list__edit-btn {
   border: 1px solid color-mix(in srgb, var(--color-base-content, #151616) 18%, transparent);
   border-radius: 9999px;
-  background: var(--color-base-100, #fbffff);
+  background: var(--color-base-100, #ffffff);
   color: var(--color-base-content, #151616);
   padding: 0.2rem 0.55rem;
   font-size: 0.6875rem;
@@ -328,8 +329,8 @@ function onRowClick(item) {
 }
 
 .estate-record-list__edit-btn:hover {
-  border-color: var(--color-primary, #1e3a8a);
-  color: var(--color-primary, #1e3a8a);
+  border-color: var(--color-primary, #06b6d4);
+  color: var(--color-primary, #06b6d4);
 }
 
 .estate-record-list__note--over {

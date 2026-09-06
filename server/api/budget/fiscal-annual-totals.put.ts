@@ -8,6 +8,7 @@ import {
   isFiscalPosttaxKind,
   isFiscalPretaxKind,
   listFiscalAnnualTotals,
+  syncTaxableIncomeFromGrossAndPretax,
   upsertFiscalAnnualTotal,
   type FiscalSection,
   type FiscalTotalKind,
@@ -44,6 +45,10 @@ export default defineEventHandler(async (event) => {
       if (section !== "income" && section !== "pretax" && section !== "posttax") {
         throw createError({ statusCode: 400, statusMessage: `Invalid section: ${row.section}` });
       }
+      if (section === "income" && kind === "taxable") {
+        // Taxable is always Gross − Pre-Tax; ignore a client override.
+        continue;
+      }
       if (section === "income" && !isFiscalIncomeKind(kind)) {
         throw createError({ statusCode: 400, statusMessage: `Invalid income kind: ${row.total_kind}` });
       }
@@ -68,6 +73,14 @@ export default defineEventHandler(async (event) => {
         amount,
       );
     }
+
+    await syncTaxableIncomeFromGrossAndPretax(
+      client,
+      active.budget_id,
+      userId,
+      groupId,
+      taxYear,
+    );
 
     const listed = await listFiscalAnnualTotals(client, active.budget_id, taxYear);
     return {

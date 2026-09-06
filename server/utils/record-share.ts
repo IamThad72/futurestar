@@ -1,5 +1,6 @@
 import { createError } from "h3";
 
+/** Per-record sharing for Financial estate tables only. Do not add Physical or Spiritual types. */
 const recordTypeMap = {
   asset_inventory: {
     table: "asset_inventory",

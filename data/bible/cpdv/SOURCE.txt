@@ -1,0 +1,7 @@
+Catholic Public Domain Version (CPDV)
+Public domain English Catholic Bible, including deuterocanonical books.
+
+Source: https://github.com/scrollmapper/bible_databases
+JSON: https://raw.githubusercontent.com/scrollmapper/bible_databases/master/formats/json/CPDV.json
+SQL:  https://raw.githubusercontent.com/scrollmapper/bible_databases/master/formats/sql/CPDV.sql
+License: Public Domain

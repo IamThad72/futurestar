@@ -1,12 +1,12 @@
 <template>
  
   <div
-    class="-mx-1 -mt-4 min-h-[calc(100dvh-8.5rem)] bg-zinc-50 px-4 py-12 pb-safe sm:-mx-3 sm:mt-0 sm:px-6 sm:py-16 lg:px-8"
+    class="-mx-1 -mt-4 min-h-[calc(100dvh-8.5rem)] bg-base-200 px-4 py-12 pb-safe sm:-mx-0 sm:mt-0 sm:px-6 sm:py-16 lg:px-8"
   >
     <div class="sm:mx-auto sm:w-full sm:max-w-sm">
       <NuxtLink
         to="/"
-        class="flex items-center justify-center gap-2 text-lg font-semibold tracking-tight text-zinc-900"
+        class="flex items-center justify-center gap-2 text-lg font-semibold tracking-tight text-gray-900"
       >
         Future Star
         <svg
@@ -25,10 +25,10 @@
           />
         </svg>
       </NuxtLink>
-      <h1 class="mt-8 text-center text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl sm:tracking-tight">
+      <h1 class="mt-8 text-center text-2xl font-medium tracking-tight text-gray-900">
         {{ forgotMode ? "Reset your password" : "Sign in to your account" }}
       </h1>
-      <p class="mt-2 text-center text-sm text-zinc-600">
+      <p class="mt-3 text-center text-base text-gray-600">
         {{
           forgotMode
             ? "Enter your email and we will send you a link to choose a new password."
@@ -37,10 +37,10 @@
       </p>
     </div>
 
-    <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
+    <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm sm:rounded-5xl sm:bg-white sm:p-10 sm:shadow-2xl sm:shadow-gray-900/10">
       <form class="auth-form space-y-6" @submit.prevent="submit">
         <div>
-          <label for="login-email" class="block text-sm/6 font-medium text-zinc-900">Email address</label>
+          <label for="login-email" class="mb-2 block text-sm font-semibold text-gray-900">Email address</label>
           <div class="mt-2">
             <input
               id="login-email"
@@ -50,14 +50,14 @@
               autocomplete="email"
               required
               placeholder="you@example.com"
-              class="block w-full rounded-md border-0 bg-white px-3 py-1.5 text-base text-zinc-900 shadow-sm ring-1 ring-zinc-300 ring-inset placeholder:text-zinc-400 focus:ring-2 focus:ring-primary sm:text-sm sm:leading-6"
+              class="input input-bordered w-full bg-base-100 text-base-content"
             />
           </div>
         </div>
 
         <div v-if="!forgotMode">
           <div class="flex items-center justify-between">
-            <label for="login-password" class="block text-sm/6 font-medium text-zinc-900">Password</label>
+            <label for="login-password" class="block text-sm font-semibold text-gray-900">Password</label>
             <button
               type="button"
               class="text-sm font-semibold text-primary hover:text-primary/80"
@@ -75,7 +75,7 @@
               autocomplete="current-password"
               required
               placeholder="••••••••"
-              class="block w-full rounded-md border-0 bg-white px-3 py-1.5 text-base text-zinc-900 shadow-sm ring-1 ring-zinc-300 ring-inset placeholder:text-zinc-400 focus:ring-2 focus:ring-primary sm:text-sm sm:leading-6"
+              class="input input-bordered w-full bg-base-100 text-base-content"
             />
           </div>
         </div>
@@ -83,7 +83,7 @@
         <div>
           <button
             type="submit"
-            class="btn btn-primary w-full min-h-11 rounded-full"
+            class="btn btn-primary w-full min-h-11 rounded-lg"
             :disabled="loading"
           >
             {{
@@ -98,7 +98,7 @@
           </button>
         </div>
 
-        <p v-if="forgotMode" class="text-center text-sm text-zinc-600">
+        <p v-if="forgotMode" class="text-center text-sm text-base-content/70">
           <button
             type="button"
             class="font-semibold text-primary hover:text-primary/80"
@@ -111,14 +111,14 @@
 
       <div
         v-if="error"
-        class="mt-6 rounded-md bg-red-50 px-3 py-2 text-sm text-red-800 ring-1 ring-red-200 ring-inset"
+        class="mt-6 rounded-md bg-error/10 px-3 py-2 text-sm text-error ring-1 ring-error/20 ring-inset"
         role="alert"
       >
         {{ error }}
       </div>
       <div
         v-if="success"
-        class="mt-6 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800 ring-1 ring-emerald-200 ring-inset"
+        class="mt-6 rounded-md bg-success/10 px-3 py-2 text-sm text-success ring-1 ring-success/20 ring-inset"
         role="status"
       >
         {{ success }}

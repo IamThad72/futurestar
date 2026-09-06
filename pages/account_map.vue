@@ -1,5 +1,5 @@
 <template>
-  <main class="account-map-page">
+  <main v-if="!isNarrow" class="account-map-page">
     <div v-if="!auth.ready" class="px-4 py-8 text-sm text-gray-500">Loading session...</div>
     <div
       v-else-if="!auth.user"
@@ -474,6 +474,17 @@ import AccountMapNode from "~/components/AccountMapNode.vue";
 useHead({ title: "Account Map" });
 
 const auth = useAuthStore();
+const { isNarrow } = useMobileShell();
+const { go } = useAppNavigate();
+
+watch(
+  isNarrow,
+  (narrow) => {
+    if (narrow) void go("/financial", { replace: true });
+  },
+  { immediate: true },
+);
+
 const loading = ref(true);
 const error = ref("");
 const savingLayout = ref(false);
@@ -1371,7 +1382,7 @@ function autoLayout() {
 }
 
 watch(
-  () => Boolean(auth.ready && auth.user),
+  () => Boolean(auth.ready && auth.user) && !isNarrow.value,
   (ok) => {
     if (ok) void loadMap();
     else if (auth.ready) loading.value = false;
@@ -1427,7 +1438,7 @@ watch(
   border-right: 1px solid color-mix(in srgb, var(--color-base-content, #151616) 14%, transparent);
   padding: 0.75rem;
   overflow: auto;
-  background: color-mix(in srgb, var(--color-base-200, #f1f5f9) 55%, var(--color-base-100, #fbffff));
+  background: color-mix(in srgb, var(--color-base-200, #f1f5f9) 55%, var(--color-base-100, #ffffff));
   box-shadow: 8px 0 24px color-mix(in srgb, var(--color-base-content, #151616) 12%, transparent);
   transform: translateX(-105%);
   transition: transform 0.22s ease;
@@ -1473,7 +1484,7 @@ watch(
   flex-shrink: 0;
   border: 1px solid color-mix(in srgb, var(--color-base-content, #151616) 16%, transparent);
   border-radius: 0.375rem;
-  background: var(--color-base-100, #fbffff);
+  background: var(--color-base-100, #ffffff);
   color: var(--color-base-content, #151616);
   font-size: 1rem;
   font-weight: 700;
@@ -1517,7 +1528,7 @@ watch(
   margin-top: 0.875rem;
   border: 1px solid color-mix(in srgb, var(--color-base-content, #151616) 12%, transparent);
   border-radius: 0.375rem;
-  background: var(--color-base-100, #fbffff);
+  background: var(--color-base-100, #ffffff);
   overflow: hidden;
 }
 
@@ -1587,7 +1598,7 @@ watch(
   text-align: left;
   border: 1px solid color-mix(in srgb, var(--color-base-content, #151616) 12%, transparent);
   border-radius: 0.375rem;
-  background: var(--color-base-100, #fbffff);
+  background: var(--color-base-100, #ffffff);
   padding: 0.375rem 0.5rem;
   margin-top: 0.375rem;
   margin-bottom: 0;
@@ -1644,7 +1655,7 @@ watch(
   margin: 0;
   border: 1px solid color-mix(in srgb, var(--color-base-content, #151616) 16%, transparent);
   border-radius: 0.5rem;
-  background: var(--color-base-100, #fbffff);
+  background: var(--color-base-100, #ffffff);
   padding: 0.4rem 0.7rem;
   color: var(--color-base-content, #151616);
   cursor: pointer;
@@ -1653,7 +1664,7 @@ watch(
 }
 
 .account-map-budget-menu__trigger:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-base-content, #151616) 4%, var(--color-base-100, #fbffff));
+  background: color-mix(in srgb, var(--color-base-content, #151616) 4%, var(--color-base-100, #ffffff));
 }
 
 .account-map-budget-menu__trigger:disabled {
@@ -1701,7 +1712,7 @@ watch(
   origin: top right;
   border-radius: 0.5rem;
   border: 1px solid color-mix(in srgb, var(--color-base-content, #151616) 12%, transparent);
-  background: var(--color-base-100, #fbffff);
+  background: var(--color-base-100, #ffffff);
   padding: 0.375rem;
   box-shadow:
     0 10px 15px -3px rgb(0 0 0 / 0.1),
@@ -1802,7 +1813,7 @@ watch(
   width: min(22rem, 100%);
   border-radius: 0.75rem;
   border: 1px solid color-mix(in srgb, var(--color-base-content, #151616) 14%, transparent);
-  background: var(--color-base-100, #fbffff);
+  background: var(--color-base-100, #ffffff);
   padding: 1rem;
   box-shadow: 0 12px 32px color-mix(in srgb, var(--color-base-content, #151616) 16%, transparent);
 }
@@ -1816,7 +1827,7 @@ watch(
   min-height: 28rem;
   background:
     radial-gradient(circle at top left, color-mix(in srgb, #0284c7 8%, transparent), transparent 40%),
-    var(--color-base-100, #fbffff);
+    var(--color-base-100, #ffffff);
 }
 
 .account-map-canvas {
@@ -1831,7 +1842,7 @@ watch(
   width: 13.75rem;
   border: 1px solid color-mix(in srgb, var(--color-base-content, #151616) 14%, transparent);
   border-radius: 0.5rem;
-  background: var(--color-base-100, #fbffff);
+  background: var(--color-base-100, #ffffff);
   padding: 0.75rem;
   box-shadow: 0 8px 24px color-mix(in srgb, var(--color-base-content, #151616) 12%, transparent);
 }
@@ -1845,7 +1856,7 @@ watch(
 .account-map-edge-kind {
   border: 1px solid color-mix(in srgb, var(--color-base-content, #151616) 16%, transparent);
   border-radius: 9999px;
-  background: var(--color-base-100, #fbffff);
+  background: var(--color-base-100, #ffffff);
   color: var(--color-base-content, #151616);
   padding: 0.2rem 0.55rem;
   font-size: 0.6875rem;
@@ -1855,8 +1866,8 @@ watch(
 }
 
 .account-map-edge-kind--active {
-  border-color: var(--color-primary, #1e3a8a);
-  background: color-mix(in srgb, var(--color-primary, #1e3a8a) 12%, var(--color-base-100, #fbffff));
-  color: var(--color-primary, #1e3a8a);
+  border-color: var(--color-primary, #06b6d4);
+  background: color-mix(in srgb, var(--color-primary, #06b6d4) 12%, var(--color-base-100, #ffffff));
+  color: var(--color-primary, #06b6d4);
 }
 </style>

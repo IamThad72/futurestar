@@ -8,8 +8,8 @@ import sharp from "sharp";
 
 const root = join(import.meta.dirname, "..");
 const resourcesDir = join(root, "resources");
-const primary = "#1e3a8a";
-const accent = "#fbbf24";
+const primary = "#06b6d4";
+const accent = "#ffffff";
 
 const starPath =
   "M512 168 L578 378 L798 378 L622 512 L688 722 L512 588 L336 722 L402 512 L226 378 L446 378 Z";

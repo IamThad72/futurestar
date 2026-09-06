@@ -37,7 +37,7 @@ defineProps({
   max-width: 220px;
   border: 1px solid color-mix(in srgb, var(--color-base-content, #151616) 18%, transparent);
   border-radius: 0.5rem;
-  background: var(--color-base-100, #fbffff);
+  background: var(--color-base-100, #ffffff);
   color: var(--color-base-content, #151616);
   padding: 0.5rem 0.75rem;
   box-shadow: 0 1px 2px color-mix(in srgb, var(--color-base-content, #151616) 8%, transparent);
@@ -45,8 +45,8 @@ defineProps({
 }
 
 .account-map-node--selected {
-  border-color: var(--color-primary, #1e3a8a);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary, #1e3a8a) 25%, transparent);
+  border-color: var(--color-primary, #06b6d4);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary, #06b6d4) 25%, transparent);
 }
 
 .account-map-node--cash_and_investments {
@@ -100,7 +100,7 @@ defineProps({
 .account-map-handle {
   width: 10px !important;
   height: 10px !important;
-  background: var(--color-primary, #1e3a8a) !important;
-  border: 2px solid var(--color-base-100, #fbffff) !important;
+  background: var(--color-primary, #06b6d4) !important;
+  border: 2px solid var(--color-base-100, #ffffff) !important;
 }
 </style>

@@ -4,7 +4,12 @@ type DbClient = {
   query: (queryText: string, values: unknown[]) => Promise<{ rows: Array<Record<string, unknown>>; rowCount?: number }>;
 };
 
-/** Tables that share data across linked account group members. */
+/**
+ * Financial tables that share rows across linked-account group members.
+ * Physical and Spiritual user data (nutrition intake, logs, favorites, body
+ * composition, spiritual journals, etc.) must never be added here — those
+ * tables are `user_id` only. See `privateUserAccess.ts`.
+ */
 export const GROUP_SHARED_TABLES = [
   "asset_inventory",
   "asset_vehicles",
@@ -26,6 +31,7 @@ export const GROUP_SHARED_TABLES = [
   "fiscal_annual_totals",
   "account_map_layouts",
   "account_map_edges",
+  "estate_documents",
 ] as const;
 
 /** $1 = userId, $2 = groupId */
@@ -56,6 +62,11 @@ export const backfillGroupIdForUser = async (client: DbClient, groupId: number, 
   }
 };
 
+/**
+ * Linked-account group for Financial APIs only.
+ * Do not call this from Physical or Spiritual routes — use `requirePrivateUserId`.
+ * A user belongs to at most one group; there is no client-selected group switcher.
+ */
 export const getUserGroupId = async (
   client: { query: (queryText: string, values: unknown[]) => Promise<{ rows: Array<{ group_id?: number }> }> },
   userId: number,

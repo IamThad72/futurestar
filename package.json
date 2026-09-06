@@ -9,6 +9,13 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "migrate": "node scripts/run-migrations.mjs",
+    "seed:exercises": "node scripts/seed-exercise-catalog.mjs",
+    "seed:usda": "node scripts/seed-usda-foundation.mjs",
+    "seed:usda:branded": "node scripts/seed-usda-branded.mjs",
+    "seed:usda:compact": "node scripts/seed-usda-branded.mjs --compact",
+    "seed:cpdv": "node scripts/seed-cpdv.mjs",
+    "seed:liturgical": "node scripts/seed-liturgical-calendar.mjs",
+    "seed:demo": "node scripts/seed-demo-account.mjs",
     "build:mobile": "npm run build:mobile:dev",
     "build:mobile:prod": "node scripts/validate-mobile-env.mjs && cross-env NODE_ENV=production NUXT_MOBILE_PRODUCTION=true NUXT_CAPACITOR=true nuxt generate && node scripts/verify-mobile-dist.mjs",
     "build:mobile:dev": "node scripts/validate-mobile-env.mjs --dev && cross-env CAPACITOR_DEV=true NUXT_CAPACITOR=true nuxt generate && node scripts/verify-mobile-dist.mjs",
@@ -23,7 +30,7 @@
     "cap:run:android:live": "node scripts/warn-skip-sync.mjs && cross-env CAPACITOR_DEV=true npx cap run android --no-sync",
     "cap:run:ios": "npm run cap:sync:dev && cross-env CAPACITOR_DEV=true npx cap run ios",
     "assets:generate": "node scripts/generate-app-assets.mjs",
-    "cap:assets": "npm run assets:generate && npx @capacitor/assets generate --assetPath resources --iconBackgroundColor '#1e3a8a' --splashBackgroundColor '#1e3a8a'"
+    "cap:assets": "npm run assets:generate && npx @capacitor/assets generate --assetPath resources --iconBackgroundColor '#06b6d4' --splashBackgroundColor '#fafafa'"
   },
   "dependencies": {
     "@azure/cosmos": "^4.9.0",

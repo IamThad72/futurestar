@@ -10,7 +10,9 @@
         <div>
           <h2 class="text-lg font-semibold">Linked Accounts</h2>
           <p class="text-sm text-base-content/70">
-            Create a group (up to 6 people) so members see the same entries.
+            Create a group (up to 6 people) so members share the same Financial records —
+            budgets, estate, garage, account map, and tax. Physical and Spiritual data stay
+            private to each person.
           </p>
         </div>
         <button class="btn btn-ghost btn-sm min-h-9 min-w-14" type="button" @click="close">Close</button>
@@ -30,7 +32,7 @@
       <div v-else class="mt-4 space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="text-sm text-base-content/70">
-            Manage group membership for shared records.
+            Manage group membership for shared Financial records.
           </div>
           <button class="btn btn-outline btn-sm" type="button" @click="loadGroupMembers">
             Refresh

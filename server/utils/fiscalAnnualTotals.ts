@@ -141,7 +141,23 @@ export function classifyFiscalPosttaxKind(
   return null;
 }
 
-/** Taxable Income = Gross Income − Pre-Tax total for the year. */
+/** Taxable Income = Gross − (Medical + Dental + Vision + 401k + HSA). */
+export function computeTaxableIncome(grossAmount: number, pretaxSum: number) {
+  const gross = Number(grossAmount) || 0;
+  const pretax = Number(pretaxSum) || 0;
+  return Math.max(0, Math.round((gross - pretax) * 100) / 100);
+}
+
+export function sumFiscalPretaxAmounts(
+  pretax: Array<{ total_kind?: string; total_amount?: number | string | null }>,
+) {
+  return FISCAL_PRETAX_KINDS.reduce((sum, kind) => {
+    const row = pretax.find((r) => r.total_kind === kind);
+    return sum + (Number(row?.total_amount) || 0);
+  }, 0);
+}
+
+/** Persist Taxable Income from stored Gross and the five Pre-Tax kinds. */
 export async function syncTaxableIncomeFromGrossAndPretax(
   client: DbClient,
   budgetId: number,
@@ -152,10 +168,8 @@ export async function syncTaxableIncomeFromGrossAndPretax(
   const year = taxYear == null ? NaN : Number(taxYear);
   if (!Number.isFinite(year) || year < 2000 || year > 2100) return;
 
-  const { income, pretax } = await listFiscalAnnualTotals(client, budgetId, year);
-  const gross = income.find((r) => r.total_kind === "gross")?.total_amount ?? 0;
-  const pretaxSum = pretax.reduce((sum, r) => sum + (Number(r.total_amount) || 0), 0);
-  const taxable = Math.max(0, Math.round((gross - pretaxSum) * 100) / 100);
+  const { income } = await listFiscalAnnualTotals(client, budgetId, year);
+  const taxable = income.find((r) => r.total_kind === "taxable")?.total_amount ?? 0;
   await upsertFiscalAnnualTotal(
     client,
     budgetId,
@@ -170,7 +184,8 @@ export async function syncTaxableIncomeFromGrossAndPretax(
 
 /**
  * Apply Income / Pre-Tax / Post-Tax deltas for a new or changed transaction.
- * Tax withholdings stay in tax_annual_totals (handled separately).
+ * Gross and Net only add/subtract this amount onto the stored baseline — never
+ * rebuilt from summing income rows. Tax withholdings stay in tax_annual_totals.
  */
 export async function applyFiscalTotalsForTransaction(
   client: DbClient,
@@ -328,18 +343,23 @@ export async function listFiscalAnnualTotals(
     byKey.set(`${row.section}:${row.total_kind}`, Number(row.total_amount) || 0);
   }
 
-  const income = FISCAL_INCOME_KINDS.map((kind) => ({
-    section: "income" as const,
-    total_kind: kind,
-    label: FISCAL_INCOME_KIND_LABELS[kind],
-    total_amount: byKey.get(`income:${kind}`) ?? 0,
-  }));
+  const gross = byKey.get("income:gross") ?? 0;
 
   const pretax = FISCAL_PRETAX_KINDS.map((kind) => ({
     section: "pretax" as const,
     total_kind: kind,
     label: FISCAL_PRETAX_KIND_LABELS[kind],
     total_amount: byKey.get(`pretax:${kind}`) ?? 0,
+  }));
+
+  const taxable = computeTaxableIncome(gross, sumFiscalPretaxAmounts(pretax));
+
+  const income = FISCAL_INCOME_KINDS.map((kind) => ({
+    section: "income" as const,
+    total_kind: kind,
+    label: FISCAL_INCOME_KIND_LABELS[kind],
+    total_amount:
+      kind === "taxable" ? taxable : kind === "gross" ? gross : (byKey.get(`income:${kind}`) ?? 0),
   }));
 
   const posttax = FISCAL_POSTTAX_KINDS.map((kind) => ({

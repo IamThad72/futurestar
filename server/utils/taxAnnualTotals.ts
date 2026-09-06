@@ -20,6 +20,10 @@ type DbClient = {
   query: (queryText: string, values?: unknown[]) => Promise<{ rows: any[]; rowCount?: number | null }>;
 };
 
+export function isTaxAnnualKind(kind: string): kind is TaxAnnualKind {
+  return (TAX_ANNUAL_KINDS as readonly string[]).includes(kind);
+}
+
 /** Map tax income category/subcategory text to a standard annual total kind. */
 export function classifyTaxAnnualKind(
   category: string | null | undefined,
@@ -35,6 +39,63 @@ export function classifyTaxAnnualKind(
   return null;
 }
 
+export async function upsertTaxAnnualTotal(
+  client: DbClient,
+  budgetId: number,
+  userId: number,
+  groupId: number | null,
+  taxYear: number,
+  taxKind: TaxAnnualKind,
+  totalAmount: number,
+) {
+  const amount = Number(totalAmount);
+  if (!Number.isFinite(amount)) return;
+  await client.query(
+    `INSERT INTO tax_annual_totals (budget_id, user_id, group_id, tax_year, tax_kind, total_amount, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, NOW())
+     ON CONFLICT (budget_id, tax_year, tax_kind)
+     DO UPDATE SET
+       total_amount = EXCLUDED.total_amount,
+       user_id = EXCLUDED.user_id,
+       group_id = EXCLUDED.group_id,
+       updated_at = NOW()`,
+    [budgetId, userId, groupId, taxYear, taxKind, amount],
+  );
+}
+
+export async function listTaxAnnualTotals(
+  client: DbClient,
+  budgetId: number,
+  taxYear: number,
+) {
+  const result = await client.query(
+    `SELECT tax_kind, total_amount, updated_at
+     FROM tax_annual_totals
+     WHERE budget_id = $1 AND tax_year = $2`,
+    [budgetId, taxYear],
+  );
+
+  const byKind = Object.fromEntries(
+    result.rows.map((r) => [String(r.tax_kind), Number(r.total_amount) || 0]),
+  ) as Record<string, number>;
+
+  const totals = TAX_ANNUAL_KINDS.map((kind: TaxAnnualKind) => ({
+    tax_kind: kind,
+    label: TAX_ANNUAL_KIND_LABELS[kind],
+    total_amount: byKind[kind] ?? 0,
+  }));
+
+  return {
+    totals,
+    grand_total: totals.reduce((sum, t) => sum + t.total_amount, 0),
+  };
+}
+
+/**
+ * Fill in missing tax_annual_totals rows from tax transactions.
+ * Never overwrites an existing stored amount — YTD is a manual baseline
+ * plus paycheck deltas, not a rebuild from txs (which would wipe history).
+ */
 export async function refreshTaxAnnualTotalsForYear(
   client: DbClient,
   budgetId: number,
@@ -76,17 +137,18 @@ export async function refreshTaxAnnualTotalsForYear(
   const byKind = new Map<string, number>();
   for (const row of summed.rows) {
     if (!row.tax_kind) continue;
-    byKind.set(String(row.tax_kind), Number(row.total_amount) || 0);
+    const amount = Number(row.total_amount) || 0;
+    if (amount <= 0) continue;
+    byKind.set(String(row.tax_kind), amount);
   }
 
   for (const kind of TAX_ANNUAL_KINDS) {
-    const total = byKind.get(kind) ?? 0;
+    const total = byKind.get(kind);
+    if (total == null) continue;
     await client.query(
       `INSERT INTO tax_annual_totals (budget_id, user_id, group_id, tax_year, tax_kind, total_amount, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, NOW())
-       ON CONFLICT (budget_id, tax_year, tax_kind)
-       DO UPDATE SET total_amount = EXCLUDED.total_amount, user_id = EXCLUDED.user_id,
-                     group_id = EXCLUDED.group_id, updated_at = NOW()`,
+       ON CONFLICT (budget_id, tax_year, tax_kind) DO NOTHING`,
       [budgetId, userId, groupId, taxYear, kind, total],
     );
   }

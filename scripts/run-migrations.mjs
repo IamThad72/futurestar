@@ -77,6 +77,28 @@ const migrations = [
   "alter_fiscal_annual_totals_add_stock_option_offset.sql",
   "create_budget_month_assignments.sql",
   "alter_budget_transactions_add_classification.sql",
+  "create_exercise_catalog.sql",
+  "alter_exercise_catalog_pull_equipment.sql",
+  "alter_exercise_catalog_body_category.sql",
+  "alter_exercise_catalog_endurance_equipment.sql",
+  "alter_exercise_catalog_outdoor.sql",
+  "alter_exercise_catalog_flexibility_equipment.sql",
+  "alter_exercise_catalog_weighted_equipment.sql",
+  "create_usda_nutrition.sql",
+  "alter_usda_branded_foods.sql",
+  "alter_usda_food_macros_wide.sql",
+  "alter_usda_foods_drop_unused_columns.sql",
+  "alter_usda_foods_drop_source_ingredients.sql",
+  "create_nutrition_plans.sql",
+  "drop_nutrition_tables.sql",
+  "create_nutrition_foundation.sql",
+  "alter_nutrition_intake_fdc_snapshot.sql",
+  "alter_nutrition_intake_add_eaten_at.sql",
+  "create_bible_cpdv.sql",
+  "create_liturgical_calendar.sql",
+  "create_workouts.sql",
+  "create_workout_journal.sql",
+  "create_estate_documents.sql",
 ];
 
 async function run() {
@@ -107,6 +129,7 @@ async function run() {
 
   try {
     await client.connect();
+    await client.query("SET statement_timeout = 0");
     console.log("Connected to database.\n");
 
     for (const file of migrations) {

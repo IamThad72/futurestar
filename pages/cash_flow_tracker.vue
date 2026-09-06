@@ -14,37 +14,37 @@
     <template v-else>
       <div class="relative isolate overflow-hidden">
         <header class="pb-4 pt-6 sm:pb-6">
-          <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 sm:flex-nowrap sm:gap-6 sm:px-6 lg:px-8">
+          <div class="mx-auto flex max-w-7xl flex-col gap-4 px-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-6 sm:px-6 lg:px-8">
             <div class="min-w-0">
-              <h1 class="text-sm font-semibold text-gray-900 md:text-base dark:text-white">Budget Tracker</h1>
-              <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+              <h1 class="text-lg font-semibold text-base-content md:text-xl">Budget Tracker</h1>
+              <p class="mt-0.5 hidden text-xs text-base-content/60 lg:block">
                 <NuxtLink to="/account_map" class="underline hover:no-underline">Manage budgets on Account Map</NuxtLink>
               </p>
             </div>
             <div class="flex flex-wrap items-center gap-3 text-xs md:gap-4 md:text-sm">
-              <label class="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
+              <label class="flex items-center gap-1.5 text-base-content/70">
                 <span class="font-medium">Month</span>
                 <select
                   v-model="selectedMonth"
-                  class="rounded-md border border-gray-300 bg-white py-1.5 pl-2 pr-7 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 md:text-sm dark:border-white/10 dark:bg-gray-900 dark:text-white"
+                  class="select select-bordered select-sm min-h-9 bg-base-100 text-xs text-base-content md:text-sm"
                 >
                   <option v-for="m in 12" :key="m" :value="m">{{ monthNames[m - 1] }}</option>
                 </select>
               </label>
-              <label class="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
+              <label class="flex items-center gap-1.5 text-base-content/70">
                 <span class="font-medium">Year</span>
                 <select
                   v-model="selectedYear"
-                  class="rounded-md border border-gray-300 bg-white py-1.5 pl-2 pr-7 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 md:text-sm dark:border-white/10 dark:bg-gray-900 dark:text-white"
+                  class="select select-bordered select-sm min-h-9 bg-base-100 text-xs text-base-content md:text-sm"
                 >
                   <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
                 </select>
               </label>
-              <label class="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
+              <label class="flex items-center gap-1.5 text-base-content/70">
                 <span class="font-medium">Budget</span>
                 <select
                   :value="periodBudgetId ?? ''"
-                  class="rounded-md border border-gray-300 bg-white py-1.5 pl-2 pr-7 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 md:text-sm dark:border-white/10 dark:bg-gray-900 dark:text-white"
+                  class="select select-bordered select-sm min-h-9 bg-base-100 text-xs text-base-content md:text-sm"
                   :disabled="budgetAssignBusy || !budgetOptions.length"
                   @change="onPeriodBudgetChange($event)"
                 >
@@ -75,7 +75,7 @@
               <button
                 v-if="periodIsOverride"
                 type="button"
-                class="text-xs font-medium text-indigo-600 underline hover:no-underline disabled:opacity-50 dark:text-indigo-300"
+                class="text-xs font-medium text-primary underline hover:no-underline disabled:opacity-50"
                 :disabled="budgetAssignBusy"
                 @click="clearPeriodBudgetOverride"
               >
@@ -84,7 +84,7 @@
               <button
                 v-else-if="periodIsInferred && periodBudgetId"
                 type="button"
-                class="text-xs font-medium text-indigo-600 underline hover:no-underline disabled:opacity-50 dark:text-indigo-300"
+                class="text-xs font-medium text-primary underline hover:no-underline disabled:opacity-50"
                 :disabled="budgetAssignBusy"
                 @click="pinInferredPeriodBudget"
               >
@@ -93,7 +93,7 @@
               <button
                 v-if="canMoveToActiveBudget"
                 type="button"
-                class="text-xs font-medium text-indigo-600 underline hover:no-underline disabled:opacity-50 dark:text-indigo-300"
+                class="text-xs font-medium text-primary underline hover:no-underline disabled:opacity-50"
                 :disabled="budgetAssignBusy"
                 @click="moveMonthToBudget(activeBudgetId)"
               >
@@ -429,7 +429,7 @@
                   </div>
                 </div>
                 <div v-if="grossAllocRetirementLines.length" class="space-y-2">
-                  <h4 class="text-sm font-semibold text-indigo-600 dark:text-indigo-400">Retirement</h4>
+                  <h4 class="text-sm font-semibold text-primary">Retirement</h4>
                   <div
                     v-for="line in grossAllocRetirementLines"
                     :key="line.key"
@@ -2728,7 +2728,7 @@ watch([selectedYear, selectedMonth], () => {
 
 <style scoped>
 .budget-tracker-budgeted {
-  color: var(--color-primary, #1e3a8a);
+  color: var(--color-primary, #06b6d4);
 }
 
 .budget-tx-list {
@@ -2738,7 +2738,7 @@ watch([selectedYear, selectedMonth], () => {
 }
 
 .budget-tx-list__item {
-  --background: var(--color-base-100, #fbffff);
+  --background: var(--color-base-100, #ffffff);
   --color: var(--color-base-content, #151616);
   --border-color: color-mix(in srgb, var(--color-base-content, #151616) 10%, transparent);
   --inner-padding-end: 0.5rem;
@@ -2784,7 +2784,7 @@ watch([selectedYear, selectedMonth], () => {
 }
 
 .budget-tx-list__amount--income {
-  color: var(--color-primary, #1e3a8a);
+  color: var(--color-primary, #06b6d4);
 }
 
 .budget-tx-list__amount--expense {

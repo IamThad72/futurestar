@@ -2,7 +2,7 @@ import { createError } from "h3";
 import { createDbClient } from "../../../utils/db";
 import { getSessionUserId } from "../../../utils/auth";
 import { getUserGroupId, groupAccessClauseAt, soloUserClauseAt } from "../../../utils/group";
-import { getBudgetForPeriod } from "../../../utils/budgetAccess";
+import { getActiveBudget } from "../../../utils/budgetAccess";
 import { reverseDebtPayment } from "../../../utils/debtPayment";
 import { applyFiscalTotalsForTransaction } from "../../../utils/fiscalAnnualTotals";
 import { adjustTaxAnnualTotalForClassification, yearFromDateString } from "../../../utils/taxAnnualTotals";
@@ -59,27 +59,18 @@ export default defineEventHandler(async (event) => {
       row.transaction_date instanceof Date
         ? row.transaction_date.toISOString().slice(0, 10)
         : String(row.transaction_date || "");
-    const dateMatch = /^(\d{4})-(\d{2})/.exec(dateStr);
-    const periodYear = dateMatch ? Number(dateMatch[1]) : new Date(dateStr).getFullYear();
-    const periodMonth = dateMatch ? Number(dateMatch[2]) : new Date(dateStr).getMonth() + 1;
     const category = row?.category != null ? String(row.category) : null;
     const subCategory = row?.sub_category != null ? String(row.sub_category) : null;
     const txAmount = row?.amount != null && !isNaN(Number(row.amount)) ? Math.abs(Number(row.amount)) : 0;
     const fiscalYear = yearFromDateString(dateStr);
 
     if (txAmount > 0) {
-      const { budget: periodBudget } = await getBudgetForPeriod(
-        client,
-        userId,
-        groupId,
-        periodYear,
-        periodMonth,
-      );
+      const active = await getActiveBudget(client, userId, groupId);
 
       if (incomeId && !isNaN(incomeId) && incomeId > 0 && itemType === "tax") {
         await adjustTaxAnnualTotalForClassification(
           client,
-          periodBudget.budget_id,
+          active.budget_id,
           userId,
           groupId,
           fiscalYear,
@@ -93,7 +84,7 @@ export default defineEventHandler(async (event) => {
         incomeId && !isNaN(incomeId) && incomeId > 0 ? "income" : "expense";
       await applyFiscalTotalsForTransaction(
         client,
-        periodBudget.budget_id,
+        active.budget_id,
         userId,
         groupId,
         fiscalYear,

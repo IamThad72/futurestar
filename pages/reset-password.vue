@@ -1,11 +1,11 @@
 <template>
   <div
-    class="-mx-1 -mt-4 min-h-[calc(100dvh-8.5rem)] bg-zinc-50 px-4 py-12 pb-safe sm:-mx-3 sm:mt-0 sm:px-6 sm:py-16 lg:px-8"
+    class="-mx-1 -mt-4 min-h-[calc(100dvh-8.5rem)] bg-base-200 px-4 py-12 pb-safe sm:-mx-0 sm:mt-0 sm:px-6 sm:py-16 lg:px-8"
   >
     <div class="sm:mx-auto sm:w-full sm:max-w-sm">
       <NuxtLink
         to="/login"
-        class="flex items-center justify-center gap-2 text-lg font-semibold tracking-tight text-zinc-900"
+        class="flex items-center justify-center gap-2 text-lg font-semibold tracking-tight text-base-content"
       >
         Future Star
         <svg
@@ -24,7 +24,7 @@
           />
         </svg>
       </NuxtLink>
-      <h1 class="mt-8 text-center text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl sm:tracking-tight">
+      <h1 class="mt-8 text-center text-2xl font-medium tracking-tight text-gray-900">
         Set a new password
       </h1>
       <p class="mt-2 text-center text-sm text-zinc-600">
@@ -32,7 +32,7 @@
       </p>
     </div>
 
-    <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
+    <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm sm:rounded-5xl sm:bg-white sm:p-10 sm:shadow-2xl sm:shadow-gray-900/10">
       <p v-if="!ready" class="text-center text-sm text-zinc-600">Verifying reset link…</p>
 
       <p
@@ -83,7 +83,7 @@
         <div>
           <button
             type="submit"
-            class="btn btn-primary w-full min-h-11 rounded-full"
+            class="btn btn-primary w-full min-h-11 rounded-lg"
             :disabled="loading"
           >
             {{ loading ? "Updating…" : "Update password" }}

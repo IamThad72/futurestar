@@ -7,7 +7,7 @@
           <span class="font-medium">Month</span>
           <select
             v-model.number="month"
-            class="rounded-md border border-gray-300 bg-white py-1.5 pl-2 pr-7 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 md:text-sm dark:border-white/10 dark:bg-gray-900 dark:text-white"
+            class="select select-bordered select-sm min-h-9 bg-base-100 text-xs text-base-content md:text-sm"
           >
             <option v-for="m in 12" :key="m" :value="m">{{ monthNames[m - 1] }}</option>
           </select>
@@ -16,7 +16,7 @@
           <span class="font-medium">Year</span>
           <select
             v-model.number="year"
-            class="rounded-md border border-gray-300 bg-white py-1.5 pl-2 pr-7 text-xs text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 md:text-sm dark:border-white/10 dark:bg-gray-900 dark:text-white"
+            class="select select-bordered select-sm min-h-9 bg-base-100 text-xs text-base-content md:text-sm"
           >
             <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
           </select>
@@ -41,14 +41,14 @@
 
     <div
       v-if="!data.length"
-      class="rounded-lg border border-gray-200 bg-white px-4 py-10 text-center text-xs text-gray-500 md:text-sm dark:border-white/10 dark:bg-gray-900/50 dark:text-gray-400"
+      class="rounded-lg border border-base-300 bg-base-100 px-4 py-10 text-center text-xs text-base-content/60 md:text-sm"
     >
       {{ emptyMessage }}
     </div>
 
     <div
       v-else
-      class="overflow-x-auto rounded-lg border border-gray-200 bg-white p-3 sm:p-4 dark:border-white/10 dark:bg-gray-900/50"
+      class="overflow-x-auto rounded-lg border border-base-300 bg-base-100 p-3 sm:p-4"
     >
       <div
         class="budget-bar-line-chart relative"
@@ -129,8 +129,8 @@ const props = withDefaults(
   {
     emptyMessage: "No budget lines in this group for the selected month.",
     height: 300,
-    barColor: "#c7d2fe",
-    lineColor: "#4f46e5",
+    barColor: "#a5f3fc",
+    lineColor: "#06b6d4",
   },
 );
 

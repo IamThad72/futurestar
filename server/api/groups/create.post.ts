@@ -60,7 +60,7 @@ export default defineEventHandler(async (event) => {
       [groupId, userId, "owner", secondUserId, "member"],
     );
 
-    // Backfill group_id on owner's existing records so linked members can see them
+    // Backfill group_id on owner's existing Financial records so linked members can see them
     await backfillGroupIdForUser(client, groupId, userId);
 
     return { success: true, group_id: groupId };

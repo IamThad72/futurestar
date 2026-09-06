@@ -17,12 +17,12 @@
           <div>
             <NuxtLink
               to="/estate_mgmt"
-              class="text-sm font-medium text-gray-500 hover:text-gray-800 md:text-base dark:text-gray-400 dark:hover:text-gray-200"
+              class="text-sm font-medium text-base-content/60 hover:text-primary md:text-base"
             >
               ← Estate Management
             </NuxtLink>
-            <h1 class="mt-1 text-base font-semibold text-gray-900 md:text-lg dark:text-white">Garage</h1>
-            <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+            <h1 class="mt-1 text-lg font-semibold text-base-content md:text-xl">Garage</h1>
+            <p class="mt-0.5 text-xs text-base-content/60">
               Select a vehicle to view service history and recommendations.
             </p>
           </div>

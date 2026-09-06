@@ -2,7 +2,7 @@ import { createError, readBody } from "h3";
 import { createDbClient } from "../../../utils/db";
 import { getSessionUserId } from "../../../utils/auth";
 import { getUserGroupId, groupAccessClause, groupAccessClauseAt, soloUserClauseAt } from "../../../utils/group";
-import { getBudgetForPeriod } from "../../../utils/budgetAccess";
+import { getActiveBudget } from "../../../utils/budgetAccess";
 import { applyDebtPayment, reverseDebtPayment } from "../../../utils/debtPayment";
 import { applyFiscalTotalsForTransaction } from "../../../utils/fiscalAnnualTotals";
 import { adjustTaxAnnualTotalForClassification, yearFromDateString } from "../../../utils/taxAnnualTotals";
@@ -334,20 +334,12 @@ export default defineEventHandler(async (event) => {
       oldRow.income_id != null && Number(oldRow.income_id) > 0 ? "income" : "expense";
     const newItemKind = finalIncomeId != null && finalIncomeId > 0 ? "income" : "expense";
 
-    const oldMatch = /^(\d{4})-(\d{2})/.exec(oldDate);
-    const oldYear = oldMatch ? Number(oldMatch[1]) : new Date(oldDate).getFullYear();
-    const oldMonth = oldMatch ? Number(oldMatch[2]) : new Date(oldDate).getMonth() + 1;
-    const { budget: oldBudget } = await getBudgetForPeriod(client, userId, groupId, oldYear, oldMonth);
-
-    const newMatch = /^(\d{4})-(\d{2})/.exec(dateStr);
-    const newYear = newMatch ? Number(newMatch[1]) : new Date(dateStr).getFullYear();
-    const newMonth = newMatch ? Number(newMatch[2]) : new Date(dateStr).getMonth() + 1;
-    const { budget: newBudget } = await getBudgetForPeriod(client, userId, groupId, newYear, newMonth);
+    const active = await getActiveBudget(client, userId, groupId);
 
     if (oldWasTax) {
       await adjustTaxAnnualTotalForClassification(
         client,
-        oldBudget.budget_id,
+        active.budget_id,
         userId,
         groupId,
         yearFromDateString(oldDate),
@@ -359,7 +351,7 @@ export default defineEventHandler(async (event) => {
     if (newIsTax) {
       await adjustTaxAnnualTotalForClassification(
         client,
-        newBudget.budget_id,
+        active.budget_id,
         userId,
         groupId,
         yearFromDateString(dateStr),
@@ -371,7 +363,7 @@ export default defineEventHandler(async (event) => {
 
     await applyFiscalTotalsForTransaction(
       client,
-      oldBudget.budget_id,
+      active.budget_id,
       userId,
       groupId,
       yearFromDateString(oldDate),
@@ -385,7 +377,7 @@ export default defineEventHandler(async (event) => {
     );
     await applyFiscalTotalsForTransaction(
       client,
-      newBudget.budget_id,
+      active.budget_id,
       userId,
       groupId,
       yearFromDateString(dateStr),

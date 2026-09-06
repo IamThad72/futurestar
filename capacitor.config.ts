@@ -27,13 +27,13 @@ const config: CapacitorConfig = {
     SplashScreen: {
       launchAutoHide: true,
       launchShowDuration: 0,
-      backgroundColor: "#1e3a8a",
+      backgroundColor: "#fafafa",
       androidSplashResourceName: "splash",
       showSpinner: false,
     },
     StatusBar: {
-      style: "LIGHT",
-      backgroundColor: "#1e3a8a",
+      style: "DARK",
+      backgroundColor: "#fafafa",
     },
   },
 };

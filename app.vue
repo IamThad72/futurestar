@@ -1,7 +1,7 @@
 <template>
   <ion-app
-    data-theme="corporate"
-    class="app-shell min-h-screen bg-base-100 text-base-content"
+    data-theme="pocket"
+    class="app-shell min-h-screen bg-base-200 text-base-content antialiased"
   >
     <OfflineBanner />
     <div class="app-shell__main">

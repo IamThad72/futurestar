@@ -26,6 +26,14 @@ logs
 # Database dumps (may contain sensitive data)
 db-dump-*.sql
 
+# Local Bible text dumps (public domain; keep SOURCE.txt)
+data/bible/**/*.json
+data/bible/**/*.sql
+data/bible/**/*.csv
+
+# USDA FoodData Central dumps (multi-GB; never commit zip/json)
+data/usda/
+
 # Capacitor / native build artifacts (never commit)
 android/.gradle/
 android/**/build/
@@ -37,3 +45,6 @@ ios/DerivedData/
 
 .vercel
 .env*
+
+# Uploaded estate / financial documents (never commit binaries)
+uploads/

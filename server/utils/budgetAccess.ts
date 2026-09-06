@@ -1,6 +1,8 @@
 import { createError } from "h3";
 import { groupAccessClause, soloUserClause } from "./group";
 
+/** Financial budget helpers. Linked-account `group_id` applies here only. */
+
 export type DbClient = {
   query: (queryText: string, values?: unknown[]) => Promise<{ rows: any[]; rowCount?: number | null }>;
 };

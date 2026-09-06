@@ -18,6 +18,8 @@ export default defineEventHandler(async (event) => {
     const active = await getActiveBudget(client, userId, groupId);
     const { income, pretax, posttax } = await listFiscalAnnualTotals(client, active.budget_id, taxYear);
 
+    // Stored Gross / Net only. Taxable is Gross − the five Pre-Tax kinds
+    // (never a separate override, never rebuilt from income rows).
     return {
       tax_year: taxYear,
       budget_id: active.budget_id,

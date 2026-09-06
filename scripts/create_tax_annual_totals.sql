@@ -54,6 +54,5 @@ FROM (
 ) classified
 WHERE classified.tax_kind IS NOT NULL
 GROUP BY classified.budget_id, classified.user_id, classified.group_id, classified.tax_year, classified.tax_kind
-ON CONFLICT (budget_id, tax_year, tax_kind) DO UPDATE
-  SET total_amount = EXCLUDED.total_amount,
-      updated_at = NOW();
+-- Do not overwrite a stored YTD baseline (seed / paycheck deltas).
+ON CONFLICT (budget_id, tax_year, tax_kind) DO NOTHING;

@@ -1,6 +1,6 @@
 <template>
   <section
-    class="mx-auto w-full max-w-[96rem] space-y-4 sm:space-y-6 px-0.5 pr-0 pt-[0.8rem] pb-4 sm:-mx-2 sm:pl-2 sm:pr-1.5 sm:pt-[1.2rem] sm:pb-6 overflow-x-hidden min-w-0"
+    class="app-page-wide space-y-4 sm:space-y-6"
   >
     <header class="flex flex-wrap items-center gap-4 sm:gap-6">
       <div class="min-w-0">
@@ -249,13 +249,6 @@ const selectedYear = computed(() => {
   return FISCAL_YEARS.includes(raw) ? raw : FISCAL_YEARS[0];
 });
 
-const incomeRows = computed(() =>
-  INCOME_KIND_ORDER.map((row) => ({
-    ...row,
-    amount: Number(incomeTotalsByKind.value[row.key]) || 0,
-  })),
-);
-
 const grossIncomeTotal = computed(
   () => Number(incomeTotalsByKind.value.gross) || 0,
 );
@@ -289,9 +282,24 @@ const taxSectionTotal = computed(() => sumRowAmounts(taxRows.value));
 const preTaxSectionTotal = computed(() => sumRowAmounts(preTaxRows.value));
 const postTaxSectionTotal = computed(() => sumRowAmounts(postTaxRows.value));
 
+/** Taxable Income = Gross − (Medical + Dental + Vision + 401k + HSA). */
+const taxableIncomeTotal = computed(() =>
+  Math.max(0, Math.round((grossIncomeTotal.value - preTaxSectionTotal.value) * 100) / 100),
+);
+
+const incomeRows = computed(() =>
+  INCOME_KIND_ORDER.map((row) => ({
+    ...row,
+    amount:
+      row.key === "taxable"
+        ? taxableIncomeTotal.value
+        : Number(incomeTotalsByKind.value[row.key]) || 0,
+  })),
+);
+
 const federalEstimate = computed(() =>
   estimateFederalTaxMfjStandardOneChild({
-    incomeAfterPretax: Number(incomeTotalsByKind.value.taxable) || 0,
+    incomeAfterPretax: taxableIncomeTotal.value,
     federalWithheld: Number(taxTotalsByKind.value.federal) || 0,
     year: selectedYear.value,
   }),
@@ -299,7 +307,7 @@ const federalEstimate = computed(() =>
 
 const ohioEstimate = computed(() =>
   estimateOhioTaxMfjOneDependent({
-    incomeAfterPretax: Number(incomeTotalsByKind.value.taxable) || 0,
+    incomeAfterPretax: taxableIncomeTotal.value,
     stateWithheld: Number(taxTotalsByKind.value.state) || 0,
     year: selectedYear.value,
   }),
@@ -308,12 +316,12 @@ const ohioEstimate = computed(() =>
 const localEstimate = computed(() =>
   estimateWoosterLocalTax({
     qualifyingWages: woosterQualifyingWages({
-      gross: Number(incomeTotalsByKind.value.gross) || 0,
+      gross: grossIncomeTotal.value,
       medical: Number(pretaxTotalsByKind.value.medical) || 0,
       dental: Number(pretaxTotalsByKind.value.dental) || 0,
       vision: Number(pretaxTotalsByKind.value.vision) || 0,
       hsa: Number(pretaxTotalsByKind.value.hsa) || 0,
-      taxableFallback: Number(incomeTotalsByKind.value.taxable) || 0,
+      taxableFallback: taxableIncomeTotal.value,
     }),
     localWithheld: Number(taxTotalsByKind.value.local) || 0,
   }),

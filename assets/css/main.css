@@ -1,36 +1,71 @@
 @import "tailwindcss";
 
-@plugin "daisyui" {
-  /* list the built-in themes you want available */
-  themes: light --default, dark --prefersdark, cupcake, bumblebee, emerald, corporate, synthwave, retro, cyberpunk, valentine, halloween, garden, forest, aqua, lofi, pastel, fantasy, wireframe, black, luxury, dracula, cmyk, autumn, business, acid, lemonade, night, coffee, winter, dim, nord, sunset, silk;
+/* Pocket (Tailwind Plus) type scale, gray ramp, and Inter */
+@theme {
+  --font-sans: Inter, ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.5rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 2rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl: 2rem;
+  --text-3xl--line-height: 3rem;
+
+  --radius-4xl: 2rem;
+  --radius-5xl: 2.5rem;
+
+  --color-gray-50: oklch(0.985 0 0);
+  --color-gray-100: oklch(0.97 0 0);
+  --color-gray-200: oklch(0.922 0 0);
+  --color-gray-300: oklch(0.87 0 0);
+  --color-gray-400: oklch(0.708 0 0);
+  --color-gray-500: oklch(0.556 0 0);
+  --color-gray-600: oklch(0.439 0 0);
+  --color-gray-700: oklch(0.371 0 0);
+  --color-gray-800: oklch(0.269 0 0);
+  --color-gray-900: oklch(0.205 0 0);
+  --color-gray-950: oklch(0.145 0 0);
 }
 
-/* your custom theme */
+@plugin "daisyui" {
+  themes: light, dark --prefersdark, cupcake, bumblebee, emerald, corporate, synthwave, retro, cyberpunk, valentine, halloween, garden, forest, aqua, lofi, pastel, fantasy, wireframe, black, luxury, dracula, cmyk, autumn, business, acid, lemonade, night, coffee, winter, dim, nord, sunset, silk;
+}
+
+/* Pocket-inspired DaisyUI theme: cyan brand, gray-50 canvas, gray-800 CTAs */
 @plugin "daisyui/theme" {
-  name: "myTheme";
+  name: "pocket";
   default: true;
   prefersdark: false;
   color-scheme: light;
 
-  --color-primary: #1e3a8a;
+  --color-primary: #06b6d4;
   --color-primary-content: #ffffff;
 
-  --color-secondary: #1d4ed8;
+  --color-secondary: oklch(0.269 0 0);
   --color-secondary-content: #ffffff;
 
-  --color-accent: #00e200;
-  --color-accent-content: #040404;
+  --color-accent: oklch(0.269 0 0);
+  --color-accent-content: #ffffff;
 
-  --color-neutral: #040404;
-  --color-neutral-content: #e5e7eb;
+  --color-neutral: oklch(0.269 0 0);
+  --color-neutral-content: oklch(0.985 0 0);
 
-  --color-base-100: #fbffff;
-  --color-base-200: #dadede;
-  --color-base-300: #babebe;
-  --color-base-content: #151616;
+  --color-base-100: #ffffff;
+  --color-base-200: oklch(0.985 0 0);
+  --color-base-300: oklch(0.922 0 0);
+  --color-base-content: oklch(0.205 0 0);
 
-  --color-info: #00bcff;
-  --color-info-content: #000d16;
+  --color-info: #06b6d4;
+  --color-info-content: #083344;
 
   --color-success: #60c648;
   --color-success-content: #030e02;
@@ -40,6 +75,15 @@
 
   --color-error: #dc2626;
   --color-error-content: #16090a;
+
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
 }
 
 /* Slightly round all heading corners */
@@ -58,8 +102,84 @@ h1, h2, h3, h4, h5, h6,
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0);
+}
 .pb-safe-content {
   padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0));
+}
+
+/* Shared application UI (stacked shell + daisyUI tokens) */
+.app-page {
+  @apply mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8;
+}
+
+.app-page-wide {
+  @apply mx-auto w-full max-w-[96rem] min-w-0 overflow-x-hidden px-4 py-4 sm:px-6 sm:py-6 lg:px-8;
+}
+
+.app-card {
+  @apply rounded-xl border border-gray-200 bg-white;
+}
+
+.app-card-link {
+  @apply flex h-full flex-col rounded-xl border border-gray-200 bg-white px-4 py-5 no-underline shadow-sm shadow-gray-900/5 transition-colors hover:border-cyan-500;
+}
+
+.training-chip.btn,
+ion-app button.training-chip.btn,
+ion-app summary.training-chip {
+  border-radius: 9999px !important;
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 0.375rem 1.125rem !important;
+  line-height: 1.25rem !important;
+}
+
+ion-app summary.training-chip.btn-primary {
+  border: none !important;
+  background-color: var(--color-primary, #06b6d4) !important;
+  color: #ffffff !important;
+}
+
+ion-app span.training-chip {
+  border-radius: 9999px !important;
+  padding: 0.125rem 0.875rem !important;
+}
+
+ion-app input.input.rounded-full {
+  border-radius: 9999px !important;
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 0.375rem 1.25rem !important;
+}
+
+.app-drawer.drawer {
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+.app-drawer .drawer-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.app-drawer .drawer-side {
+  z-index: 80;
+}
+
+.app-drawer .drawer-side > aside {
+  min-height: 100%;
+}
+
+ion-app.app-shell .app-drawer {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 /* ion-app is a flex column so layout can fill the viewport */
@@ -72,7 +192,14 @@ h1, h2, h3, h4, h5, h6,
 }
 
 ion-app.app-shell {
-  touch-action: manipulation;
+  --ion-font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  --ion-color-primary: #06b6d4;
+  --ion-color-primary-rgb: 6, 182, 212;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #0891b2;
+  --ion-color-primary-tint: #22d3ee;
+  font-family: var(--ion-font-family);
 }
 
 ion-app.app-shell a,
@@ -95,30 +222,57 @@ ion-app.app-shell button {
 }
 
 .mobile-shell nav.app-navbar {
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--color-primary-content) 12%, transparent);
+  box-shadow: 0 1px 0 rgb(0 0 0 / 0.06);
 }
 
-/* Top navbar: ion-app sets text-base-content; corporate theme link styles override text-white */
+.app-drawer .drawer-overlay {
+  background-color: rgb(212 212 212 / 0.6);
+  backdrop-filter: blur(4px);
+}
+
+/* Pocket header: light bar, dark links (beat Ionic default blue links) */
 nav.app-navbar {
-  color: #ffffff !important;
+  color: var(--color-base-content);
+  border-bottom: 1px solid var(--color-base-300);
+  backdrop-filter: blur(8px);
 }
 
-nav.app-navbar a,
-nav.app-navbar button:not(.app-user-menu__item),
-nav.app-navbar .router-link-active,
-nav.app-navbar .router-link-exact-active {
-  color: #ffffff !important;
+nav.app-navbar a:not(.app-user-menu__item),
+nav.app-navbar button:not(.app-user-menu__item) {
+  color: oklch(0.371 0 0) !important;
 }
 
 nav.app-navbar a:hover,
 nav.app-navbar a:focus-visible,
+nav.app-navbar a[aria-current="page"],
 nav.app-navbar button:not(.app-user-menu__item):hover,
 nav.app-navbar button:not(.app-user-menu__item):focus-visible {
-  color: #ffffff !important;
+  color: oklch(0.205 0 0) !important;
+}
+
+nav.app-navbar a[href="/"],
+nav.app-navbar .text-primary,
+nav.app-navbar svg.text-primary {
+  color: oklch(0.205 0 0) !important;
+}
+
+nav.app-navbar a[href="/"] svg,
+nav.app-navbar .text-primary {
+  color: #06b6d4 !important;
 }
 
 nav.app-navbar svg {
   color: inherit;
+}
+
+nav.app-navbar.navbar .navbar-start {
+  width: auto;
+  flex: 1 1 auto;
+}
+
+nav.app-navbar.navbar .navbar-end {
+  width: auto;
+  flex: 0 0 auto;
 }
 
 /* Profile avatar dropdown */
@@ -277,7 +431,7 @@ ion-app .auth-form button.btn:not(.btn-square):not(.btn-xs) {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  border-radius: 9999px !important;
+  border-radius: 0.5rem !important;
   appearance: none;
   -webkit-appearance: none;
   cursor: pointer;
@@ -285,12 +439,12 @@ ion-app .auth-form button.btn:not(.btn-square):not(.btn-xs) {
 
 ion-app .auth-form button.btn-primary:not(.btn-outline) {
   border: none !important;
-  background-color: var(--color-primary, #1e3a8a) !important;
+  background-color: var(--color-primary, #06b6d4) !important;
   color: #ffffff !important;
 }
 
 ion-app .auth-form button.btn-primary:hover:not(:disabled) {
-  background-color: color-mix(in srgb, var(--color-primary, #1e3a8a) 88%, #000) !important;
+  background-color: color-mix(in srgb, var(--color-primary, #06b6d4) 88%, #000) !important;
   color: #ffffff !important;
 }
 
@@ -300,8 +454,54 @@ ion-app .auth-form button.btn:disabled {
 }
 
 ion-app .auth-form button.btn:focus-visible {
-  outline: 2px solid var(--color-primary, #1e3a8a);
+  outline: 2px solid var(--color-primary, #06b6d4);
   outline-offset: 2px;
+}
+
+/* Workout builder header — Ionic unlayered button resets beat daisyUI @layer .btn */
+ion-app .workout-frame__actions button.btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: unset !important;
+  height: auto !important;
+  border-radius: 0.5rem !important;
+  padding: 0.5rem 1.25rem !important;
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  line-height: 1.25rem !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+ion-app .workout-frame__actions button.btn-accent:not(.btn-outline) {
+  border: none !important;
+  background-color: var(--color-accent) !important;
+  color: var(--color-accent-content, #ffffff) !important;
+}
+
+ion-app .workout-frame__actions button.btn-accent:not(.btn-outline):hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-accent) 88%, #000) !important;
+  color: var(--color-accent-content, #ffffff) !important;
+}
+
+ion-app .workout-frame__actions button.btn-ghost {
+  border: none !important;
+  background-color: transparent !important;
+  color: rgb(17 24 39) !important;
+}
+
+ion-app .workout-frame__actions button.btn-ghost:hover:not(:disabled) {
+  background-color: rgb(243 244 246) !important;
+  color: rgb(17 24 39) !important;
+}
+
+ion-app .workout-frame__actions button.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Estate Management: Add / Manage Categories — Tailwind on native buttons is overridden by Ionic */
@@ -312,8 +512,8 @@ ion-app button.estate-action-btn {
   gap: 0.375rem !important;
   margin: 0;
   border: none !important;
-  border-radius: 9999px !important;
-  background-color: var(--color-primary, #1e3a8a) !important;
+  border-radius: 0.5rem !important;
+  background-color: var(--color-primary, #06b6d4) !important;
   color: #ffffff !important;
   padding: 0.3rem 1.5rem !important;
   font-size: 0.75rem !important;
@@ -326,7 +526,7 @@ ion-app button.estate-action-btn {
 }
 
 ion-app button.estate-action-btn:hover {
-  background-color: color-mix(in srgb, var(--color-primary, #1e3a8a) 88%, #000) !important;
+  background-color: color-mix(in srgb, var(--color-primary, #06b6d4) 88%, #000) !important;
   color: #ffffff !important;
 }
 
@@ -339,7 +539,7 @@ ion-app button.estate-action-btn:hover {
 }
 
 ion-app button.estate-action-btn:focus-visible {
-  outline: 2px solid var(--color-primary, #1e3a8a);
+  outline: 2px solid var(--color-primary, #06b6d4);
   outline-offset: 2px;
 }
 
@@ -355,7 +555,7 @@ ion-app .account-map-modal button.btn:not(.btn-square) {
   gap: 0.375rem !important;
   min-height: unset !important;
   height: auto !important;
-  border-radius: 9999px !important;
+  border-radius: 0.5rem !important;
   padding: 0.3rem 1.5rem !important;
   font-size: 0.75rem !important;
   font-weight: 600 !important;
@@ -374,7 +574,7 @@ ion-app .account-map-edge-panel button.btn:not(.btn-square) {
   gap: 0.25rem !important;
   min-height: unset !important;
   height: 1.5rem !important;
-  border-radius: 9999px !important;
+  border-radius: 0.5rem !important;
   padding: 0.125rem 0.625rem !important;
   font-size: 0.6875rem !important;
   font-weight: 600 !important;
@@ -420,7 +620,7 @@ ion-app .account-map-palette button.btn.btn-primary,
 ion-app .account-map-modal button.btn-primary:not(.btn-outline),
 ion-app .account-map-modal button.btn.btn-primary {
   border: none !important;
-  background-color: var(--color-primary, #1e3a8a) !important;
+  background-color: var(--color-primary, #06b6d4) !important;
   color: #ffffff !important;
 }
 
@@ -430,7 +630,7 @@ ion-app .account-map-edge-panel button.btn-primary:hover:not(:disabled),
 ion-app .account-map-budget-bar button.btn-primary:hover:not(:disabled),
 ion-app .account-map-palette button.btn-primary:hover:not(:disabled),
 ion-app .account-map-modal button.btn-primary:hover:not(:disabled) {
-  background-color: color-mix(in srgb, var(--color-primary, #1e3a8a) 88%, #000) !important;
+  background-color: color-mix(in srgb, var(--color-primary, #06b6d4) 88%, #000) !important;
   color: #ffffff !important;
 }
 
@@ -525,6 +725,6 @@ ion-app .modal-box button.btn:focus-visible,
 ion-app [role="dialog"] button.btn:focus-visible,
 ion-app .account-map-edge-panel button.btn:focus-visible,
 ion-app .account-map-budget-bar button.btn:focus-visible {
-  outline: 2px solid var(--color-primary, #1e3a8a);
+  outline: 2px solid var(--color-primary, #06b6d4);
   outline-offset: 2px;
 }

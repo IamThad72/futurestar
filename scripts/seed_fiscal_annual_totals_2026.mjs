@@ -1,5 +1,5 @@
 /**
- * Seed Income + Pre-tax annual totals for the active budget, fiscal year 2026.
+ * Seed Income + Pre-tax + Tax annual totals for the active budget, fiscal year 2026.
  * Usage: node scripts/seed_fiscal_annual_totals_2026.mjs
  */
 import { readFileSync } from "fs";
@@ -44,6 +44,14 @@ const TOTALS = [
   { section: "posttax", total_kind: "stock_option_offset", total_amount: 20577.82 },
 ];
 
+const TAX_TOTALS = [
+  { tax_kind: "social_security", total_amount: 11439 },
+  { tax_kind: "medicare", total_amount: 3568.44 },
+  { tax_kind: "federal", total_amount: 36639.83 },
+  { tax_kind: "state", total_amount: 6548.56 },
+  { tax_kind: "local", total_amount: 3426.59 },
+];
+
 const client = new Client({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL?.includes("supabase")
@@ -82,6 +90,23 @@ for (const row of TOTALS) {
     [budgetId, userId, groupId, YEAR, row.section, row.total_kind, row.total_amount],
   );
   console.log(`  ${row.section}/${row.total_kind} = ${row.total_amount}`);
+}
+
+console.log(`Seeding tax totals for budget ${budgetId} (${name}), year ${YEAR}`);
+for (const row of TAX_TOTALS) {
+  await client.query(
+    `INSERT INTO tax_annual_totals
+       (budget_id, user_id, group_id, tax_year, tax_kind, total_amount, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, NOW())
+     ON CONFLICT (budget_id, tax_year, tax_kind)
+     DO UPDATE SET
+       total_amount = EXCLUDED.total_amount,
+       user_id = EXCLUDED.user_id,
+       group_id = EXCLUDED.group_id,
+       updated_at = NOW()`,
+    [budgetId, userId, groupId, YEAR, row.tax_kind, row.total_amount],
+  );
+  console.log(`  tax/${row.tax_kind} = ${row.total_amount}`);
 }
 
 await client.end();
