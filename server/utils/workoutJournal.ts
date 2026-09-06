@@ -503,7 +503,7 @@ export async function createJournalSession(
   if (input.workoutId) {
     const copied = await exercisesFromWorkout(client, userId, input.workoutId);
     workoutName = copied.workoutName;
-    exercises = copied.exercises;
+    if (!exercises.length) exercises = copied.exercises;
   }
 
   await client.query("BEGIN");

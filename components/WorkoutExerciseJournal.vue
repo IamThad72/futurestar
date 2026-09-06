@@ -1,9 +1,16 @@
 <template>
   <div class="space-y-6">
-    <p class="text-sm text-gray-500 dark:text-gray-400">
-      Log what you actually did. Pick a saved workout plan to copy its exercises, or start a custom session
-      and add random catalog exercises. Plans in Workout Manager stay unchanged.
-    </p>
+    <details class="physical-learn-more group">
+      <summary class="training-chip btn btn-primary btn-sm rounded-full w-fit cursor-pointer">
+        Learn more
+      </summary>
+      <div class="mt-5 space-y-5">
+        <section v-for="item in learnMore" :key="item.name">
+          <h2 class="!text-xs font-semibold text-gray-900">{{ item.name }}</h2>
+          <p class="mt-1 text-xs leading-5 text-gray-600">{{ item.text }}</p>
+        </section>
+      </div>
+    </details>
 
     <div class="grid gap-6 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
       <aside class="space-y-3 lg:self-start">
@@ -57,8 +64,29 @@
           v-if="!draft.sessionId"
           class="app-card px-4 py-4"
         >
-          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Start a session</h2>
-          <form class="mt-4 grid gap-3" @submit.prevent="startSession">
+          <div class="flex items-center justify-between gap-3">
+            <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Start a session</h2>
+            <button
+              type="button"
+              class="training-chip btn btn-primary btn-sm shrink-0 rounded-full"
+              :disabled="!canStartSession"
+              @click="startSession"
+            >
+              {{ saving ? "Starting…" : "Start Session" }}
+            </button>
+          </div>
+          <p v-if="saveError" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ saveError }}</p>
+          <div class="mt-4 grid gap-3">
+            <label class="form-control w-full max-w-lg">
+              <span class="label py-1"><span class="label-text text-sm">Session name</span></span>
+              <input
+                v-model.trim="startForm.name"
+                type="text"
+                maxlength="120"
+                class="input input-bordered w-full"
+                placeholder="e.g. Evening lift"
+              />
+            </label>
             <label class="form-control w-full max-w-sm">
               <span class="label py-1"><span class="label-text text-sm">When</span></span>
               <input v-model="startForm.performedAt" type="datetime-local" class="input input-bordered w-full" />
@@ -73,28 +101,12 @@
               </select>
             </label>
             <p v-if="workoutsError" class="text-sm text-amber-700 dark:text-amber-400">{{ workoutsError }}</p>
-            <p v-else-if="!savedWorkouts.length" class="text-xs text-gray-500 dark:text-gray-400">
-              No saved plans yet. Start custom, or build a workout in Workout Manager first.
-            </p>
-            <label class="form-control w-full max-w-lg">
-              <span class="label py-1"><span class="label-text text-sm">Session name (optional)</span></span>
-              <input
-                v-model.trim="startForm.name"
-                type="text"
-                maxlength="120"
-                class="input input-bordered w-full"
-                placeholder="e.g. Evening lift"
-              />
-            </label>
-            <p v-if="saveError" class="text-sm text-red-600 dark:text-red-400">{{ saveError }}</p>
-            <button type="submit" class="training-chip btn btn-primary btn-sm w-fit rounded-full" :disabled="saving">
-              {{ saving ? "Starting…" : startForm.workoutId ? "Load workout and start" : "Start custom session" }}
-            </button>
-          </form>
+            <p v-if="workoutLoading" class="text-sm text-gray-500 dark:text-gray-400">Loading workout exercises…</p>
+          </div>
         </section>
 
         <section
-          v-else-if="draft.sessionId"
+          v-else
           class="space-y-4"
         >
           <div class="app-card px-4 py-4">
@@ -148,6 +160,7 @@
             </label>
             <p v-if="saveError" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ saveError }}</p>
           </div>
+        </section>
 
           <div
             v-for="item in draft.exercises"
@@ -261,37 +274,43 @@
           </div>
 
           <p v-if="!draft.exercises.length" class="text-sm text-gray-500 dark:text-gray-400">
-            No exercises yet. Add one from the catalog below.
+            {{
+              draft.sessionId
+                ? "No exercises yet. Add one from the catalog below."
+                : "No exercises yet. Add one from the catalog below, then start the session."
+            }}
           </p>
 
           <div class="app-card px-4 py-4">
             <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Add exercise</h2>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Search the same catalogs used on the Physical pages. Adding here only logs this session.
-            </p>
-            <div class="mt-3 flex flex-wrap gap-2">
-              <button
-                v-for="tab in pickerTabs"
-                :key="tab.key"
-                type="button"
-                class="training-chip btn btn-sm rounded-full"
-                :class="
-                  pickerTab === tab.key
-                    ? 'btn-primary'
-                    : 'btn-ghost bg-base-200'
-                "
-                @click="pickerTab = tab.key"
-              >
-                {{ tab.label }}
-              </button>
+            <div class="mt-3 flex flex-col gap-5">
+              <div class="flex flex-wrap gap-1.5">
+                <div
+                  v-for="tab in pickerTabs"
+                  :key="tab.key"
+                  role="button"
+                  tabindex="0"
+                  class="badge cursor-pointer rounded-full"
+                  :class="
+                    pickerTab === tab.key
+                      ? 'badge-accent border-transparent'
+                      : 'badge-ghost border border-base-content/60'
+                  "
+                  @click="pickerTab = tab.key"
+                  @keydown.enter.prevent="pickerTab = tab.key"
+                  @keydown.space.prevent="pickerTab = tab.key"
+                >
+                  {{ tab.label }}
+                </div>
+              </div>
+              <input
+                v-model.trim="pickerInput"
+                type="search"
+                class="input input-bordered w-full max-w-md rounded-full"
+                placeholder="Search exercises"
+                autocomplete="off"
+              />
             </div>
-            <input
-              v-model.trim="pickerInput"
-              type="search"
-              class="input input-bordered mt-3 w-full max-w-md rounded-full"
-              placeholder="Search exercises"
-              autocomplete="off"
-            />
             <p v-if="pickerError" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ pickerError }}</p>
             <p v-else-if="pickerLoading" class="mt-2 text-sm text-gray-500 dark:text-gray-400">Searching…</p>
             <ul v-else-if="pickerResults.length" class="mt-3 max-h-64 space-y-1 overflow-y-auto">
@@ -309,7 +328,7 @@
                       <span v-if="exercise.sets"> · {{ exercise.sets }} × {{ exercise.repetitions }}</span>
                     </span>
                   </span>
-                  <span class="shrink-0 text-primary">Add</span>
+                  <PlusSmallIcon class="size-6 shrink-0 text-primary" aria-hidden="true" />
                 </button>
               </li>
             </ul>
@@ -320,19 +339,34 @@
               No catalog matches. Try another name or tab.
             </p>
           </div>
-        </section>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
+import { PlusSmallIcon } from "@heroicons/vue/20/solid";
 import { parseFetchError } from "~/utils/parseFetchError";
 import {
   catalogExerciseId,
   isTimeBasedExercise,
   payloadFromExercise,
 } from "~/utils/workoutDraft";
+
+const learnMore = [
+  {
+    name: "Start a session",
+    text: "Log what you actually did. Name the session, pick a time, and optionally load a saved workout. Add at least one catalog exercise, then start. Plans in Workout Manager stay unchanged.",
+  },
+  {
+    name: "Add exercises",
+    text: "Search the same catalogs used on the Physical pages. Adding here only logs this session; it does not change a saved workout plan.",
+  },
+  {
+    name: "History",
+    text: "Past sessions stay on this journal. Open one to review or edit it, or choose New to start another.",
+  },
+];
 
 function emptyDraft() {
   return {
@@ -362,6 +396,7 @@ const listLoading = ref(false);
 const listError = ref("");
 const savedWorkouts = ref([]);
 const workoutsError = ref("");
+const workoutLoading = ref(false);
 const saving = ref(false);
 const saveError = ref("");
 const saveNotice = ref("");
@@ -435,6 +470,10 @@ function localDateKey(iso) {
   const pad = (n) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
+
+const canStartSession = computed(
+  () => !saving.value && !workoutLoading.value && draft.value.exercises.length > 0,
+);
 
 const groupedHistory = computed(() => {
   const today = localDateKey(new Date().toISOString());
@@ -568,7 +607,7 @@ async function startSession() {
       performedAt: fromDatetimeLocalValue(startForm.value.performedAt),
       name: startForm.value.name || null,
       workoutId: startForm.value.workoutId ? Number(startForm.value.workoutId) : null,
-      exercises: [],
+      exercises: payloadForSave().exercises,
     };
     const data = await $fetch("/api/physical/journal", { method: "POST", body });
     applySession(data.session);
@@ -722,6 +761,51 @@ function removeExercise(key) {
   markDirty();
 }
 
+function journalItemFromWorkout(item) {
+  const timeBased = item.durationSeconds != null;
+  const setCount = Math.min(Math.max(item.sets || 1, 1), 8);
+  const template = {
+    reps: timeBased ? null : item.reps,
+    weight: item.weight,
+    weightUnit: item.weightUnit || "lb",
+    durationSeconds: timeBased ? item.durationSeconds : null,
+    restSeconds: item.restSeconds ?? null,
+  };
+  return {
+    key: nextKey("ex"),
+    journalExerciseId: null,
+    exerciseId: item.exerciseId,
+    exerciseName: item.name,
+    equipmentKey: item.equipmentKey || null,
+    gifUrl: item.gifUrl || null,
+    logMode: timeBased ? "duration" : "reps",
+    notes: item.notes || "",
+    fromWorkout: true,
+    sets: Array.from({ length: setCount }, () => emptySet(template)),
+  };
+}
+
+async function loadWorkoutIntoDraft(workoutId) {
+  if (!workoutId) return;
+  workoutLoading.value = true;
+  saveError.value = "";
+  try {
+    const data = await $fetch(`/api/physical/workouts/${workoutId}`);
+    const workout = data.workout;
+    const loaded = (workout.exercises || []).map((item) => journalItemFromWorkout(item));
+    const loadedIds = new Set(loaded.map((item) => item.exerciseId).filter(Boolean));
+    const extras = draft.value.exercises.filter(
+      (item) => !item.fromWorkout && item.exerciseId && !loadedIds.has(item.exerciseId),
+    );
+    draft.value.exercises = [...loaded, ...extras];
+    draft.value.workoutName = workout.name;
+  } catch (error) {
+    saveError.value = parseFetchError(error, "Could not load that workout.");
+  } finally {
+    workoutLoading.value = false;
+  }
+}
+
 function addCatalogExercise(exercise) {
   const payload = payloadFromExercise(exercise);
   if (!payload.exerciseId) {
@@ -745,6 +829,7 @@ function addCatalogExercise(exercise) {
     gifUrl: payload.gifUrl || null,
     logMode: timeBased ? "duration" : "reps",
     notes: "",
+    fromWorkout: false,
     sets: Array.from({ length: setCount }, () => emptySet(template)),
   });
   markDirty();
@@ -787,19 +872,21 @@ watch(pickerInput, (value) => {
 });
 
 watch([pickerTab, pickerQuery], () => {
-  if (draft.value.sessionId) void loadPicker();
+  void loadPicker();
 });
 
 watch(
-  () => draft.value.sessionId,
-  (id) => {
-    if (id) void loadPicker();
+  () => startForm.value.workoutId,
+  (workoutId) => {
+    if (draft.value.sessionId) return;
+    void loadWorkoutIntoDraft(workoutId);
   },
 );
 
 onMounted(() => {
   void loadHistory();
   void loadWorkouts();
+  void loadPicker();
 });
 
 onBeforeUnmount(() => {
@@ -808,3 +895,13 @@ onBeforeUnmount(() => {
   if (draft.value.sessionId && dirty.value) void saveSession();
 });
 </script>
+
+<style scoped>
+.physical-learn-more > summary {
+  list-style: none;
+}
+
+.physical-learn-more > summary::-webkit-details-marker {
+  display: none;
+}
+</style>
