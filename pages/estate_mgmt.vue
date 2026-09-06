@@ -280,7 +280,7 @@ function formatDebtTermsLine(r) {
     parts.push(`${r.interest_rate_annual}% APR`);
   }
   if (r.term_months != null && r.term_months !== "") {
-    parts.push(`${r.term_months} mo`);
+    parts.push(`${r.term_months} mo remaining`);
   }
   if (r.scheduled_monthly_payment != null && r.scheduled_monthly_payment !== "") {
     parts.push(`${formatMoney(r.scheduled_monthly_payment)}/mo`);

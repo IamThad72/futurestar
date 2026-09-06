@@ -54,6 +54,14 @@ export async function applyDebtPayment(
       [principal, debtId],
     );
   }
+  if (!isRevolving && (principal > 0 || interest > 0)) {
+    await client.query(
+      `UPDATE debt
+       SET term_months = GREATEST(term_months - 1, 0)
+       WHERE dbt_id = $1 AND term_months IS NOT NULL`,
+      [debtId],
+    );
+  }
 
   return { principal, interest, isRevolving };
 }
@@ -68,6 +76,12 @@ export async function reverseDebtPayment(
   await client.query(
     `UPDATE debt SET loan_ammount = (COALESCE(loan_ammount::numeric, 0) + $1)::money WHERE dbt_id = $2`,
     [principal, debtId],
+  );
+  await client.query(
+    `UPDATE debt
+     SET term_months = term_months + 1
+     WHERE dbt_id = $1 AND term_months IS NOT NULL`,
+    [debtId],
   );
 }
 

@@ -525,7 +525,7 @@
                   </option>
                 </select>
                 <p v-if="selectedDebtForPayment && !inferIsRevolvingDebt(selectedDebtForPayment)" class="label-text-alt text-base-content/70 mt-1">
-                  Installment loan{{ selectedDebtForPayment.interest_rate_annual ? ` · ${selectedDebtForPayment.interest_rate_annual}% APR` : "" }}{{ selectedDebtForPayment.term_months ? ` · ${selectedDebtForPayment.term_months} mo` : "" }}
+                  Installment loan{{ selectedDebtForPayment.interest_rate_annual ? ` · ${selectedDebtForPayment.interest_rate_annual}% APR` : "" }}{{ selectedDebtForPayment.term_months ? ` · ${selectedDebtForPayment.term_months} mo remaining` : "" }}
                 </p>
                 <p v-if="debtPaymentPreview && !debtPaymentPreview.isRevolving" class="text-xs text-base-content/80 mt-1">
                   Payment ${{ formatAmount(txForm.amount) }} → principal ${{ formatAmount(debtPaymentPreview.principal) }}, interest ${{ formatAmount(debtPaymentPreview.interest) }}
