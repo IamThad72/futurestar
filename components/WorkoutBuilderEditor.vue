@@ -34,7 +34,7 @@
           <li
             v-for="(item, index) in draft.exercises"
             :key="item.key"
-            class="rounded-md bg-base-100 p-2 outline outline-1 outline-base-300"
+            class="rounded-md bg-base-100 py-2 pl-2 pr-1 outline outline-1 outline-base-300"
             @dragover.prevent="allowDrag ? $emit('item-drag-over') : undefined"
             @drop.prevent="allowDrag ? $emit('item-drop', $event, index) : undefined"
           >
@@ -56,72 +56,68 @@
                     item.name
                   }}</span>
                 </div>
-                <div class="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                <div
+                  class="mt-2 grid gap-1.5"
+                  :class="builderGridClass(item)"
+                >
                   <label class="text-sm text-base-content/70">
                     Sets
                     <input
                       :value="item.sets ?? ''"
                       type="number"
                       min="0"
-                      max="99"
-                      class="input input-bordered input-sm mt-0.5 w-full bg-base-100 text-base-content"
-                      @input="updateLine(item, 'sets', $event.target.value)"
+                      max="999"
+                      inputmode="numeric"
+                      class="input input-bordered input-sm compact-num-input mt-0.5 bg-base-100 text-base-content"
+                      @input="updateThreeDigitField(item, 'sets', $event)"
                     />
                   </label>
-                  <label class="text-sm text-base-content/70">
+                  <label v-if="logsDuration(item)" class="text-sm text-base-content/70">
+                    Min
+                    <input
+                      :value="durationMinutes(item)"
+                      type="number"
+                      min="0"
+                      max="1440"
+                      step="0.01"
+                      inputmode="decimal"
+                      class="input input-bordered input-sm compact-min-input mt-0.5 bg-base-100 text-base-content"
+                      aria-label="Minutes"
+                      @input="updateDurationMinutes(item, $event)"
+                    />
+                  </label>
+                  <label v-else class="text-sm text-base-content/70">
                     Reps
                     <input
                       :value="item.reps ?? ''"
                       type="number"
                       min="0"
                       max="999"
-                      class="input input-bordered input-sm mt-0.5 w-full bg-base-100 text-base-content"
-                      @input="updateLine(item, 'reps', $event.target.value)"
+                      inputmode="numeric"
+                      class="input input-bordered input-sm compact-num-input mt-0.5 bg-base-100 text-base-content"
+                      @input="updateThreeDigitField(item, 'reps', $event)"
                     />
                   </label>
-                  <label class="text-sm text-base-content/70">
-                    Weight
+                  <label v-if="usesLoadedWeight(item)" class="text-sm text-base-content/70">
+                    Wgt
                     <input
                       :value="item.weight ?? ''"
                       type="number"
                       min="0"
-                      max="9999"
+                      max="999"
                       step="0.5"
-                      class="input input-bordered input-sm mt-0.5 w-full bg-base-100 text-base-content"
-                      @input="updateLine(item, 'weight', $event.target.value)"
+                      inputmode="decimal"
+                      class="input input-bordered input-sm compact-num-input mt-0.5 bg-base-100 text-base-content"
+                      aria-label="Weight in pounds"
+                      @input="updateThreeDigitField(item, 'weight', $event)"
                     />
                   </label>
-                  <label class="text-sm text-base-content/70">
-                    Unit
-                    <select
-                      :value="item.weightUnit"
-                      class="select select-bordered select-sm mt-0.5 w-full bg-base-100 text-base-content"
-                      @change="updateLine(item, 'weightUnit', $event.target.value)"
-                    >
-                      <option value="lb">lb</option>
-                      <option value="kg">kg</option>
-                    </select>
-                  </label>
                 </div>
-                <label
-                  v-if="item.durationSeconds != null"
-                  class="mt-1.5 block text-[11px] text-base-content/70"
-                >
-                  Duration (sec)
-                  <input
-                    :value="item.durationSeconds ?? ''"
-                    type="number"
-                    min="0"
-                    max="86400"
-                    class="input input-bordered input-xs mt-0.5 w-full bg-base-100 text-base-content"
-                    @input="updateLine(item, 'durationSeconds', $event.target.value)"
-                  />
-                </label>
               </div>
-              <div class="flex flex-col gap-1">
+              <div class="flex shrink-0 flex-col gap-1">
                 <button
                   type="button"
-                  class="btn btn-ghost btn-square workout-line-ctrl text-base-content/60 hover:bg-base-200 hover:text-base-content"
+                  class="workout-line-ctrl"
                   :disabled="index === 0"
                   aria-label="Move up"
                   @click="moveExercise(index, index - 1)"
@@ -130,7 +126,7 @@
                 </button>
                 <button
                   type="button"
-                  class="btn btn-ghost btn-square workout-line-ctrl text-base-content/60 hover:bg-base-200 hover:text-base-content"
+                  class="workout-line-ctrl"
                   :disabled="index === draft.exercises.length - 1"
                   aria-label="Move down"
                   @click="moveExercise(index, index + 1)"
@@ -139,7 +135,7 @@
                 </button>
                 <button
                   type="button"
-                  class="btn btn-ghost btn-square workout-line-ctrl text-error hover:bg-base-200"
+                  class="workout-line-ctrl workout-line-ctrl--remove"
                   aria-label="Remove exercise"
                   @click="removeExercise(item.key)"
                 >
@@ -189,6 +185,14 @@
 
 <script setup>
 import { Bars2Icon } from "@heroicons/vue/24/outline";
+import {
+  formatDurationMinutes,
+  isTimeBasedExercise,
+  limitMinuteInput,
+  limitThreeDigitInput,
+  minutesToDurationSeconds,
+  usesLoadedWeight,
+} from "~/utils/workoutDraft";
 
 defineProps({
   allowDrag: { type: Boolean, default: true },
@@ -201,6 +205,14 @@ defineEmits(["delete", "open-saved", "item-drag-start", "item-drag-end", "item-d
 const { savedWorkouts, listError, draft, saving, saveError, saveNotice, removeExercise, moveExercise, markDirty } =
   useWorkoutDraft();
 
+function logsDuration(item) {
+  return isTimeBasedExercise(item);
+}
+
+function builderGridClass(item) {
+  return usesLoadedWeight(item) ? "grid-cols-3" : "grid-cols-2";
+}
+
 function savedItemClass(item) {
   const current =
     draft.value.workoutId != null && Number(item.workoutId) === Number(draft.value.workoutId);
@@ -209,37 +221,82 @@ function savedItemClass(item) {
     : "text-base-content/70 hover:bg-base-200 hover:text-base-content";
 }
 
-function updateLine(item, field, raw) {
-  if (field === "weightUnit") {
-    item.weightUnit = raw === "kg" ? "kg" : "lb";
-  } else if (raw === "") {
-    item[field] = null;
-  } else {
-    const n = Number(raw);
-    item[field] = Number.isFinite(n) ? n : null;
-  }
+function updateThreeDigitField(item, field, event) {
+  const { text, value } = limitThreeDigitInput(event.target.value, { integer: field !== "weight" });
+  event.target.value = text;
+  item[field] = value;
+  item.weightUnit = "lb";
+  markDirty();
+}
+
+function durationMinutes(item) {
+  return formatDurationMinutes(item.durationSeconds);
+}
+
+function updateDurationMinutes(item, event) {
+  const { text, value } = limitMinuteInput(event.target.value);
+  event.target.value = text;
+  item.durationSeconds = minutesToDurationSeconds(value);
+  item.reps = null;
   markDirty();
 }
 </script>
 
 <style scoped>
+.compact-num-input {
+  width: 3.25rem;
+  min-width: 3.25rem;
+  max-width: 3.25rem;
+  padding-inline: 0.35rem;
+  text-align: center;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.compact-num-input::-webkit-outer-spin-button,
+.compact-num-input::-webkit-inner-spin-button,
+.compact-min-input::-webkit-outer-spin-button,
+.compact-min-input::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+.compact-min-input {
+  width: 4.25rem;
+  min-width: 4.25rem;
+  max-width: 4.25rem;
+  padding-inline: 0.35rem;
+  text-align: center;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
 .workout-line-ctrl {
-  width: 2.75rem;
-  height: 2.75rem;
-  min-width: 2.75rem;
-  min-height: 2.75rem;
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  align-items: center;
+  justify-content: center;
   padding: 0;
-  font-size: 1.25rem;
+  border: 1px solid color-mix(in srgb, var(--color-base-content, #1a1a1a) 50%, transparent);
+  border-radius: 0.5rem;
+  background: var(--color-base-100, #fff);
+  color: var(--color-base-content, #1a1a1a);
+  font-size: 1.05rem;
   line-height: 1;
 }
 
-@media (min-width: 1024px) {
-  .workout-line-ctrl {
-    width: 3.6rem;
-    height: 3.6rem;
-    min-width: 3.6rem;
-    min-height: 3.6rem;
-    font-size: 1.65rem;
-  }
+.workout-line-ctrl:hover:not(:disabled) {
+  background: var(--color-base-200, #f3f4f6);
+}
+
+.workout-line-ctrl:disabled {
+  opacity: 0.35;
+}
+
+.workout-line-ctrl--remove {
+  color: var(--color-error, #dc2626);
 }
 </style>

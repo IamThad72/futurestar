@@ -11,6 +11,7 @@
     </div>
 
     <NutritionDailyChart
+      v-if="!isNarrow"
       v-model:days="chartRangeDays"
       :data="historyDays"
       :loading="historyLoading"
@@ -360,6 +361,7 @@ const logForm = ref({ meal: "breakfast", time: localTimeValue(), portionId: "", 
 const logging = ref(false);
 const logError = ref("");
 const deletingId = ref(null);
+const { isNarrow } = useMobileShell();
 const chartRangeDays = ref(7);
 const historyDays = ref([]);
 const historyLoading = ref(false);
@@ -453,7 +455,11 @@ watch(eatenOn, () => {
 });
 
 watch(chartRangeDays, () => {
-  void loadHistory();
+  if (!isNarrow.value) void loadHistory();
+});
+
+watch(isNarrow, (narrow) => {
+  if (!narrow) void loadHistory();
 });
 
 watch(searchInput, (value) => {
@@ -506,10 +512,9 @@ async function loadDay() {
   loading.value = true;
   loadError.value = "";
   try {
-    const [data] = await Promise.all([
-      $fetch("/api/physical/nutrition/daily", { query: { date: eatenOn.value } }),
-      loadHistory(),
-    ]);
+    const tasks = [$fetch("/api/physical/nutrition/daily", { query: { date: eatenOn.value } })];
+    if (!isNarrow.value) tasks.push(loadHistory());
+    const [data] = await Promise.all(tasks);
     entries.value = data?.entries || [];
     comparison.value = data?.comparison || null;
     applyPlan(data?.plan || null);

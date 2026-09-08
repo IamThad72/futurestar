@@ -27,7 +27,8 @@ function useMatchMedia(query) {
 
 /**
  * Viewport helpers for Ionic shell and reliable mobile navigation.
- * Navigation stays in the top navbar (Tailwind disclosure), not a bottom tab bar.
+ * Narrow viewports and native builds use Ionic header/menu/content;
+ * desktop keeps the daisyUI navbar. No bottom tab bar.
  */
 export function useMobileShell() {
   const isNative = useIsNativeApp();

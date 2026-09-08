@@ -59,7 +59,7 @@
     @drop.prevent="allowDrag ? onDrop($event) : undefined"
   >
     <div class="relative flex flex-wrap items-center gap-2 border-b border-base-300 px-3 py-3 text-base-content sm:px-6">
-      <h2 class="min-w-0 flex-1 text-sm font-semibold">Workout Manager</h2>
+      <h2 class="min-w-0 flex-1 text-sm font-semibold">Workout Builder</h2>
       <div class="workout-frame__actions flex items-center gap-2">
         <button type="button" class="btn btn-ghost" @click="onNew">New</button>
         <button

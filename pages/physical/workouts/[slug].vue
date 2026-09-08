@@ -16,12 +16,7 @@
       </div>
     </header>
 
-    <StrengthExerciseList v-if="category.slug === 'strength-training'" />
-    <EnduranceExerciseList v-else-if="category.slug === 'cardio-training'" kind="cardio" />
-    <EnduranceExerciseList v-else-if="category.slug === 'aerobic-training'" kind="aerobic" />
-    <FlexibilityExerciseList v-else-if="category.slug === 'stretching'" kind="stretch" />
-    <FlexibilityExerciseList v-else-if="category.slug === 'yoga-training'" kind="yoga" />
-    <FlexibilityExerciseList v-else-if="category.slug === 'plyometrics-training'" kind="plyo" />
+    <TrainingCategoryList :slug="category.slug" />
   </div>
 </template>
 

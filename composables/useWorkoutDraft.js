@@ -1,5 +1,12 @@
 import { parseFetchError } from "~/utils/parseFetchError";
-import { catalogExerciseId, payloadFromExercise } from "~/utils/workoutDraft";
+import {
+  catalogExerciseId,
+  isTimeBasedExercise,
+  payloadFromExercise,
+  programmingDefaults,
+  usesLoadedWeight,
+  weightInLb,
+} from "~/utils/workoutDraft";
 
 const savedWorkouts = ref([]);
 const listError = ref("");
@@ -33,17 +40,27 @@ function nextLineKey() {
 }
 
 function lineFromPayload(payload, existing) {
+  const merged = { ...existing, ...payload };
+  const timeBased = isTimeBasedExercise(merged);
+  const defaults = programmingDefaults(merged);
   return {
     key: existing?.key || nextLineKey(),
     workoutExerciseId: existing?.workoutExerciseId ?? null,
     exerciseId: payload.exerciseId,
     name: payload.name || existing?.name || payload.exerciseId,
     gifUrl: payload.gifUrl || existing?.gifUrl || "",
-    sets: payload.sets ?? existing?.sets ?? 3,
-    reps: payload.reps ?? existing?.reps ?? 8,
-    weight: payload.weight ?? existing?.weight ?? null,
-    weightUnit: payload.weightUnit || existing?.weightUnit || "lb",
-    durationSeconds: payload.durationSeconds ?? existing?.durationSeconds ?? null,
+    equipmentKey: payload.equipmentKey || existing?.equipmentKey || null,
+    usesWeight: payload.usesWeight ?? usesLoadedWeight(merged),
+    sets: payload.sets ?? existing?.sets ?? defaults.sets,
+    reps: timeBased ? null : (payload.reps ?? existing?.reps ?? defaults.reps),
+    weight: weightInLb(
+      payload.weight ?? existing?.weight,
+      payload.weightUnit || existing?.weightUnit,
+    ),
+    weightUnit: "lb",
+    durationSeconds: timeBased
+      ? (payload.durationSeconds ?? existing?.durationSeconds ?? defaults.durationSeconds)
+      : null,
   };
 }
 
@@ -58,6 +75,8 @@ function applyWorkout(workout) {
           exerciseId: item.exerciseId,
           name: item.name,
           gifUrl: item.gifUrl,
+          equipmentKey: item.equipmentKey,
+          usesWeight: item.usesWeight,
           sets: item.sets,
           reps: item.reps,
           weight: item.weight,
@@ -76,17 +95,21 @@ function payloadForSave() {
   return {
     name: draft.value.name,
     notes: draft.value.notes,
-    exercises: draft.value.exercises.map((item) => ({
-      exerciseId: item.exerciseId,
-      sets: item.sets == null || item.sets === "" ? null : Math.round(Number(item.sets)),
-      reps: item.reps == null || item.reps === "" ? null : Math.round(Number(item.reps)),
-      weight: item.weight == null || item.weight === "" ? null : Number(item.weight),
-      weightUnit: item.weightUnit,
-      durationSeconds:
-        item.durationSeconds == null || item.durationSeconds === ""
-          ? null
-          : Math.round(Number(item.durationSeconds)),
-    })),
+    exercises: draft.value.exercises.map((item) => {
+      const timeBased = isTimeBasedExercise(item);
+      return {
+        exerciseId: item.exerciseId,
+        sets: item.sets == null || item.sets === "" ? null : Math.round(Number(item.sets)),
+        reps: timeBased || item.reps == null || item.reps === "" ? null : Math.round(Number(item.reps)),
+        weight: item.weight == null || item.weight === "" ? null : Number(item.weight),
+        weightUnit: "lb",
+        durationSeconds: timeBased
+          ? item.durationSeconds == null || item.durationSeconds === ""
+            ? null
+            : Math.round(Number(item.durationSeconds))
+          : null,
+      };
+    }),
   };
 }
 

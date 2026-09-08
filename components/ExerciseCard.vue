@@ -147,7 +147,7 @@
 
 <script setup>
 import { Bars2Icon } from "@heroicons/vue/24/outline";
-import { catalogExerciseId, payloadFromExercise, WORKOUT_EXERCISE_DND } from "~/utils/workoutDraft";
+import { CATALOG_PICKER_KEY, catalogExerciseId, payloadFromExercise, WORKOUT_EXERCISE_DND } from "~/utils/workoutDraft";
 
 const props = defineProps({
   exercise: { type: Object, required: true },
@@ -160,9 +160,13 @@ const previewRef = ref(null);
 let justAddedTimer;
 const { addExercise, beginCatalogDrag, endCatalogDrag, draft } = useWorkoutDraft();
 const { preferTapAdd } = useMobileShell();
+const picker = inject(CATALOG_PICKER_KEY, null);
 
 const canAdd = computed(() => Boolean(catalogExerciseId(props.exercise)));
-const allowDrag = computed(() => canAdd.value && !preferTapAdd.value);
+const allowDrag = computed(() => {
+  if (picker?.allowDrag === false) return false;
+  return canAdd.value && !preferTapAdd.value;
+});
 const dragLabel = computed(() => {
   if (!canAdd.value) return `${props.exercise.name} is not in the catalog`;
   if (!allowDrag.value) return undefined;
@@ -171,7 +175,8 @@ const dragLabel = computed(() => {
 const inWorkoutCount = computed(() => {
   const id = catalogExerciseId(props.exercise);
   if (!id) return 0;
-  return draft.value.exercises.filter((item) => item.exerciseId === id).length;
+  const list = picker?.exercises?.value ?? draft.value.exercises;
+  return list.filter((item) => item.exerciseId === id).length;
 });
 
 function openPreview() {
@@ -180,7 +185,11 @@ function openPreview() {
 }
 
 function addToWorkout() {
-  if (!addExercise(props.exercise)) return;
+  if (typeof picker?.add === "function") {
+    picker.add(props.exercise);
+  } else if (!addExercise(props.exercise)) {
+    return;
+  }
   justAdded.value = true;
   clearTimeout(justAddedTimer);
   justAddedTimer = setTimeout(() => {

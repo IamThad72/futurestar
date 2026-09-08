@@ -26,40 +26,34 @@
           <p v-else-if="!sessions.length" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
             No journal entries yet.
           </p>
-          <div v-else class="mt-3 space-y-4">
+          <div v-else class="mt-3">
             <section v-for="group in groupedHistory" :key="group.key">
-              <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                {{ group.label }}
-              </h3>
-              <ul class="mt-2 space-y-1">
-                <li v-for="item in group.sessions" :key="item.sessionId">
-                  <button
-                    type="button"
-                    class="flex w-full items-start justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm no-underline hover:bg-gray-100 dark:hover:bg-white/10"
-                    :class="
-                      draft.sessionId === item.sessionId
-                        ? 'bg-primary/10'
-                        : ''
-                    "
-                    @click="openSession(item.sessionId)"
-                  >
-                    <span class="min-w-0">
-                      <span class="block truncate font-medium text-gray-900 dark:text-white">
-                        {{ sessionTitle(item) }}
-                      </span>
-                      <span class="block text-xs text-gray-500 dark:text-gray-400">
-                        {{ formatWhen(item.performedAt) }} · {{ item.exerciseCount }} exercises
-                      </span>
-                    </span>
-                  </button>
-                </li>
-              </ul>
+              <ion-list lines="full" class="journal-ion-list">
+                <ion-list-header>{{ group.label }}</ion-list-header>
+                <ion-item
+                  v-for="item in group.sessions"
+                  :key="item.sessionId"
+                  button
+                  :detail="false"
+                  class="journal-history-item"
+                  :class="{ 'journal-history-item--current': draft.sessionId === item.sessionId }"
+                  @click="openSession(item.sessionId)"
+                >
+                  <ion-label>
+                    <h2>{{ sessionTitle(item) }}</h2>
+                    <p>
+                      {{ formatWhen(item.performedAt) }} · {{ item.exerciseCount }}
+                      {{ item.exerciseCount === 1 ? "exercise" : "exercises" }}
+                    </p>
+                  </ion-label>
+                </ion-item>
+              </ion-list>
             </section>
           </div>
         </div>
       </aside>
 
-      <div class="space-y-4">
+      <div class="min-w-0 space-y-4">
         <section
           v-if="!draft.sessionId"
           class="app-card px-4 py-4"
@@ -163,38 +157,32 @@
         </section>
 
           <div
-            v-for="item in draft.exercises"
+            v-for="(item, index) in draft.exercises"
             :key="item.key"
-            class="app-card px-4 py-4"
+            class="app-card flex min-w-0 w-full max-w-full items-start gap-2 overflow-hidden py-3 pl-4 pr-1"
           >
-            <div class="flex items-start justify-between gap-3">
-              <div class="min-w-0">
-                <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ item.exerciseName }}</h3>
-                <p class="text-xs text-gray-500 dark:text-gray-400">
-                  {{ item.logMode === "duration" ? "Time-based" : "Strength / reps" }}
-                </p>
+            <div class="min-w-0 flex-1 overflow-hidden">
+            <div class="min-w-0">
+              <div class="flex min-w-0 items-center gap-2">
+                <h3 class="journal-exercise-title min-w-0 flex-1 truncate">{{ item.exerciseName }}</h3>
+                <button
+                  type="button"
+                  class="journal-add-set training-chip btn btn-primary btn-xs shrink-0 rounded-full"
+                  @click="addSet(item)"
+                >
+                  Add set
+                </button>
               </div>
-              <button
-                type="button"
-                class="training-chip btn btn-ghost btn-xs rounded-full text-red-600 dark:text-red-400"
-                @click="removeExercise(item.key)"
-              >
-                Remove
-              </button>
             </div>
 
-            <div class="mt-3 overflow-x-auto">
+            <div class="mt-2 overflow-x-auto">
               <table class="table table-sm">
                 <thead>
                   <tr>
                     <th class="w-10">Set</th>
                     <th v-if="item.logMode === 'reps'">Reps</th>
-                    <th>Weight</th>
-                    <th class="w-20">Unit</th>
-                    <template v-if="item.logMode === 'duration'">
-                      <th>Min</th>
-                      <th>Sec</th>
-                    </template>
+                    <th v-if="usesLoadedWeight(item)">Wgt</th>
+                    <th v-if="item.logMode === 'duration'">Min</th>
                     <th class="w-16"></th>
                   </tr>
                 </thead>
@@ -207,53 +195,41 @@
                         type="number"
                         min="0"
                         max="999"
-                        class="input input-bordered input-sm w-20"
-                        @input="updateSet(item, set, 'reps', $event.target.value)"
+                        inputmode="numeric"
+                        class="input input-bordered input-sm compact-num-input"
+                        aria-label="Reps"
+                        @input="updateSet(item, set, 'reps', $event)"
                       />
                     </td>
-                    <td>
+                    <td v-if="usesLoadedWeight(item)">
+                      <div class="journal-weight-field">
+                        <input
+                          :value="set.weight ?? ''"
+                          type="number"
+                          min="0"
+                          max="999"
+                          step="0.5"
+                          inputmode="decimal"
+                          class="input input-bordered input-sm compact-num-input"
+                          aria-label="Weight in pounds"
+                          @input="updateSet(item, set, 'weight', $event)"
+                        />
+                        <span class="journal-weight-unit">lbs</span>
+                      </div>
+                    </td>
+                    <td v-if="item.logMode === 'duration'">
                       <input
-                        :value="set.weight ?? ''"
+                        :value="durationMinutes(set)"
                         type="number"
                         min="0"
-                        max="9999"
-                        step="0.5"
-                        class="input input-bordered input-sm w-24"
-                        @input="updateSet(item, set, 'weight', $event.target.value)"
+                        max="1440"
+                        step="0.01"
+                        inputmode="decimal"
+                        class="input input-bordered input-sm w-20"
+                        aria-label="Minutes"
+                        @input="setDurationMinutes(item, set, $event)"
                       />
                     </td>
-                    <td>
-                      <select
-                        :value="set.weightUnit"
-                        class="select select-bordered select-sm w-full"
-                        @change="updateSet(item, set, 'weightUnit', $event.target.value)"
-                      >
-                        <option value="lb">lb</option>
-                        <option value="kg">kg</option>
-                      </select>
-                    </td>
-                    <template v-if="item.logMode === 'duration'">
-                      <td>
-                        <input
-                          :value="durationMinutes(set)"
-                          type="number"
-                          min="0"
-                          max="1440"
-                          class="input input-bordered input-sm w-20"
-                          @input="setDurationPart(item, set, 'min', $event.target.value)"
-                        />
-                      </td>
-                      <td>
-                        <input
-                          :value="durationSecondsPart(set)"
-                          type="number"
-                          min="0"
-                          max="59"
-                          class="input input-bordered input-sm w-20"
-                          @input="setDurationPart(item, set, 'sec', $event.target.value)"
-                        />
-                      </td>
-                    </template>
                     <td>
                       <button
                         type="button"
@@ -268,9 +244,35 @@
                 </tbody>
               </table>
             </div>
-            <button type="button" class="training-chip btn btn-ghost btn-sm mt-2 rounded-full" @click="addSet(item)">
-              Add set
-            </button>
+            </div>
+            <div class="flex shrink-0 flex-col gap-1">
+              <button
+                type="button"
+                class="workout-line-ctrl"
+                :disabled="index === 0"
+                aria-label="Move up"
+                @click="moveExercise(index, index - 1)"
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                class="workout-line-ctrl"
+                :disabled="index === draft.exercises.length - 1"
+                aria-label="Move down"
+                @click="moveExercise(index, index + 1)"
+              >
+                ↓
+              </button>
+              <button
+                type="button"
+                class="workout-line-ctrl workout-line-ctrl--remove"
+                aria-label="Remove exercise"
+                @click="removeExercise(item.key)"
+              >
+                ×
+              </button>
+            </div>
           </div>
 
           <p v-if="!draft.exercises.length" class="text-sm text-gray-500 dark:text-gray-400">
@@ -281,63 +283,17 @@
             }}
           </p>
 
-          <div class="app-card px-4 py-4">
+          <div>
             <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Add exercise</h2>
-            <div class="mt-3 flex flex-col gap-5">
-              <div class="flex flex-wrap gap-1.5">
-                <div
-                  v-for="tab in pickerTabs"
-                  :key="tab.key"
-                  role="button"
-                  tabindex="0"
-                  class="badge cursor-pointer rounded-full"
-                  :class="
-                    pickerTab === tab.key
-                      ? 'badge-accent border-transparent'
-                      : 'badge-ghost border border-base-content/60'
-                  "
-                  @click="pickerTab = tab.key"
-                  @keydown.enter.prevent="pickerTab = tab.key"
-                  @keydown.space.prevent="pickerTab = tab.key"
-                >
-                  {{ tab.label }}
-                </div>
-              </div>
-              <input
-                v-model.trim="pickerInput"
-                type="search"
-                class="input input-bordered w-full max-w-md rounded-full"
-                placeholder="Search exercises"
-                autocomplete="off"
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              Expand a list, then tap Add on each exercise you want in this session.
+            </p>
+            <div class="mt-3">
+              <TrainingListsAccordion
+                :add-exercise="addCatalogExercise"
+                :added-exercises="draft.exercises"
               />
             </div>
-            <p v-if="pickerError" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ pickerError }}</p>
-            <p v-else-if="pickerLoading" class="mt-2 text-sm text-gray-500 dark:text-gray-400">Searching…</p>
-            <ul v-else-if="pickerResults.length" class="mt-3 max-h-64 space-y-1 overflow-y-auto">
-              <li v-for="exercise in pickerResults" :key="exercise.exerciseId || exercise.id">
-                <button
-                  type="button"
-                  class="flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left text-sm no-underline hover:bg-gray-100 dark:hover:bg-white/10"
-                  :disabled="!catalogExerciseId(exercise)"
-                  @click="addCatalogExercise(exercise)"
-                >
-                  <span class="min-w-0">
-                    <span class="block font-medium text-gray-900 dark:text-white">{{ exercise.name }}</span>
-                    <span class="block text-xs text-gray-500 dark:text-gray-400">
-                      {{ exercise.equipment || "catalog" }}
-                      <span v-if="exercise.sets"> · {{ exercise.sets }} × {{ exercise.repetitions }}</span>
-                    </span>
-                  </span>
-                  <PlusSmallIcon class="size-6 shrink-0 text-primary" aria-hidden="true" />
-                </button>
-              </li>
-            </ul>
-            <p
-              v-else-if="pickerQuery && !pickerLoading"
-              class="mt-2 text-sm text-gray-500 dark:text-gray-400"
-            >
-              No catalog matches. Try another name or tab.
-            </p>
           </div>
       </div>
     </div>
@@ -345,12 +301,18 @@
 </template>
 
 <script setup>
-import { PlusSmallIcon } from "@heroicons/vue/20/solid";
+import { IonItem, IonLabel, IonList, IonListHeader } from "@ionic/vue";
 import { parseFetchError } from "~/utils/parseFetchError";
 import {
-  catalogExerciseId,
+  formatDurationMinutes,
   isTimeBasedExercise,
+  limitMinuteInput,
+  limitThreeDigitInput,
+  minutesToDurationSeconds,
   payloadFromExercise,
+  programmingDefaults,
+  usesLoadedWeight,
+  weightInLb,
 } from "~/utils/workoutDraft";
 
 const learnMore = [
@@ -410,25 +372,8 @@ const startForm = ref({
   name: "",
 });
 
-const pickerTab = ref("strength");
-const pickerInput = ref("");
-const pickerQuery = ref("");
-const pickerLoading = ref(false);
-const pickerError = ref("");
-const pickerResults = ref([]);
-
-const pickerTabs = [
-  { key: "strength", label: "Strength", path: "/api/physical/exercises", query: {} },
-  { key: "cardio", label: "Cardio", path: "/api/physical/endurance", query: { kind: "cardio" } },
-  { key: "aerobic", label: "Aerobic", path: "/api/physical/endurance", query: { kind: "aerobic" } },
-  { key: "stretch", label: "Stretch", path: "/api/physical/flexibility", query: { kind: "stretch" } },
-  { key: "yoga", label: "Yoga", path: "/api/physical/flexibility", query: { kind: "yoga" } },
-  { key: "plyo", label: "Plyo", path: "/api/physical/flexibility", query: { kind: "plyo" } },
-];
-
 let lineSeq = 0;
 let saveTimer;
-let pickerTimer;
 let applyingServer = false;
 
 function nextKey(prefix) {
@@ -441,8 +386,8 @@ function emptySet(from) {
     key: nextKey("set"),
     journalSetId: from?.journalSetId ?? null,
     reps: from?.reps ?? null,
-    weight: from?.weight ?? null,
-    weightUnit: from?.weightUnit || "lb",
+    weight: weightInLb(from?.weight, from?.weightUnit),
+    weightUnit: "lb",
     durationSeconds: from?.durationSeconds ?? null,
     restSeconds: from?.restSeconds ?? null,
     notes: from?.notes ?? "",
@@ -504,6 +449,7 @@ function applySession(session) {
       exerciseId: item.exerciseId,
       exerciseName: item.exerciseName,
       equipmentKey: item.equipmentKey,
+      usesWeight: usesLoadedWeight(item),
       gifUrl: item.gifUrl,
       logMode: item.logMode === "duration" ? "duration" : "reps",
       notes: item.notes || "",
@@ -551,7 +497,7 @@ function payloadForSave() {
       sets: item.sets.map((set) => ({
         reps: set.reps,
         weight: set.weight,
-        weightUnit: set.weightUnit,
+        weightUnit: "lb",
         durationSeconds: set.durationSeconds,
         restSeconds: set.restSeconds,
         notes: set.notes || null,
@@ -696,44 +642,22 @@ function closeEditor() {
   };
 }
 
-function updateSet(item, set, field, raw) {
-  if (field === "weightUnit") {
-    set.weightUnit = raw === "kg" ? "kg" : "lb";
-  } else if (raw === "") {
-    set[field] = null;
-  } else {
-    const n = Number(raw);
-    set[field] = Number.isFinite(n) ? n : null;
-  }
+function updateSet(item, set, field, event) {
+  const { text, value } = limitThreeDigitInput(event.target.value, { integer: field === "reps" });
+  event.target.value = text;
+  set[field] = value;
+  set.weightUnit = "lb";
   markDirty();
 }
 
 function durationMinutes(set) {
-  if (set.durationSeconds == null || set.durationSeconds === "") return "";
-  return Math.floor(Number(set.durationSeconds) / 60);
+  return formatDurationMinutes(set.durationSeconds);
 }
 
-function durationSecondsPart(set) {
-  if (set.durationSeconds == null || set.durationSeconds === "") return "";
-  return Number(set.durationSeconds) % 60;
-}
-
-function setDurationPart(item, set, part, raw) {
-  const current = Number(set.durationSeconds) || 0;
-  let minutes = Math.floor(current / 60);
-  let seconds = current % 60;
-  if (raw === "") {
-    if (part === "min") minutes = 0;
-    else seconds = 0;
-    set.durationSeconds = minutes * 60 + seconds || null;
-    markDirty();
-    return;
-  }
-  const n = Number(raw);
-  if (!Number.isFinite(n) || n < 0) return;
-  if (part === "min") minutes = Math.min(Math.round(n), 1440);
-  else seconds = Math.min(Math.round(n), 59);
-  set.durationSeconds = minutes * 60 + seconds;
+function setDurationMinutes(item, set, event) {
+  const { text, value } = limitMinuteInput(event.target.value);
+  event.target.value = text;
+  set.durationSeconds = minutesToDurationSeconds(value);
   markDirty();
 }
 
@@ -743,7 +667,7 @@ function addSet(item) {
     emptySet({
       reps: last?.reps ?? (item.logMode === "reps" ? 8 : null),
       weight: last?.weight ?? null,
-      weightUnit: last?.weightUnit || "lb",
+      weightUnit: "lb",
       durationSeconds: last?.durationSeconds ?? (item.logMode === "duration" ? 60 : null),
     }),
   );
@@ -761,14 +685,27 @@ function removeExercise(key) {
   markDirty();
 }
 
+function moveExercise(fromIndex, toIndex) {
+  const items = draft.value.exercises;
+  if (fromIndex < 0 || fromIndex >= items.length) return;
+  if (toIndex < 0 || toIndex >= items.length) return;
+  const [moved] = items.splice(fromIndex, 1);
+  items.splice(toIndex, 0, moved);
+  markDirty();
+}
+
 function journalItemFromWorkout(item) {
-  const timeBased = item.durationSeconds != null;
+  const timeBased = isTimeBasedExercise(item);
   const setCount = Math.min(Math.max(item.sets || 1, 1), 8);
+  const defaults = timeBased ? programmingDefaults(item) : null;
+  const durationSeconds = timeBased
+    ? (item.durationSeconds ?? defaults?.durationSeconds ?? 30)
+    : null;
   const template = {
     reps: timeBased ? null : item.reps,
-    weight: item.weight,
-    weightUnit: item.weightUnit || "lb",
-    durationSeconds: timeBased ? item.durationSeconds : null,
+    weight: weightInLb(item.weight, item.weightUnit),
+    weightUnit: "lb",
+    durationSeconds,
     restSeconds: item.restSeconds ?? null,
   };
   return {
@@ -777,6 +714,7 @@ function journalItemFromWorkout(item) {
     exerciseId: item.exerciseId,
     exerciseName: item.name,
     equipmentKey: item.equipmentKey || null,
+    usesWeight: usesLoadedWeight(item),
     gifUrl: item.gifUrl || null,
     logMode: timeBased ? "duration" : "reps",
     notes: item.notes || "",
@@ -812,12 +750,12 @@ function addCatalogExercise(exercise) {
     saveError.value = "That exercise is not in the catalog yet.";
     return;
   }
-  const timeBased = isTimeBasedExercise(exercise) || payload.durationSeconds != null;
+  const timeBased = isTimeBasedExercise({ ...exercise, ...payload });
   const setCount = Math.min(Math.max(payload.sets || 1, 1), 8);
   const template = {
     reps: timeBased ? null : payload.reps,
     weight: payload.weight,
-    weightUnit: payload.weightUnit,
+    weightUnit: "lb",
     durationSeconds: timeBased ? payload.durationSeconds : null,
   };
   draft.value.exercises.push({
@@ -825,7 +763,8 @@ function addCatalogExercise(exercise) {
     journalExerciseId: null,
     exerciseId: payload.exerciseId,
     exerciseName: payload.name,
-    equipmentKey: exercise.equipment || null,
+    equipmentKey: payload.equipmentKey || exercise.equipment || null,
+    usesWeight: usesLoadedWeight({ ...exercise, ...payload }),
     gifUrl: payload.gifUrl || null,
     logMode: timeBased ? "duration" : "reps",
     notes: "",
@@ -834,46 +773,6 @@ function addCatalogExercise(exercise) {
   });
   markDirty();
 }
-
-async function loadPicker() {
-  const tab = pickerTabs.find((item) => item.key === pickerTab.value) || pickerTabs[0];
-  pickerLoading.value = true;
-  pickerError.value = "";
-  try {
-    const data = await $fetch(tab.path, {
-      query: {
-        ...tab.query,
-        q: pickerQuery.value || undefined,
-        limit: 24,
-      },
-    });
-    const featured = data.featured || [];
-    const catalog = data.catalog?.items || [];
-    const seen = new Set();
-    pickerResults.value = [...featured, ...catalog].filter((exercise) => {
-      const id = catalogExerciseId(exercise);
-      if (!id || seen.has(id)) return false;
-      seen.add(id);
-      return true;
-    }).slice(0, 16);
-  } catch (error) {
-    pickerResults.value = [];
-    pickerError.value = parseFetchError(error, "Could not search exercises.");
-  } finally {
-    pickerLoading.value = false;
-  }
-}
-
-watch(pickerInput, (value) => {
-  clearTimeout(pickerTimer);
-  pickerTimer = setTimeout(() => {
-    pickerQuery.value = value;
-  }, 300);
-});
-
-watch([pickerTab, pickerQuery], () => {
-  void loadPicker();
-});
 
 watch(
   () => startForm.value.workoutId,
@@ -886,12 +785,10 @@ watch(
 onMounted(() => {
   void loadHistory();
   void loadWorkouts();
-  void loadPicker();
 });
 
 onBeforeUnmount(() => {
   clearTimeout(saveTimer);
-  clearTimeout(pickerTimer);
   if (draft.value.sessionId && dirty.value) void saveSession();
 });
 </script>
@@ -903,5 +800,110 @@ onBeforeUnmount(() => {
 
 .physical-learn-more > summary::-webkit-details-marker {
   display: none;
+}
+
+.journal-ion-list {
+  background: transparent;
+  margin: 0;
+  padding: 0;
+}
+
+.journal-ion-list ion-item {
+  --background: transparent;
+  --padding-start: 0;
+  --inner-padding-end: 0;
+}
+
+.journal-ion-list ion-label h2 {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.journal-ion-list ion-label p {
+  font-size: 0.75rem;
+  color: var(--color-gray-500, oklch(0.556 0 0));
+}
+
+.journal-history-item--current {
+  --background: color-mix(in srgb, var(--color-primary, #06b6d4) 12%, transparent);
+}
+
+.compact-num-input {
+  width: 3.25rem;
+  min-width: 3.25rem;
+  max-width: 3.25rem;
+  padding-inline: 0.35rem;
+  text-align: center;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.compact-num-input::-webkit-outer-spin-button,
+.compact-num-input::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+.journal-weight-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.journal-weight-unit {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-base-content, #1a1a1a);
+  opacity: 0.55;
+}
+
+.workout-line-ctrl {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--color-base-content, #1a1a1a) 50%, transparent);
+  border-radius: 0.5rem;
+  background: var(--color-base-100, #fff);
+  color: var(--color-base-content, #1a1a1a);
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.workout-line-ctrl:hover:not(:disabled) {
+  background: var(--color-base-200, #f3f4f6);
+}
+
+.workout-line-ctrl:disabled {
+  opacity: 0.35;
+}
+
+.workout-line-ctrl--remove {
+  color: var(--color-error, #dc2626);
+}
+
+button.journal-add-set.training-chip.btn {
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 0.1rem 0.55rem !important;
+  font-size: 0.6875rem !important;
+  line-height: 1rem !important;
+}
+
+.journal-exercise-title {
+  margin: 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8125rem !important;
+  font-weight: 600 !important;
+  line-height: 1.2 !important;
+  color: var(--color-primary, #06b6d4) !important;
 }
 </style>

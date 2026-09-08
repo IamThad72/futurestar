@@ -23,7 +23,7 @@ export const ENDURANCE_MACHINE_EQUIPMENT = [
 
 export const DEFAULT_ENDURANCE_PROGRAM = {
   outdoor: { sets: "1", repetitions: "20–30 min", rest: "" },
-  body: { sets: "3–5", repetitions: "30–45 sec", rest: "30–60 seconds" },
+  body: { sets: "3–5", repetitions: "10–20", rest: "30–60 seconds" },
   dumbbell: { sets: "3", repetitions: "8–12", rest: "45–60 seconds" },
   kettlebell: { sets: "3–5", repetitions: "30–45 sec", rest: "30–60 seconds" },
   machine: { sets: "1", repetitions: "20–30 min", rest: "" },
@@ -198,7 +198,7 @@ export const ENDURANCE_EXERCISES = [
       "Easy to use in short intervals",
     ],
     sets: "3–5",
-    repetitions: "30–45 sec",
+    repetitions: "10–20",
     rest: "30–60 seconds",
   },
   {
@@ -218,7 +218,7 @@ export const ENDURANCE_EXERCISES = [
       "Useful as a short finisher",
     ],
     sets: "3–5",
-    repetitions: "30–45 sec",
+    repetitions: "10–20",
     rest: "45–60 seconds",
   },
   {
@@ -238,7 +238,7 @@ export const ENDURANCE_EXERCISES = [
       "Fits easily between steadier cardio bouts",
     ],
     sets: "3–5",
-    repetitions: "30–45 sec",
+    repetitions: "10–20",
     rest: "30–60 seconds",
   },
   {
@@ -335,8 +335,17 @@ export function isOutdoorEndurance(name = "", equipments = []) {
   if (gear.includes("rope") || gear.includes("dumbbell")) return false;
   if (/\b(hike|hiking|swim|swimming|trail)\b/i.test(label)) return true;
   if (/\b(push to run|wheel run)\b/i.test(label)) return false;
-  if (/\b(jump|burpee|climber|jack|hop|crawl|high knee)\b/i.test(label)) return false;
+  if (/\b(burpee|jump|climber|jack|hop|crawl|high knee)\b/i.test(label)) return false;
   return /\b(run|jog|walk)\b/i.test(label);
+}
+
+/** Counted for reps in the journal (not minutes). Steady outdoor/machine cardio stays timed. */
+const REPS_LOGGED_AEROBIC =
+  /\b(burpee|mountain climber|jumping jack|high knee|bear crawl)\b/i;
+
+export function isRepsLoggedAerobic(exercise) {
+  const name = String(exercise?.name || exercise?.exerciseName || "");
+  return REPS_LOGGED_AEROBIC.test(name);
 }
 
 export function isSteadyEndurance(name = "", equipment = "") {

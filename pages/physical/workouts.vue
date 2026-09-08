@@ -31,8 +31,8 @@ const browsingCatalog = computed(() => /^\/physical\/workouts\/[^/]+/.test(route
 const picking = computed(() => preferTapAdd.value && browsingCatalog.value);
 const introText = computed(() =>
   preferTapAdd.value
-    ? "Name a workout, open a training list, then tap Add on each exercise."
-    : "Name a workout, open a training list, then tap Add — or drag exercises onto the workout.",
+    ? "Name a workout, expand a training list, then tap Add on each exercise."
+    : "Name a workout, expand a training list, then tap Add — or drag exercises onto the workout.",
 );
 </script>
 

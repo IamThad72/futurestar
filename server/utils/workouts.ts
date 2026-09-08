@@ -23,6 +23,7 @@ export type WorkoutExerciseDto = {
   exerciseId: string;
   name: string;
   gifUrl: string | null;
+  equipmentKey: string | null;
   sortOrder: number;
   sets: number | null;
   reps: number | null;
@@ -84,6 +85,7 @@ function mapExercise(row: {
   exercise_id: string;
   name: string | null;
   gif_url: string | null;
+  equipment_key: string | null;
   sort_order: number;
   sets: number | null;
   reps: number | null;
@@ -98,6 +100,7 @@ function mapExercise(row: {
     exerciseId: row.exercise_id,
     name: row.name || row.exercise_id,
     gifUrl: exerciseGifUrl(row.exercise_id, row.gif_url),
+    equipmentKey: row.equipment_key ? String(row.equipment_key) : null,
     sortOrder: Number(row.sort_order),
     sets: asNumber(row.sets),
     reps: asNumber(row.reps),
@@ -233,7 +236,7 @@ export async function getWorkoutById(
   const exercises = await client.query(
     `SELECT we.workout_exercise_id, we.exercise_id, we.sort_order, we.sets, we.reps,
             we.weight, we.weight_unit, we.rest_seconds, we.duration_seconds, we.notes,
-            c.name, c.gif_url
+            c.name, c.gif_url, c.equipment_key
      FROM workout_exercises we
      LEFT JOIN exercise_catalog c ON c.exercise_id = we.exercise_id
      WHERE we.workout_id = $1
