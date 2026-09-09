@@ -3,7 +3,7 @@
     <div class="flex flex-wrap items-end gap-3">
       <label class="form-control w-full max-w-xs">
         <span class="label py-1">
-          <span class="label-text text-sm text-gray-600 dark:text-gray-300">Day</span>
+          <span class="label-text text-sm text-gray-700">Day</span>
         </span>
         <input v-model="reviewOn" type="date" class="input input-bordered w-full" />
       </label>
@@ -13,32 +13,32 @@
     </div>
 
     <section class="app-card px-4 py-4">
-      <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Be Still</h2>
-      <p v-for="line in beStillLines" :key="line" class="mt-2 text-sm leading-6 text-gray-800 dark:text-gray-100">
+      <h2 class="text-sm font-semibold text-gray-900">Be Still</h2>
+      <p v-for="line in beStillLines" :key="line" class="mt-2 text-sm leading-6 text-gray-900">
         {{ line }}
       </p>
-      <p v-for="prompt in beStillPrompts" :key="prompt" class="mt-3 text-sm text-gray-600 dark:text-gray-300">
+      <p v-for="prompt in beStillPrompts" :key="prompt" class="mt-3 text-sm text-gray-800">
         {{ prompt }}
       </p>
     </section>
 
     <section class="app-card px-4 py-4">
-      <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Prayers from Scripture</h2>
-      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+      <h2 class="text-sm font-semibold text-gray-900">Prayers from Scripture</h2>
+      <p class="mt-1 text-xs text-gray-700">
         Morning prayers drawn from the Catholic Public Domain Version.
       </p>
-      <p v-if="prayerError" class="mt-3 text-sm text-red-600 dark:text-red-400">{{ prayerError }}</p>
-      <p v-else-if="prayerLoading" class="mt-3 text-sm text-gray-500 dark:text-gray-400">Loading prayers…</p>
+      <p v-if="prayerError" class="mt-3 text-sm text-red-600">{{ prayerError }}</p>
+      <p v-else-if="prayerLoading" class="mt-3 text-sm text-gray-700">Loading prayers…</p>
       <p v-else-if="catalogMessage" class="mt-3 text-sm text-amber-700 dark:text-amber-400">{{ catalogMessage }}</p>
       <ul v-else class="mt-4 space-y-4">
-        <li v-for="passage in prayers" :key="passage.citation" class="border-t border-gray-100 pt-4 first:border-t-0 first:pt-0 dark:border-white/10">
+        <li v-for="passage in prayers" :key="passage.citation" class="border-t border-gray-200 pt-4 first:border-t-0 first:pt-0">
           <SpiritualPassageCard :passage="passage" />
         </li>
       </ul>
     </section>
 
     <section class="app-card px-4 py-4">
-      <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Morning Intention</h2>
+      <h2 class="text-sm font-semibold text-gray-900">Morning Intention</h2>
       <form class="mt-4 grid gap-3" @submit.prevent="saveIntention">
         <label class="form-control">
           <span class="label py-1">

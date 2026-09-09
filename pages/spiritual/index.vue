@@ -5,7 +5,7 @@
         <h1 class="text-lg font-semibold text-base-content sm:text-xl">
           Spiritual Health
         </h1>
-        <p class="mt-1 text-sm text-base-content/60">
+        <p class="mt-1 text-sm text-base-content/80">
           A daily review: be still, remember, hear Scripture, and close the day with examen.
           Anything you write stays private to your account.
         </p>
@@ -15,7 +15,7 @@
         <li v-for="item in homeLinks" :key="item.href">
           <AppLink :to="item.href" class="app-card-link">
             <h2 class="text-sm font-semibold text-base-content">{{ item.name }}</h2>
-            <p class="mt-2 flex-1 text-sm leading-6 text-base-content/60">
+            <p class="mt-2 flex-1 text-sm leading-6 text-base-content/80">
               {{ item.description }}
             </p>
           </AppLink>

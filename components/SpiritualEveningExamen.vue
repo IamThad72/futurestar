@@ -1,30 +1,32 @@
 <template>
-  <div class="space-y-6">
+  <div class="min-w-0 max-w-full space-y-6">
     <div class="flex flex-wrap items-end gap-3">
-      <label class="form-control w-full max-w-xs">
+      <label class="form-control min-w-0 w-full max-w-xs">
         <span class="label py-1">
-          <span class="label-text text-sm text-gray-600 dark:text-gray-300">Day</span>
+          <span class="label-text text-sm text-gray-700">Day</span>
         </span>
-        <input v-model="reviewOn" type="date" class="input input-bordered w-full" />
+        <input v-model="reviewOn" type="date" class="input input-bordered w-full min-w-0 max-w-full" />
       </label>
       <button type="button" class="training-chip btn btn-ghost btn-sm rounded-full" @click="reviewOn = todayIsoDate()">
         Today
       </button>
     </div>
 
-    <section class="app-card px-4 py-4">
-      <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Evening Examen</h2>
-      <p v-if="loadError" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ loadError }}</p>
-      <form class="mt-4 grid gap-3" @submit.prevent="saveExamen">
-        <label v-for="(field, index) in examenFields" :key="field.key" class="form-control">
-          <span class="label py-1">
-            <span class="label-text text-sm">{{ index + 1 }}. {{ field.label }}</span>
+    <section class="app-card min-w-0 max-w-full overflow-hidden px-4 py-4">
+      <h2 class="text-sm font-semibold text-gray-900">Evening Examen</h2>
+      <p v-if="loadError" class="mt-2 text-sm text-red-600">{{ loadError }}</p>
+      <form class="mt-4 grid min-w-0 gap-3" @submit.prevent="saveExamen">
+        <label v-for="(field, index) in examenFields" :key="field.key" class="form-control min-w-0">
+          <span class="label h-auto min-h-0 items-start py-1">
+            <span class="label-text text-sm whitespace-normal break-words">
+              {{ index + 1 }}. {{ field.label }}
+            </span>
           </span>
           <textarea
             v-model.trim="form[field.key]"
-            rows="3"
+            rows="2"
             maxlength="2000"
-            class="textarea textarea-bordered w-full"
+            class="examen-textarea textarea textarea-bordered textarea-sm w-full min-w-0 max-w-full"
           />
         </label>
         <p v-if="saveError" class="text-sm text-red-600 dark:text-red-400">{{ saveError }}</p>
@@ -35,9 +37,9 @@
       </form>
     </section>
 
-    <section class="app-card px-4 py-4">
-      <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Closing Prayer</h2>
-      <p v-for="line in closingLines" :key="line" class="mt-2 text-sm leading-6 text-gray-800 dark:text-gray-100">
+    <section class="app-card min-w-0 max-w-full px-4 py-4">
+      <h2 class="text-sm font-semibold text-gray-900">Closing Prayer</h2>
+      <p v-for="line in closingLines" :key="line" class="mt-2 text-sm leading-6 text-gray-900">
         {{ line }}
       </p>
     </section>
@@ -110,3 +112,13 @@ async function saveExamen() {
   }
 }
 </script>
+
+<style scoped>
+.examen-textarea {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  field-sizing: fixed;
+}
+</style>

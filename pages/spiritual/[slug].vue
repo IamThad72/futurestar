@@ -1,8 +1,8 @@
 <template>
-  <section v-if="section" class="app-page">
+  <section v-if="section" class="app-page min-w-0 overflow-x-hidden">
     <header class="mb-6">
       <h1 class="text-lg font-semibold text-base-content sm:text-xl">{{ section.name }}</h1>
-      <p class="mt-1 text-sm text-base-content/60">{{ section.description }}</p>
+      <p class="mt-1 text-sm text-base-content/80">{{ section.description }}</p>
     </header>
     <div
       v-if="!auth.ready"
