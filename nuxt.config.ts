@@ -49,7 +49,17 @@ export default defineNuxtConfig({
   },
 
   // Tailwind v4 via Vite plugin
-  vite: { plugins: [tailwindcss()] },
+  vite: {
+    plugins: [tailwindcss()],
+    optimizeDeps: {
+      include: ["@unovis/ts", "@unovis/vue"],
+    },
+    resolve: {
+      alias: {
+        "@unovis/ts": resolve(process.cwd(), "node_modules/@unovis/ts"),
+      },
+    },
+  },
 
   // Global CSS (Tailwind + daisyUI). Ionic styles are added by @nuxtjs/ionic.
   css: ["~/assets/css/main.css"],
