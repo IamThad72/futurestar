@@ -4,7 +4,7 @@ export const PHYSICAL_SECTIONS = [
   {
     name: "Nutrition Journal",
     slug: "nutrition",
-    description: "Set a daily plan and log meals from USDA FoodData Central.",
+    description: "Set a daily plan and log meals from your foods or USDA FoodData Central.",
   },
   {
     name: "Exercise Journal",

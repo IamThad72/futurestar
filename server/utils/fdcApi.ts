@@ -33,7 +33,8 @@ export type FdcSearchStatus = {
 };
 
 export type NutritionFoodSearchHit = {
-  fdc_id: number;
+  fdc_id: number | null;
+  user_food_id?: number | null;
   description: string;
   category: string | null;
   data_type: string;
@@ -41,10 +42,12 @@ export type NutritionFoodSearchHit = {
   protein_g_per_100g: number | null;
   fat_g_per_100g: number | null;
   carb_g_per_100g: number | null;
+  serving_g?: number | null;
+  serving_label?: string | null;
   is_branded: boolean;
   brand_owner: string | null;
   brand_name: string | null;
-  source: "fdc";
+  source: "fdc" | "custom";
 };
 
 export type FdcFoodPortion = {

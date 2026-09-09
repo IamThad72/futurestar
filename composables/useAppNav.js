@@ -1,5 +1,6 @@
 import { financialTabsForPath, isFinancialPath } from "~/utils/financialNav";
 import { isPhysicalPath, physicalTabsForPath } from "~/utils/physicalNav";
+import { isSpiritualHomePath, isSpiritualPath, spiritualTabsForPath } from "~/utils/spiritualNav";
 
 /** Life-area links and in-section tabs for the desktop drawer and Ionic menu. */
 export function useAppNav() {
@@ -8,7 +9,8 @@ export function useAppNav() {
 
   const isFinancialSection = computed(() => isFinancialPath(route.path));
   const isPhysicalSection = computed(() => isPhysicalPath(route.path));
-  const isSpiritualSection = computed(() => route.path.startsWith("/spiritual"));
+  const isSpiritualSection = computed(() => isSpiritualPath(route.path));
+  const isSpiritualHome = computed(() => isSpiritualHomePath(route.path));
 
   const links = computed(() => {
     if (auth.user) {
@@ -21,7 +23,7 @@ export function useAppNav() {
         {
           name: "Spiritual",
           path: "/spiritual",
-          current: route.path.startsWith("/spiritual"),
+          current: isSpiritualPath(route.path),
         },
         {
           name: "Physical",
@@ -48,12 +50,16 @@ export function useAppNav() {
     if (isPhysicalSection.value) {
       return physicalTabsForPath(route.path);
     }
+    if (isSpiritualSection.value) {
+      return spiritualTabsForPath(route.path);
+    }
     return [];
   });
 
   const sectionLabel = computed(() => {
     if (isFinancialSection.value) return "Financial";
     if (isPhysicalSection.value) return "Physical";
+    if (isSpiritualSection.value) return "Spiritual";
     return "";
   });
 
@@ -63,6 +69,7 @@ export function useAppNav() {
     isFinancialSection,
     isPhysicalSection,
     isSpiritualSection,
+    isSpiritualHome,
     links,
     sectionTabs,
     sectionLabel,

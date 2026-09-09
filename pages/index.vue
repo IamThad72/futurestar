@@ -50,7 +50,7 @@ const healthAreas = [
     name: "Spiritual",
     href: "/spiritual",
     description:
-      "Stay grounded in faith, purpose, and inner life. This area is for practices, community, and growth that keep the rest of life aligned.",
+      "Stay grounded in faith, purpose, and inner life. Begin with morning prayer, remember what is true, hear Scripture, and close the day with examen.",
   },
   {
     name: "Physical",

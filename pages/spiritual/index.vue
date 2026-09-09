@@ -6,13 +6,21 @@
           Spiritual Health
         </h1>
         <p class="mt-1 text-sm text-base-content/60">
-          Practices, community, and growth in this area will live here. Anything you capture stays private to your account.
+          A daily review: be still, remember, hear Scripture, and close the day with examen.
+          Anything you write stays private to your account.
         </p>
       </header>
 
-      <p class="app-card px-4 py-8 text-sm text-base-content/70">
-        This section is coming soon.
-      </p>
+      <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <li v-for="item in homeLinks" :key="item.href">
+          <AppLink :to="item.href" class="app-card-link">
+            <h2 class="text-sm font-semibold text-base-content">{{ item.name }}</h2>
+            <p class="mt-2 flex-1 text-sm leading-6 text-base-content/60">
+              {{ item.description }}
+            </p>
+          </AppLink>
+        </li>
+      </ul>
     </div>
 
     <div class="spiritual-page__dock">
@@ -34,9 +42,12 @@
 </template>
 
 <script setup>
+import { SPIRITUAL_HOME_LINKS } from "~/utils/spiritualNav";
+
 useHead({ title: "Spiritual" });
 
 const auth = useAuthStore();
+const homeLinks = SPIRITUAL_HOME_LINKS;
 
 onMounted(() => {
   if (!auth.ready) {

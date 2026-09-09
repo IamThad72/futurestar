@@ -53,27 +53,135 @@
             v-model.trim="searchInput"
             type="search"
             class="input input-bordered mt-3 w-full"
-            placeholder="Search USDA Foundation and branded foods"
+            placeholder="Search your foods or USDA Foundation and branded foods"
             autocomplete="off"
           />
           <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            FoodData Central, USDA. Search uses the FDC API (Foundation and Branded).
+            Your custom foods appear first. USDA search uses FoodData Central (Foundation and Branded).
           </p>
+          <details class="mt-3 rounded-lg border border-gray-200 open:bg-gray-50 dark:border-white/10 dark:open:bg-white/5">
+            <summary class="cursor-pointer px-3 py-2 text-sm font-medium text-primary">
+              Add custom food
+            </summary>
+            <form class="grid gap-3 px-3 pb-3" @submit.prevent="saveCustomFood(false)">
+              <label class="form-control">
+                <span class="label py-1"><span class="label-text text-sm">Name</span></span>
+                <input
+                  v-model.trim="customForm.name"
+                  type="text"
+                  maxlength="160"
+                  class="input input-bordered w-full"
+                  placeholder="e.g. Homemade chili"
+                  required
+                />
+              </label>
+              <label class="form-control">
+                <span class="label py-1"><span class="label-text text-sm">Brand (optional)</span></span>
+                <input
+                  v-model.trim="customForm.brand"
+                  type="text"
+                  maxlength="80"
+                  class="input input-bordered w-full"
+                />
+              </label>
+              <div class="grid gap-3 sm:grid-cols-2">
+                <label class="form-control">
+                  <span class="label py-1"><span class="label-text text-sm">Serving label</span></span>
+                  <input
+                    v-model.trim="customForm.serving_label"
+                    type="text"
+                    maxlength="80"
+                    class="input input-bordered w-full"
+                    placeholder="1 bowl"
+                    required
+                  />
+                </label>
+                <label class="form-control">
+                  <span class="label py-1">
+                    <span class="label-text text-sm">Serving weight (oz)</span>
+                    <span v-if="customServingGramsPreview" class="label-text-alt text-xs text-gray-500">
+                      ≈ {{ customServingGramsPreview }} g
+                    </span>
+                  </span>
+                  <input
+                    v-model="customForm.serving_oz"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    class="input input-bordered w-full"
+                    required
+                  />
+                </label>
+              </div>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Macros for one serving (same as a nutrition label).</p>
+              <div class="grid gap-3 sm:grid-cols-2">
+                <label class="form-control">
+                  <span class="label py-1"><span class="label-text text-sm">Calories</span></span>
+                  <input v-model="customForm.kcal" type="number" min="0" step="1" class="input input-bordered w-full" required />
+                </label>
+                <label class="form-control">
+                  <span class="label py-1"><span class="label-text text-sm">Protein (g)</span></span>
+                  <input v-model="customForm.protein_g" type="number" min="0" step="0.1" class="input input-bordered w-full" required />
+                </label>
+                <label class="form-control">
+                  <span class="label py-1"><span class="label-text text-sm">Fat (g)</span></span>
+                  <input v-model="customForm.fat_g" type="number" min="0" step="0.1" class="input input-bordered w-full" required />
+                </label>
+                <label class="form-control">
+                  <span class="label py-1"><span class="label-text text-sm">Carbohydrate (g)</span></span>
+                  <input v-model="customForm.carb_g" type="number" min="0" step="0.1" class="input input-bordered w-full" required />
+                </label>
+              </div>
+              <div class="grid gap-3 sm:grid-cols-2">
+                <label class="form-control">
+                  <span class="label py-1"><span class="label-text text-sm">Meal</span></span>
+                  <select v-model="logForm.meal" class="select select-bordered w-full">
+                    <option v-for="meal in mealOptions" :key="`custom-${meal.value}`" :value="meal.value">{{ meal.label }}</option>
+                  </select>
+                </label>
+                <label class="form-control">
+                  <span class="label py-1"><span class="label-text text-sm">Time</span></span>
+                  <input v-model="logForm.time" type="time" class="input input-bordered w-full" required />
+                </label>
+              </div>
+              <p v-if="customError" class="text-sm text-red-600 dark:text-red-400">{{ customError }}</p>
+              <p v-else-if="customNotice" class="text-sm text-emerald-700 dark:text-emerald-400">{{ customNotice }}</p>
+              <div class="flex flex-wrap gap-2">
+                <button type="submit" class="training-chip btn btn-ghost btn-sm rounded-full" :disabled="savingCustom">
+                  {{ savingCustom ? "Saving…" : "Save to my foods" }}
+                </button>
+                <button
+                  type="button"
+                  class="training-chip btn btn-primary btn-sm rounded-full"
+                  :disabled="savingCustom"
+                  @click="saveCustomFood(true)"
+                >
+                  {{ savingCustom ? "Saving…" : "Save and add to log" }}
+                </button>
+              </div>
+            </form>
+          </details>
           <p v-if="searchError" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ searchError }}</p>
           <p v-else-if="fdcSearchMessage" class="mt-2 text-sm text-amber-700 dark:text-amber-400">{{ fdcSearchMessage }}</p>
           <p v-else-if="searching" class="mt-2 text-sm text-gray-500 dark:text-gray-400">Searching…</p>
           <p v-else-if="searchInput.trim().length === 1" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Type at least 2 characters to search.
+            Type at least 2 characters to search USDA, or pick one of your foods below.
           </p>
           <p v-if="!searchError && searched && !foods.length && !searching" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            No foods matched. Try a different Foundation food or packaged brand name.
+            No foods matched. Add a custom food, or try a different USDA or brand name.
           </p>
-          <ul v-if="foods.length" class="mt-3 max-h-56 space-y-1 overflow-y-auto">
-            <li v-for="food in foods" :key="food.fdc_id">
+          <p v-else-if="!searchError && !searchInput.trim() && foods.length" class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            Your foods
+          </p>
+          <p v-else-if="!searchError && !searchInput.trim() && !foods.length && !searching" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            No custom foods yet. Add one above, or search USDA.
+          </p>
+          <ul v-if="visibleFoods.length" class="mt-3 max-h-56 space-y-1 overflow-y-auto">
+            <li v-for="food in visibleFoods" :key="foodSearchKey(food)">
               <button
                 type="button"
                 class="w-full rounded-md px-2 py-1.5 text-left text-sm no-underline hover:bg-gray-100 dark:hover:bg-white/10"
-                :class="selectedFdcId === food.fdc_id ? 'bg-primary/10' : ''"
+                :class="isSelectedFood(food) ? 'bg-primary/10' : ''"
                 @click="selectFood(food)"
               >
                 <span class="block font-medium text-gray-900 dark:text-white">{{ foodSearchLabel(food) }}</span>
@@ -86,7 +194,7 @@
 
           <form v-if="selectedFood" class="mt-4 grid gap-3" @submit.prevent="logFood">
             <p class="text-sm font-medium text-gray-900 dark:text-white">{{ foodSearchLabel(selectedFood) }}</p>
-            <p v-if="isBrandedFood(selectedFood)" class="text-xs text-gray-500 dark:text-gray-400">
+            <p v-if="isCustomFood(selectedFood) || isBrandedFood(selectedFood)" class="text-xs text-gray-500 dark:text-gray-400">
               {{ foodSearchMeta(selectedFood) }}
             </p>
             <div class="grid gap-3 sm:grid-cols-2">
@@ -285,7 +393,16 @@ function displayPortionLabel(label) {
 }
 
 function foodSearchLabel(food) {
-  return food?.description || "";
+  return food?.description || food?.name || "";
+}
+
+function isCustomFood(food) {
+  return Boolean(food?.user_food_id) || food?.source === "custom";
+}
+
+function foodSearchKey(food) {
+  if (isCustomFood(food)) return `custom-${food.user_food_id || food.description}`;
+  return `fdc-${food?.fdc_id || food?.description}`;
 }
 
 function isBrandedFood(food) {
@@ -293,6 +410,12 @@ function isBrandedFood(food) {
 }
 
 function foodSearchMeta(food) {
+  if (isCustomFood(food)) {
+    const brand = food?.brand_name || food?.brand_owner;
+    const serving = food?.serving_label || "1 serving";
+    const kcal = `${formatMacro(food?.kcal_per_100g, 0)} kcal / ${formatWeightOzGrams(100)}`;
+    return brand ? `Your food · ${brand} · ${serving} · ${kcal}` : `Your food · ${serving} · ${kcal}`;
+  }
   const brand = food?.brand_name || food?.brand_owner;
   const kind = isBrandedFood(food) ? "Branded" : food?.category || food?.data_type || "USDA";
   const kcal = `${formatMacro(food?.kcal_per_100g, 0)} kcal / ${formatWeightOzGrams(100)}`;
@@ -339,6 +462,19 @@ function emptyPlanForm() {
   };
 }
 
+function emptyCustomForm() {
+  return {
+    name: "",
+    brand: "",
+    serving_label: "1 serving",
+    serving_oz: formatPortionOunces(100) || "3.53",
+    kcal: "",
+    protein_g: "",
+    fat_g: "",
+    carb_g: "",
+  };
+}
+
 const eatenOn = ref(todayIso());
 const loading = ref(false);
 const loadError = ref("");
@@ -356,10 +492,13 @@ const searchError = ref("");
 const fdcSearchMessage = ref("");
 const selectedFood = ref(null);
 const selectedPortions = ref([]);
-const selectedFdcId = computed(() => selectedFood.value?.fdc_id ?? null);
 const logForm = ref({ meal: "breakfast", time: localTimeValue(), portionId: "", quantity: "1", ounces: formatPortionOunces(100) || "3.53" });
 const logging = ref(false);
 const logError = ref("");
+const customForm = ref(emptyCustomForm());
+const savingCustom = ref(false);
+const customError = ref("");
+const customNotice = ref("");
 const deletingId = ref(null);
 const { isNarrow } = useMobileShell();
 const chartRangeDays = ref(7);
@@ -370,6 +509,8 @@ const historyError = ref("");
 const eatenOnLabel = computed(() => (eatenOn.value === todayIso() ? "Today" : eatenOn.value));
 
 const customGramsPreview = computed(() => formatPlanGrams(logForm.value.ounces));
+const customServingGramsPreview = computed(() => formatPlanGrams(customForm.value.serving_oz));
+const visibleFoods = computed(() => foods.value);
 
 const macroRows = computed(() => {
   const consumed = comparison.value?.consumed || {};
@@ -471,6 +612,7 @@ watch(searchInput, (value) => {
 
 onMounted(() => {
   void loadDay();
+  void searchFoods("");
 });
 
 onBeforeUnmount(() => {
@@ -552,11 +694,10 @@ async function savePlan() {
 
 async function searchFoods(query) {
   const q = String(query || "").trim();
-  if (q.length < 2) {
+  if (q.length === 1) {
     searchAbort?.abort();
-    foods.value = [];
-    searched.value = false;
     searching.value = false;
+    searched.value = false;
     searchError.value = "";
     fdcSearchMessage.value = "";
     return;
@@ -564,13 +705,13 @@ async function searchFoods(query) {
   searchAbort?.abort();
   const ac = new AbortController();
   searchAbort = ac;
-  searching.value = true;
+  searching.value = q.length >= 2;
   searchError.value = "";
   fdcSearchMessage.value = "";
-  searched.value = true;
+  searched.value = q.length >= 2;
   try {
     const data = await $fetch("/api/physical/nutrition/foods", {
-      query: { q },
+      query: q ? { q } : {},
       signal: ac.signal,
     });
     if (searchAbort !== ac) return;
@@ -586,24 +727,35 @@ async function searchFoods(query) {
   }
 }
 
-async function selectFood(food) {
+function applySelectedFood(food, portions = []) {
   selectedFood.value = food;
-  selectedPortions.value = [];
+  selectedPortions.value = portions;
   logForm.value = {
     meal: logForm.value.meal || "breakfast",
-    time: localTimeValue(),
-    portionId: "",
+    time: logForm.value.time || localTimeValue(),
+    portionId: portions[0] ? String(portions[0].portion_id) : "",
     quantity: "1",
-    ounces: formatPortionOunces(100) || "3.53",
+    ounces: formatPortionOunces(food.serving_g || portions[0]?.gram_weight || 100) || "3.53",
   };
+}
+
+function isSelectedFood(food) {
+  if (!selectedFood.value) return false;
+  if (isCustomFood(food) || isCustomFood(selectedFood.value)) {
+    return Number(selectedFood.value.user_food_id) === Number(food.user_food_id);
+  }
+  return Number(selectedFood.value.fdc_id) === Number(food.fdc_id);
+}
+
+async function selectFood(food) {
+  applySelectedFood(food, food.portions || []);
   logError.value = "";
   try {
-    const data = await $fetch("/api/physical/nutrition/foods", { query: { fdc_id: food.fdc_id } });
-    selectedFood.value = data?.food || food;
-    selectedPortions.value = data?.food?.portions || [];
-    if (selectedPortions.value[0]) {
-      logForm.value.portionId = String(selectedPortions.value[0].portion_id);
-    }
+    const query = isCustomFood(food)
+      ? { user_food_id: food.user_food_id }
+      : { fdc_id: food.fdc_id };
+    const data = await $fetch("/api/physical/nutrition/foods", { query });
+    applySelectedFood(data?.food || food, data?.food?.portions || food.portions || []);
   } catch (error) {
     logError.value = parseFetchError(error, "Failed to load food portions.");
   }
@@ -616,49 +768,110 @@ function scaleMacro(per100, grams) {
   return (n * g) / 100;
 }
 
+function customFoodPayload() {
+  const servingG = ouncesToGrams(customForm.value.serving_oz);
+  return {
+    name: customForm.value.name,
+    brand: customForm.value.brand,
+    serving_label: customForm.value.serving_label,
+    serving_g: servingG,
+    kcal: Number(customForm.value.kcal),
+    protein_g: Number(customForm.value.protein_g),
+    fat_g: Number(customForm.value.fat_g),
+    carb_g: Number(customForm.value.carb_g),
+  };
+}
+
+async function saveCustomFood(alsoLog) {
+  const payload = customFoodPayload();
+  const macros = [payload.kcal, payload.protein_g, payload.fat_g, payload.carb_g];
+  if (!payload.name || !(payload.serving_g > 0)) {
+    customError.value = "Enter a name and serving weight.";
+    return;
+  }
+  if (macros.some((n) => !Number.isFinite(n) || n < 0) || customForm.value.kcal === "") {
+    customError.value = "Enter calories and macros for one serving.";
+    return;
+  }
+  savingCustom.value = true;
+  customError.value = "";
+  customNotice.value = "";
+  try {
+    const data = await $fetch("/api/physical/nutrition/user-foods", {
+      method: "POST",
+      body: payload,
+    });
+    const food = data?.food;
+    if (!food) throw new Error("Missing custom food.");
+    customForm.value = emptyCustomForm();
+    applySelectedFood(food, food.portions || []);
+    foods.value = [
+      food,
+      ...foods.value.filter((item) => Number(item.user_food_id) !== Number(food.user_food_id)),
+    ];
+    if (alsoLog) {
+      await logSelectedFood();
+      customNotice.value = "Saved and added to today’s log.";
+    } else {
+      customNotice.value = "Saved to your foods.";
+    }
+  } catch (error) {
+    customError.value = parseFetchError(error, "Failed to save custom food.");
+  } finally {
+    savingCustom.value = false;
+  }
+}
+
+async function logSelectedFood() {
+  const food = selectedFood.value;
+  if (!food || (!food.fdc_id && !food.user_food_id)) {
+    throw new Error("Select a food first.");
+  }
+  const usingPortion = Boolean(logForm.value.portionId);
+  const quantity = usingPortion ? Number(logForm.value.quantity) : 1;
+  const portion = usingPortion
+    ? selectedPortions.value.find((item) => String(item.portion_id) === String(logForm.value.portionId))
+    : null;
+  const gramWeight = usingPortion
+    ? Number(portion?.gram_weight) * quantity
+    : ouncesToGrams(logForm.value.ounces);
+  if (!Number.isFinite(gramWeight) || gramWeight <= 0) {
+    throw new Error("Enter ounces or choose a serving.");
+  }
+  await $fetch("/api/physical/nutrition/intake", {
+    method: "POST",
+    body: {
+      eaten_on: eatenOn.value,
+      eaten_at: eatenAtIso(eatenOn.value, logForm.value.time),
+      meal_type: logForm.value.meal,
+      fdc_id: food.fdc_id || null,
+      user_food_id: food.user_food_id || null,
+      portion_id: usingPortion ? Number(logForm.value.portionId) : null,
+      quantity,
+      gram_weight: gramWeight,
+      food_name: food.description,
+      portion_label: usingPortion
+        ? portion?.measure_name || portion?.unit || portion?.label || "portion"
+        : "custom weight",
+      kcal_per_100g: food.kcal_per_100g,
+      protein_g_per_100g: food.protein_g_per_100g,
+      fat_g_per_100g: food.fat_g_per_100g,
+      carb_g_per_100g: food.carb_g_per_100g,
+      kcal: scaleMacro(food.kcal_per_100g, gramWeight),
+      protein_g: scaleMacro(food.protein_g_per_100g, gramWeight),
+      fat_g: scaleMacro(food.fat_g_per_100g, gramWeight),
+      carb_g: scaleMacro(food.carb_g_per_100g, gramWeight),
+    },
+  });
+  await loadDay();
+}
+
 async function logFood() {
-  if (!selectedFood.value?.fdc_id) return;
+  if (!selectedFood.value || (!selectedFood.value.fdc_id && !selectedFood.value.user_food_id)) return;
   logging.value = true;
   logError.value = "";
   try {
-    const usingPortion = Boolean(logForm.value.portionId);
-    const quantity = usingPortion ? Number(logForm.value.quantity) : 1;
-    const portion = usingPortion
-      ? selectedPortions.value.find((item) => String(item.portion_id) === String(logForm.value.portionId))
-      : null;
-    const gramWeight = usingPortion
-      ? Number(portion?.gram_weight) * quantity
-      : ouncesToGrams(logForm.value.ounces);
-    if (!Number.isFinite(gramWeight) || gramWeight <= 0) {
-      logError.value = "Enter ounces or choose a USDA portion.";
-      return;
-    }
-    const food = selectedFood.value;
-    await $fetch("/api/physical/nutrition/intake", {
-      method: "POST",
-      body: {
-        eaten_on: eatenOn.value,
-        eaten_at: eatenAtIso(eatenOn.value, logForm.value.time),
-        meal_type: logForm.value.meal,
-        fdc_id: food.fdc_id,
-        portion_id: usingPortion ? Number(logForm.value.portionId) : null,
-        quantity,
-        gram_weight: gramWeight,
-        food_name: food.description,
-        portion_label: usingPortion
-          ? portion?.measure_name || portion?.unit || portion?.label || "portion"
-          : "custom weight",
-        kcal_per_100g: food.kcal_per_100g,
-        protein_g_per_100g: food.protein_g_per_100g,
-        fat_g_per_100g: food.fat_g_per_100g,
-        carb_g_per_100g: food.carb_g_per_100g,
-        kcal: scaleMacro(food.kcal_per_100g, gramWeight),
-        protein_g: scaleMacro(food.protein_g_per_100g, gramWeight),
-        fat_g: scaleMacro(food.fat_g_per_100g, gramWeight),
-        carb_g: scaleMacro(food.carb_g_per_100g, gramWeight),
-      },
-    });
-    await loadDay();
+    await logSelectedFood();
   } catch (error) {
     logError.value = parseFetchError(error, "Failed to log food.");
   } finally {

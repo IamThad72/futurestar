@@ -118,12 +118,13 @@
           </ion-buttons>
         </ion-toolbar>
         <ion-toolbar
-          v-if="auth.user && (isFinancialSection || isPhysicalSection)"
+          v-if="auth.user && (isFinancialSection || isPhysicalSection || isSpiritualSection)"
           class="mobile-section-toolbar"
         >
           <div class="mobile-section-toolbar__inner">
             <FinancialSectionNav v-if="isFinancialSection" embedded />
             <PhysicalSectionNav v-if="isPhysicalSection" embedded />
+            <SpiritualSectionNav v-if="isSpiritualSection" embedded />
           </div>
         </ion-toolbar>
       </ion-header>
@@ -131,7 +132,7 @@
       <ion-content ref="contentRef" class="mobile-ionic-content">
         <div
           class="mobile-ionic-main"
-          :class="{ 'mobile-ionic-main--flush-end': isSpiritualSection }"
+          :class="{ 'mobile-ionic-main--flush-end': isSpiritualHome }"
         >
           <slot />
         </div>
@@ -212,6 +213,7 @@ const {
   isFinancialSection,
   isPhysicalSection,
   isSpiritualSection,
+  isSpiritualHome,
   links,
   sectionTabs,
   sectionLabel,

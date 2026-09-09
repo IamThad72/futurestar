@@ -141,9 +141,10 @@
         <div class="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden bg-base-200">
           <FinancialSectionNav v-if="auth.user && isFinancialSection" />
           <PhysicalSectionNav v-if="auth.user && isPhysicalSection" />
+          <SpiritualSectionNav v-if="auth.user && isSpiritualSection" />
           <main
             class="layout-main flex-1"
-            :class="{ 'layout-main--flush-end': isSpiritualSection }"
+            :class="{ 'layout-main--flush-end': isSpiritualHome }"
           >
             <slot />
           </main>
@@ -212,6 +213,7 @@ const {
   isFinancialSection,
   isPhysicalSection,
   isSpiritualSection,
+  isSpiritualHome,
   links,
   sectionTabs,
   sectionLabel,

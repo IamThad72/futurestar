@@ -94,11 +94,13 @@ const migrations = [
   "create_nutrition_foundation.sql",
   "alter_nutrition_intake_fdc_snapshot.sql",
   "alter_nutrition_intake_add_eaten_at.sql",
+  "create_user_foods.sql",
   "create_bible_cpdv.sql",
   "create_liturgical_calendar.sql",
   "create_workouts.sql",
   "create_workout_journal.sql",
   "create_estate_documents.sql",
+  "create_spiritual_daily_reviews.sql",
 ];
 
 async function run() {

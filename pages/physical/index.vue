@@ -32,7 +32,7 @@ useHead({ title: "Physical Health" });
 const sections = [
   {
     name: "Nutrition Journal",
-    text: "Set a daily calorie and macro plan, then log meals from USDA FoodData Central. Each day is compared to your targets so you can see protein, fat, carbohydrate, and calories as you eat.",
+    text: "Set a daily calorie and macro plan, then log meals from your custom foods or USDA FoodData Central. Each day is compared to your targets so you can see protein, fat, carbohydrate, and calories as you eat.",
   },
   {
     name: "Exercise Journal",
