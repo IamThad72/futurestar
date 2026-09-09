@@ -1,11 +1,11 @@
 <template>
-  <div class="space-y-6">
-    <div class="flex flex-wrap items-end gap-3">
-      <label class="form-control w-full max-w-xs">
+  <div class="min-w-0 max-w-full space-y-6">
+    <div class="flex min-w-0 flex-wrap items-end gap-3">
+      <label class="form-control min-w-0 w-full max-w-xs">
         <span class="label py-1">
           <span class="label-text text-sm text-gray-700">Day</span>
         </span>
-        <input v-model="reviewOn" type="date" class="input input-bordered w-full" />
+        <input v-model="reviewOn" type="date" class="input input-bordered w-full min-w-0 max-w-full" />
       </label>
       <button type="button" class="training-chip btn btn-ghost btn-sm rounded-full" @click="reviewOn = todayIsoDate()">
         Today
@@ -37,20 +37,20 @@
       </ul>
     </section>
 
-    <section class="app-card px-4 py-4">
+    <section class="app-card min-w-0 max-w-full overflow-hidden px-4 py-4">
       <h2 class="text-sm font-semibold text-gray-900">Morning Intention</h2>
-      <form class="mt-4 grid gap-3" @submit.prevent="saveIntention">
-        <label class="form-control">
-          <span class="label py-1">
-            <span class="label-text text-sm">The person I most need to love well today</span>
+      <form class="mt-4 grid min-w-0 gap-3" @submit.prevent="saveIntention">
+        <label class="form-control min-w-0">
+          <span class="label h-auto min-h-0 items-start py-1">
+            <span class="label-text text-sm whitespace-normal break-words">The person I most need to love well today</span>
           </span>
-          <input v-model.trim="form.love_person" type="text" maxlength="2000" class="input input-bordered w-full" />
+          <input v-model.trim="form.love_person" type="text" maxlength="2000" class="intention-field input input-bordered w-full min-w-0 max-w-full" />
         </label>
-        <label class="form-control">
-          <span class="label py-1">
-            <span class="label-text text-sm">The virtue I will practice today</span>
+        <label class="form-control min-w-0">
+          <span class="label h-auto min-h-0 items-start py-1">
+            <span class="label-text text-sm whitespace-normal break-words">The virtue I will practice today</span>
           </span>
-          <select v-model="form.virtue" class="select select-bordered w-full">
+          <select v-model="form.virtue" class="intention-field select select-bordered w-full min-w-0 max-w-full">
             <option value="">Choose a virtue</option>
             <option v-if="customVirtue" :value="customVirtue">{{ customVirtue }}</option>
             <optgroup v-for="group in virtueGroups" :key="group.name" :label="group.name">
@@ -58,11 +58,11 @@
             </optgroup>
           </select>
         </label>
-        <label v-for="field in intentionFields" :key="field.key" class="form-control">
-          <span class="label py-1">
-            <span class="label-text text-sm">{{ field.label }}</span>
+        <label v-for="field in intentionFields" :key="field.key" class="form-control min-w-0">
+          <span class="label h-auto min-h-0 items-start py-1">
+            <span class="label-text text-sm whitespace-normal break-words">{{ field.label }}</span>
           </span>
-          <input v-model.trim="form[field.key]" type="text" maxlength="2000" class="input input-bordered w-full" />
+          <input v-model.trim="form[field.key]" type="text" maxlength="2000" class="intention-field input input-bordered w-full min-w-0 max-w-full" />
         </label>
         <p v-if="saveError" class="text-sm text-red-600 dark:text-red-400">{{ saveError }}</p>
         <p v-else-if="saveNotice" class="text-sm text-emerald-700 dark:text-emerald-400">{{ saveNotice }}</p>
@@ -167,3 +167,12 @@ async function saveIntention() {
   }
 }
 </script>
+
+<style scoped>
+.intention-field {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+</style>

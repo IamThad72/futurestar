@@ -119,7 +119,16 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .app-card {
-  @apply rounded-xl border border-gray-200 bg-white;
+  @apply min-w-0 max-w-full rounded-xl border border-gray-200 bg-white;
+}
+
+.app-card .input,
+.app-card .select,
+.app-card .textarea {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .app-card-link {
