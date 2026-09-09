@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+html {
+  font-size: 90%;
+}
+
 /* Pocket (Tailwind Plus) type scale, gray ramp, and Inter */
 @theme {
   --font-sans: Inter, ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
@@ -111,11 +115,24 @@ h1, h2, h3, h4, h5, h6,
 
 /* Shared application UI (stacked shell + daisyUI tokens) */
 .app-page {
-  @apply mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8;
+  @apply mx-auto w-full max-w-7xl px-1 py-4 sm:px-6 sm:py-6 lg:px-8;
 }
 
 .app-page-wide {
-  @apply mx-auto w-full max-w-[96rem] min-w-0 overflow-x-hidden px-4 py-4 sm:px-6 sm:py-6 lg:px-8;
+  @apply mx-auto w-full max-w-[96rem] min-w-0 overflow-x-hidden px-1 py-4 sm:px-6 sm:py-6 lg:px-8;
+}
+
+@media (max-width: 639.98px) {
+  .max-w-7xl.px-4 {
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+  }
+
+  .app-card.px-4,
+  .app-card.p-4 {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
 }
 
 .app-card {

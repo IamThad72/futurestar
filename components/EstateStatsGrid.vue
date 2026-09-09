@@ -10,7 +10,7 @@
           :key="stat.name"
           :class="[
             statIdx % 2 === 1 ? 'sm:border-l' : statIdx === 2 ? 'lg:border-l' : '',
-            'flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-base-300 px-4 py-6 sm:px-6 md:gap-x-4 md:gap-y-2 md:py-10 lg:border-t-0',
+            'flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-base-300 px-3 py-6 sm:px-6 md:gap-x-4 md:gap-y-2 md:py-10 lg:border-t-0',
           ]"
         >
           <dt class="text-xs font-medium text-base-content/60 md:text-sm">{{ stat.name }}</dt>

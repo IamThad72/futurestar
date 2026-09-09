@@ -377,6 +377,13 @@ defineExpose({ openUpload, loadDocuments });
   --inner-padding-end: 0.25rem;
 }
 
+@media (max-width: 639.98px) {
+  .estate-docs-item {
+    --padding-start: 0.5rem;
+    --padding-end: 0.5rem;
+  }
+}
+
 .estate-docs-title {
   margin: 0;
   font-size: 0.9375rem;

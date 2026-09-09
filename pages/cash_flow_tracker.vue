@@ -1,12 +1,12 @@
 <template>
   <main>
-    <div v-if="!auth.ready" class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div v-if="!auth.ready" class="mx-auto max-w-7xl px-1 py-8 sm:px-6 lg:px-8">
       <p class="text-sm text-gray-500 dark:text-gray-400">Loading session...</p>
     </div>
 
     <div
       v-else-if="!auth.user"
-      class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
+      class="mx-auto max-w-7xl px-1 py-8 sm:px-6 lg:px-8 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
     >
       You must be logged in to use this page.
     </div>
@@ -14,7 +14,7 @@
     <template v-else>
       <div class="relative isolate overflow-hidden">
         <header class="pb-4 pt-6 sm:pb-6">
-          <div class="mx-auto flex max-w-7xl flex-col gap-4 px-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-6 sm:px-6 lg:px-8">
+          <div class="mx-auto flex max-w-7xl flex-col gap-4 px-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-6 sm:px-6 lg:px-8">
             <div class="min-w-0">
               <h1 class="text-lg font-semibold text-base-content md:text-xl">Budget Tracker</h1>
               <p class="mt-0.5 hidden text-xs text-base-content/60 lg:block">
@@ -139,14 +139,14 @@
         </div>
       </div>
 
-      <div v-if="loading" class="mx-auto max-w-7xl px-4 py-8 text-xs text-gray-500 sm:px-6 md:py-12 md:text-sm lg:px-8 dark:text-gray-400">Loading...</div>
+      <div v-if="loading" class="mx-auto max-w-7xl px-1 py-8 text-xs text-gray-500 sm:px-6 md:py-12 md:text-sm lg:px-8 dark:text-gray-400">Loading...</div>
 
-      <div v-else-if="loadError" class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+      <div v-else-if="loadError" class="mx-auto max-w-7xl px-1 py-4 sm:px-6 lg:px-8">
         <LoadErrorPanel :message="loadError" @retry="loadData" />
       </div>
 
       <div v-else class="py-4 md:py-6">
-        <p class="mx-auto max-w-7xl mb-2 px-4 text-xs text-gray-500 sm:px-6 md:mb-3 md:text-sm lg:px-8 dark:text-gray-400">
+        <p class="mx-auto max-w-7xl mb-2 px-1 text-xs text-gray-500 sm:px-6 md:mb-3 md:text-sm lg:px-8 dark:text-gray-400">
           {{ monthNames[selectedMonth - 1] }} {{ selectedYear }} — tap a budget line to view or add transactions
         </p>
 
@@ -211,7 +211,7 @@
           </EstateSection>
         </div>
 
-        <p v-if="!loadError && !budgetTrackerDisplaySections.length" class="mx-auto max-w-7xl px-4 py-8 text-center text-xs text-gray-500 sm:px-6 md:text-sm lg:px-8 dark:text-gray-400">
+        <p v-if="!loadError && !budgetTrackerDisplaySections.length" class="mx-auto max-w-7xl px-1 py-8 text-center text-xs text-gray-500 sm:px-6 md:text-sm lg:px-8 dark:text-gray-400">
           No budget items yet. Add budget items in Budget Setup first.
         </p>
       </div>

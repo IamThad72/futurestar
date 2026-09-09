@@ -1,6 +1,6 @@
 <template>
   <div
-    class="-mx-1 -mt-4 min-h-[calc(100dvh-8.5rem)] bg-base-200 px-4 py-12 pb-safe sm:-mx-0 sm:mt-0 sm:px-6 sm:py-16 lg:px-8"
+    class="-mx-1 -mt-4 min-h-[calc(100dvh-8.5rem)] bg-base-200 px-1 py-12 pb-safe sm:-mx-0 sm:mt-0 sm:px-6 sm:py-16 lg:px-8"
   >
     <div class="sm:mx-auto sm:w-full sm:max-w-sm">
       <NuxtLink

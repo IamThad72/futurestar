@@ -3,7 +3,7 @@
     :class="
       embedded
         ? 'w-full'
-        : 'sticky top-0 z-20 border-b border-gray-200 bg-base-200 px-4 py-3 sm:px-6 lg:px-8'
+        : 'sticky top-0 z-20 border-b border-gray-200 bg-base-200 px-1 py-3 sm:px-6 lg:px-8'
     "
   >
     <div :class="embedded ? 'w-full' : 'mx-auto max-w-7xl'">

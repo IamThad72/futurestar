@@ -1,19 +1,19 @@
 <template>
   <main>
-    <div v-if="!auth.ready" class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div v-if="!auth.ready" class="mx-auto max-w-7xl px-1 py-8 sm:px-6 lg:px-8">
       <p class="text-sm text-gray-500 dark:text-gray-400">Loading session...</p>
     </div>
 
     <div
       v-else-if="!auth.user"
-      class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
+      class="mx-auto max-w-7xl px-1 py-8 sm:px-6 lg:px-8 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
     >
       You must be logged in to use the garage.
     </div>
 
     <template v-else>
       <header class="pb-4 pt-6 sm:pb-6">
-        <div class="mx-auto flex max-w-7xl flex-wrap items-start justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <div class="mx-auto flex max-w-7xl flex-wrap items-start justify-between gap-4 px-1 sm:px-6 lg:px-8">
           <div>
             <NuxtLink
               to="/garage"
@@ -30,16 +30,16 @@
         </div>
       </header>
 
-      <div v-if="loading" class="mx-auto max-w-7xl px-4 py-8 text-sm text-gray-500 sm:px-6 lg:px-8 dark:text-gray-400">
+      <div v-if="loading" class="mx-auto max-w-7xl px-1 py-8 text-sm text-gray-500 sm:px-6 lg:px-8 dark:text-gray-400">
         Loading vehicle...
       </div>
-      <div v-else-if="error" class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div v-else-if="error" class="mx-auto max-w-7xl px-1 py-8 sm:px-6 lg:px-8">
         <p class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200">
           {{ error }}
         </p>
       </div>
 
-      <div v-else class="mx-auto grid max-w-7xl gap-8 px-4 pb-16 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-10 sm:px-6 lg:px-8">
+      <div v-else class="mx-auto grid max-w-7xl gap-8 px-1 pb-16 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-10 sm:px-6 lg:px-8">
         <section>
           <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Known services</h2>
           <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Service records you have entered for this vehicle.</p>

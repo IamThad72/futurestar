@@ -1,5 +1,5 @@
 <template>
-  <div class="flex min-h-0 flex-1 flex-col gap-y-6 px-3 py-4 sm:px-6">
+  <div class="flex min-h-0 flex-1 flex-col gap-y-6 px-1 py-4 sm:px-6">
     <div class="flex min-h-0 flex-1 flex-col rounded-md bg-base-100">
       <label class="block text-xs font-semibold text-base-content/70">
         Name

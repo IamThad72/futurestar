@@ -1,6 +1,6 @@
 <template>
   <main v-if="!isNarrow" class="account-map-page">
-    <div v-if="!auth.ready" class="px-4 py-8 text-sm text-gray-500">Loading session...</div>
+    <div v-if="!auth.ready" class="px-1 py-8 text-sm text-gray-500">Loading session...</div>
     <div
       v-else-if="!auth.user"
       class="mx-4 my-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
@@ -242,7 +242,7 @@
         </div>
       </div>
 
-      <div v-if="loading" class="px-4 py-8 text-sm text-gray-500">Loading map...</div>
+      <div v-if="loading" class="px-1 py-8 text-sm text-gray-500">Loading map...</div>
       <div v-else-if="error" class="mx-4 my-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
         {{ error }}
         <button type="button" class="btn btn-ghost btn-xs ml-2" @click="loadMap">Retry</button>

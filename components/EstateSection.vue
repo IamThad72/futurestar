@@ -1,6 +1,6 @@
 <template>
   <section>
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-7xl px-1 sm:px-6 lg:px-8">
       <div class="flex flex-wrap items-center justify-between gap-2 md:gap-3">
         <h2 class="text-sm font-semibold text-base-content md:text-base">
           <NuxtLink
@@ -32,7 +32,7 @@
       class="overflow-hidden border-t border-base-300"
       :class="compact ? 'mt-1 pt-2 md:mt-1.5' : 'mt-4 md:mt-6'"
     >
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="mx-auto max-w-7xl px-1 sm:px-6 lg:px-8">
         <slot />
       </div>
     </div>

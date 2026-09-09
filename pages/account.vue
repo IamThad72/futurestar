@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto max-w-lg px-4 py-6 pb-safe-content">
+  <div class="mx-auto max-w-lg px-1 py-6 pb-safe-content">
     <h1 class="text-xl font-bold text-base-content">Account</h1>
     <p v-if="auth.user?.email" class="mt-1 text-sm text-base-content/70">{{ auth.user.email }}</p>
 

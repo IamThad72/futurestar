@@ -1,13 +1,13 @@
 <template>
   <main>
 
-    <div v-if="!auth.ready" class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div v-if="!auth.ready" class="mx-auto max-w-7xl px-1 py-8 sm:px-6 lg:px-8">
       <p class="text-sm text-gray-500 dark:text-gray-400">Loading session...</p>
     </div>
 
     <div
       v-else-if="!auth.user"
-      class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
+      class="mx-auto max-w-7xl px-1 py-8 sm:px-6 lg:px-8 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
     >
       You must be logged in to use estate management.
     </div>
@@ -15,7 +15,7 @@
     <template v-else>
       <div class="relative isolate overflow-hidden">
         <header class="pb-4 pt-6 sm:pb-6">
-          <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-6 px-4 sm:flex-nowrap sm:px-6 lg:px-8">
+          <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-6 px-1 sm:flex-nowrap sm:px-6 lg:px-8">
             <h1 class="text-lg font-semibold text-base-content md:text-xl">Estate Management</h1>
             <div class="ml-auto flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
               <button
@@ -44,7 +44,7 @@
               :key="stat.name"
               :class="[
                 statIdx % 2 === 1 ? 'sm:border-l' : statIdx === 2 ? 'lg:border-l' : '',
-                'flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-gray-900/5 px-4 py-6 sm:px-6 md:gap-x-4 md:gap-y-2 md:py-10 lg:border-t-0 xl:px-8 dark:border-white/5',
+                'flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-gray-900/5 px-3 py-6 sm:px-6 md:gap-x-4 md:gap-y-2 md:py-10 lg:border-t-0 xl:px-8 dark:border-white/5',
               ]"
             >
               <dt class="text-xs font-medium text-gray-500 md:text-sm dark:text-gray-400">{{ stat.name }}</dt>
@@ -70,7 +70,7 @@
           </EstateSection>
         </div>
 
-        <div v-if="loading" class="mx-auto max-w-7xl px-4 py-4 text-xs text-gray-500 sm:px-6 md:text-sm lg:px-8 dark:text-gray-400">Loading records...</div>
+        <div v-if="loading" class="mx-auto max-w-7xl px-1 py-4 text-xs text-gray-500 sm:px-6 md:text-sm lg:px-8 dark:text-gray-400">Loading records...</div>
 
         <template v-else>
         <EstateSection title="Asset Inventory" :total="formatMoney(totalAssetInventory)" @add="openAddModal('asset')">

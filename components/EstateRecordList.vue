@@ -192,6 +192,13 @@ function onRowClick(item) {
   --inner-padding-end: 0.25rem;
 }
 
+@media (max-width: 639.98px) {
+  .estate-record-list__item {
+    --padding-start: 0.5rem;
+    --padding-end: 0.5rem;
+  }
+}
+
 .estate-record-list__title {
   display: flex;
   flex-wrap: wrap;
