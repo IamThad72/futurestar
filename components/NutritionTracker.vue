@@ -1063,6 +1063,7 @@ async function logFood() {
       await $fetch("/api/physical/nutrition/intake", { method: "POST", body });
     }
     await loadDay();
+    cancelEditEntry();
   } catch (error) {
     logError.value = parseFetchError(error, editingEntryId.value ? "Failed to update food log." : "Failed to log food.");
   } finally {
