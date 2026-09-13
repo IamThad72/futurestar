@@ -1,202 +1,113 @@
 <template>
   <div class="space-y-6">
-    <div class="flex flex-wrap items-end gap-3">
-      <label class="form-control w-full max-w-xs">
-        <span class="label py-1">
-          <span class="label-text text-sm text-gray-600 dark:text-gray-300">Day</span>
-        </span>
-        <input v-model="eatenOn" type="date" class="input input-bordered w-full" />
+    <div class="flex flex-wrap items-center gap-3">
+      <label class="form-control w-full max-w-[11rem]">
+        <input v-model="eatenOn" type="date" class="input input-bordered w-full" aria-label="Day" />
       </label>
-      <button type="button" class="training-chip btn btn-ghost btn-sm rounded-full" @click="eatenOn = todayIso()">Today</button>
+      <button type="button" class="training-chip btn btn-primary btn-sm rounded-full" @click="eatenOn = todayIso()">Today</button>
     </div>
 
-    <NutritionDailyChart
-      v-if="!isNarrow"
-      v-model:days="chartRangeDays"
-      :data="historyDays"
-      :loading="historyLoading"
-      :error="historyError"
-    />
+    <div class="grid gap-6 lg:grid-cols-2">
+      <NutritionDailyChart
+        v-if="!isNarrow"
+        class="min-w-0 lg:h-0 lg:min-h-full"
+        v-model:days="chartRangeDays"
+        :data="historyDays"
+        :plan-kcal="currentPlan?.kcal ?? null"
+        :loading="historyLoading"
+        :error="historyError"
+      />
 
-    <section class="app-card px-4 py-4">
-      <h2 class="text-sm font-semibold text-gray-900 dark:text-white">{{ eatenOnLabel }} vs plan</h2>
-      <p v-if="!comparison?.targets" class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-        Save a daily plan to compare what you eat against targets.
-      </p>
-      <ul class="mt-3 space-y-3">
-        <li v-for="row in macroRows" :key="row.key">
-          <div class="flex items-baseline justify-between gap-2 text-sm">
-            <span class="font-medium text-gray-800 dark:text-gray-100">{{ row.label }}</span>
-            <span class="tabular-nums text-gray-600 dark:text-gray-300">
-              {{ row.consumedLabel }}
-              <span v-if="row.targetLabel"> / {{ row.targetLabel }}</span>
-            </span>
-          </div>
-          <progress
-            class="progress mt-1 w-full"
-            :class="row.over ? 'progress-error' : 'progress-primary'"
-            :value="row.percent"
-            max="100"
-          />
-          <p v-if="row.remainingLabel" class="mt-0.5 text-xs" :class="row.over ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'">
-            {{ row.remainingLabel }}
-          </p>
-        </li>
-      </ul>
-    </section>
+      <section class="app-card min-w-0 px-4 py-4">
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-white">{{ eatenOnLabel }} vs plan</h2>
+        <p v-if="!comparison?.targets" class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          Save a daily plan to compare what you eat against targets.
+        </p>
+        <ul class="mt-3 space-y-3">
+          <li v-for="row in macroRows" :key="row.key">
+            <div class="flex items-baseline justify-between gap-2 text-sm">
+              <span class="font-medium text-gray-800 dark:text-gray-100">{{ row.label }}</span>
+              <span class="tabular-nums text-gray-600 dark:text-gray-300">
+                {{ row.consumedLabel }}
+                <span v-if="row.targetLabel"> / {{ row.targetLabel }}</span>
+              </span>
+            </div>
+            <progress
+              class="progress mt-1 w-full"
+              :class="row.over ? 'progress-error' : 'progress-primary'"
+              :value="row.percent"
+              max="100"
+            />
+            <p v-if="row.remainingLabel" class="mt-0.5 text-xs" :class="row.over ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'">
+              {{ row.remainingLabel }}
+            </p>
+          </li>
+        </ul>
+      </section>
+    </div>
 
     <div class="grid gap-6 lg:grid-cols-2">
       <section class="space-y-4">
-        <div class="app-card px-4 py-4">
-          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Log food</h2>
-          <input
-            v-model.trim="searchInput"
-            type="search"
-            class="input input-bordered mt-3 w-full"
-            placeholder="Search your foods or USDA Foundation and branded foods"
-            autocomplete="off"
-          />
-          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            Your custom foods appear first. USDA search uses FoodData Central (Foundation and Branded).
+        <div ref="logCardEl" class="app-card px-4 py-4">
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
+            {{ editingEntryId ? "Edit log entry" : "Log food" }}
+          </h2>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Choose a saved food and how many servings you ate.
           </p>
-          <details class="mt-3 rounded-lg border border-gray-200 open:bg-gray-50 dark:border-white/10 dark:open:bg-white/5">
-            <summary class="cursor-pointer px-3 py-2 text-sm font-medium text-primary">
-              Add custom food
-            </summary>
-            <form class="grid gap-3 px-3 pb-3" @submit.prevent="saveCustomFood(false)">
-              <label class="form-control">
-                <span class="label py-1"><span class="label-text text-sm">Name</span></span>
-                <input
-                  v-model.trim="customForm.name"
-                  type="text"
-                  maxlength="160"
-                  class="input input-bordered w-full"
-                  placeholder="e.g. Homemade chili"
-                  required
-                />
-              </label>
-              <label class="form-control">
-                <span class="label py-1"><span class="label-text text-sm">Brand (optional)</span></span>
-                <input
-                  v-model.trim="customForm.brand"
-                  type="text"
-                  maxlength="80"
-                  class="input input-bordered w-full"
-                />
-              </label>
-              <div class="grid gap-3 sm:grid-cols-2">
-                <label class="form-control">
-                  <span class="label py-1"><span class="label-text text-sm">Serving label</span></span>
-                  <input
-                    v-model.trim="customForm.serving_label"
-                    type="text"
-                    maxlength="80"
-                    class="input input-bordered w-full"
-                    placeholder="1 bowl"
+          <p v-if="foodsError" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ foodsError }}</p>
+          <p v-else-if="loadingFoods" class="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading foods…</p>
+          <p v-else-if="!foods.length" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            No foods yet. Use Add food to save one, then pick it here.
+          </p>
+          <form v-else class="mt-3 grid gap-3" @submit.prevent="logFood">
+            <div class="form-control">
+              <span class="label py-1"><span id="log-food-label" class="label-text text-sm">Food</span></span>
+              <Combobox v-model="logForm.foodId" nullable>
+                <div class="relative">
+                  <ComboboxInput
+                    class="input input-bordered w-full pr-10"
+                    placeholder="Choose a food"
+                    autocomplete="off"
+                    aria-labelledby="log-food-label"
+                    :display-value="foodDisplayValue"
                     required
+                    @change="foodSearchQuery = $event.target.value"
                   />
-                </label>
-                <label class="form-control">
-                  <span class="label py-1">
-                    <span class="label-text text-sm">Serving weight (oz)</span>
-                    <span v-if="customServingGramsPreview" class="label-text-alt text-xs text-gray-500">
-                      ≈ {{ customServingGramsPreview }} g
-                    </span>
-                  </span>
-                  <input
-                    v-model="customForm.serving_oz"
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    class="input input-bordered w-full"
-                    required
-                  />
-                </label>
-              </div>
-              <p class="text-xs text-gray-500 dark:text-gray-400">Macros for one serving (same as a nutrition label).</p>
-              <div class="grid gap-3 sm:grid-cols-2">
-                <label class="form-control">
-                  <span class="label py-1"><span class="label-text text-sm">Calories</span></span>
-                  <input v-model="customForm.kcal" type="number" min="0" step="1" class="input input-bordered w-full" required />
-                </label>
-                <label class="form-control">
-                  <span class="label py-1"><span class="label-text text-sm">Protein (g)</span></span>
-                  <input v-model="customForm.protein_g" type="number" min="0" step="0.1" class="input input-bordered w-full" required />
-                </label>
-                <label class="form-control">
-                  <span class="label py-1"><span class="label-text text-sm">Fat (g)</span></span>
-                  <input v-model="customForm.fat_g" type="number" min="0" step="0.1" class="input input-bordered w-full" required />
-                </label>
-                <label class="form-control">
-                  <span class="label py-1"><span class="label-text text-sm">Carbohydrate (g)</span></span>
-                  <input v-model="customForm.carb_g" type="number" min="0" step="0.1" class="input input-bordered w-full" required />
-                </label>
-              </div>
-              <div class="grid gap-3 sm:grid-cols-2">
-                <label class="form-control">
-                  <span class="label py-1"><span class="label-text text-sm">Meal</span></span>
-                  <select v-model="logForm.meal" class="select select-bordered w-full">
-                    <option v-for="meal in mealOptions" :key="`custom-${meal.value}`" :value="meal.value">{{ meal.label }}</option>
-                  </select>
-                </label>
-                <label class="form-control">
-                  <span class="label py-1"><span class="label-text text-sm">Time</span></span>
-                  <input v-model="logForm.time" type="time" class="input input-bordered w-full" required />
-                </label>
-              </div>
-              <p v-if="customError" class="text-sm text-red-600 dark:text-red-400">{{ customError }}</p>
-              <p v-else-if="customNotice" class="text-sm text-emerald-700 dark:text-emerald-400">{{ customNotice }}</p>
-              <div class="flex flex-wrap gap-2">
-                <button type="submit" class="training-chip btn btn-ghost btn-sm rounded-full" :disabled="savingCustom">
-                  {{ savingCustom ? "Saving…" : "Save to my foods" }}
-                </button>
-                <button
-                  type="button"
-                  class="training-chip btn btn-primary btn-sm rounded-full"
-                  :disabled="savingCustom"
-                  @click="saveCustomFood(true)"
-                >
-                  {{ savingCustom ? "Saving…" : "Save and add to log" }}
-                </button>
-              </div>
-            </form>
-          </details>
-          <p v-if="searchError" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ searchError }}</p>
-          <p v-else-if="fdcSearchMessage" class="mt-2 text-sm text-amber-700 dark:text-amber-400">{{ fdcSearchMessage }}</p>
-          <p v-else-if="searching" class="mt-2 text-sm text-gray-500 dark:text-gray-400">Searching…</p>
-          <p v-else-if="searchInput.trim().length === 1" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Type at least 2 characters to search USDA, or pick one of your foods below.
-          </p>
-          <p v-if="!searchError && searched && !foods.length && !searching" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            No foods matched. Add a custom food, or try a different USDA or brand name.
-          </p>
-          <p v-else-if="!searchError && !searchInput.trim() && foods.length" class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-            Your foods
-          </p>
-          <p v-else-if="!searchError && !searchInput.trim() && !foods.length && !searching" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            No custom foods yet. Add one above, or search USDA.
-          </p>
-          <ul v-if="visibleFoods.length" class="mt-3 max-h-56 space-y-1 overflow-y-auto">
-            <li v-for="food in visibleFoods" :key="foodSearchKey(food)">
-              <button
-                type="button"
-                class="w-full rounded-md px-2 py-1.5 text-left text-sm no-underline hover:bg-gray-100 dark:hover:bg-white/10"
-                :class="isSelectedFood(food) ? 'bg-primary/10' : ''"
-                @click="selectFood(food)"
-              >
-                <span class="block font-medium text-gray-900 dark:text-white">{{ foodSearchLabel(food) }}</span>
-                <span class="block text-xs text-gray-500 dark:text-gray-400">
-                  {{ foodSearchMeta(food) }}
-                </span>
-              </button>
-            </li>
-          </ul>
-
-          <form v-if="selectedFood" class="mt-4 grid gap-3" @submit.prevent="logFood">
-            <p class="text-sm font-medium text-gray-900 dark:text-white">{{ foodSearchLabel(selectedFood) }}</p>
-            <p v-if="isCustomFood(selectedFood) || isBrandedFood(selectedFood)" class="text-xs text-gray-500 dark:text-gray-400">
-              {{ foodSearchMeta(selectedFood) }}
-            </p>
+                  <ComboboxButton class="absolute inset-y-0 right-0 flex items-center px-3 text-base-content/60">
+                    <ChevronDownIcon class="size-4" aria-hidden="true" />
+                  </ComboboxButton>
+                  <ComboboxOptions
+                    class="absolute z-30 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-base-300 bg-base-100 py-1 shadow-lg"
+                  >
+                    <p v-if="!filteredLogFoods.length" class="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
+                      No foods match that search.
+                    </p>
+                    <ComboboxOption
+                      v-for="food in filteredLogFoods"
+                      :key="food.user_food_id"
+                      :value="String(food.user_food_id)"
+                      v-slot="{ active, selected }"
+                      as="li"
+                    >
+                      <div
+                        class="cursor-pointer px-3 py-2 text-sm"
+                        :class="active ? 'bg-primary/10' : ''"
+                      >
+                        <span class="block font-medium" :class="selected ? 'text-primary' : 'text-gray-900 dark:text-white'">
+                          {{ foodLabel(food) }}
+                        </span>
+                        <span class="block text-xs text-gray-500 dark:text-gray-400">{{ foodMeta(food) }}</span>
+                      </div>
+                    </ComboboxOption>
+                  </ComboboxOptions>
+                </div>
+              </Combobox>
+            </div>
+            <label class="form-control">
+              <span class="label py-1"><span class="label-text text-sm">Servings</span></span>
+              <input v-model="logForm.servings" type="number" min="0.01" step="0.01" class="input input-bordered w-full" required />
+            </label>
             <div class="grid gap-3 sm:grid-cols-2">
               <label class="form-control">
                 <span class="label py-1"><span class="label-text text-sm">Meal</span></span>
@@ -209,41 +120,42 @@
                 <input v-model="logForm.time" type="time" class="input input-bordered w-full" required />
               </label>
             </div>
-            <label class="form-control">
-              <span class="label py-1"><span class="label-text text-sm">Portion</span></span>
-              <select v-model="logForm.portionId" class="select select-bordered w-full">
-                <option value="">Custom weight (oz)</option>
-                <option v-for="portion in selectedPortions" :key="portion.portion_id" :value="String(portion.portion_id)">
-                  {{ portion.label || formatPortionDropdownLabel(portion) }}
-                </option>
-              </select>
-            </label>
-            <label v-if="logForm.portionId" class="form-control">
-              <span class="label py-1"><span class="label-text text-sm">Servings</span></span>
-              <input v-model="logForm.quantity" type="number" min="0.01" step="0.01" class="input input-bordered w-full" required />
-            </label>
-            <label v-else class="form-control">
-              <span class="label py-1">
-                <span class="label-text text-sm">Weight (oz)</span>
-                <span v-if="customGramsPreview" class="label-text-alt text-xs text-gray-500">≈ {{ customGramsPreview }} g</span>
-              </span>
-              <input v-model="logForm.ounces" type="number" min="0.01" step="0.01" class="input input-bordered w-full" required />
-            </label>
+            <p v-if="selectedFood" class="text-xs text-gray-500 dark:text-gray-400">
+              {{ foodMeta(selectedFood) }}
+            </p>
+            <p v-if="logPreview" class="text-sm tabular-nums text-gray-700 dark:text-gray-200">
+              {{ formatMacro(logPreview.kcal, 0) }} kcal ·
+              P {{ formatMacro(logPreview.protein_g, 1) }} g ·
+              F {{ formatMacro(logPreview.fat_g, 1) }} g ·
+              C {{ formatMacro(logPreview.carb_g, 1) }} g
+            </p>
             <p v-if="logError" class="text-sm text-red-600 dark:text-red-400">{{ logError }}</p>
-            <button type="submit" class="training-chip btn btn-primary btn-sm rounded-full" :disabled="logging">
-              {{ logging ? "Logging…" : "Add to log" }}
-            </button>
+            <div class="flex flex-wrap gap-2">
+              <button type="submit" class="training-chip btn btn-primary btn-sm rounded-full" :disabled="logging || !selectedFood">
+                {{ logging ? "Saving…" : editingEntryId ? "Save log entry" : "Add to log" }}
+              </button>
+              <button
+                v-if="editingEntryId"
+                type="button"
+                class="training-chip btn btn-ghost btn-sm rounded-full"
+                :disabled="logging"
+                @click="cancelEditEntry"
+              >
+                Cancel
+              </button>
+            </div>
           </form>
         </div>
+      </section>
 
-        <div class="app-card px-4 py-4">
-          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Food log</h2>
-          <p v-if="loadError" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ loadError }}</p>
-          <p v-else-if="loading" class="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading log…</p>
-          <p v-else-if="!entries.length" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+      <section class="app-card flex min-h-0 flex-col overflow-hidden px-4 py-4 max-lg:max-h-96 lg:h-0 lg:min-h-full">
+          <h2 class="shrink-0 text-sm font-semibold text-gray-900 dark:text-white">Food log</h2>
+          <p v-if="loadError" class="mt-2 shrink-0 text-sm text-red-600 dark:text-red-400">{{ loadError }}</p>
+          <p v-else-if="loading" class="mt-2 shrink-0 text-sm text-gray-500 dark:text-gray-400">Loading log…</p>
+          <p v-else-if="!entries.length" class="mt-2 shrink-0 text-sm text-gray-500 dark:text-gray-400">
             Nothing logged for this day yet.
           </p>
-          <div v-else class="mt-3 space-y-4">
+          <div v-else class="mt-3 min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pr-0.5">
             <section v-for="group in groupedEntries" :key="group.meal">
               <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                 {{ group.label }}
@@ -253,6 +165,7 @@
                   v-for="entry in group.entries"
                   :key="entry.entry_id"
                   class="flex items-start justify-between gap-3 rounded-md bg-gray-50 px-3 py-2 dark:bg-white/5"
+                  :class="editingEntryId === entry.entry_id ? 'ring-1 ring-primary/40' : ''"
                 >
                   <div class="min-w-0">
                     <p class="text-sm font-medium text-gray-900 dark:text-white">{{ entry.food_description }}</p>
@@ -266,30 +179,189 @@
                       C {{ formatWeightOzGrams(entry.carb_g) }}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    class="training-chip btn btn-ghost btn-xs rounded-full text-red-600 dark:text-red-400"
-                    :disabled="deletingId === entry.entry_id"
-                    @click="deleteEntry(entry.entry_id)"
-                  >
-                    Remove
-                  </button>
+                  <div class="flex shrink-0 flex-col items-end gap-1">
+                    <button
+                      type="button"
+                      class="training-chip btn btn-ghost btn-xs rounded-full"
+                      @click="startEditEntry(entry)"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      class="training-chip btn btn-ghost btn-xs rounded-full text-red-600 dark:text-red-400"
+                      :disabled="deletingId === entry.entry_id"
+                      @click="deleteEntry(entry.entry_id)"
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </li>
               </ul>
             </section>
           </div>
-        </div>
       </section>
+    </div>
 
-      <section class="app-card px-4 py-4 lg:self-start">
-        <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Daily plan</h2>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          One active private plan. Logged foods on a day are compared to these targets.
+    <dialog ref="foodModalEl" class="modal" @close="onFoodModalClose">
+      <div class="modal-box flex max-h-[90vh] max-w-lg flex-col overflow-y-auto overscroll-contain">
+        <h3 class="text-lg font-semibold">{{ editingFoodId ? "Edit food" : "Add food" }}</h3>
+        <p class="mt-1 text-sm text-base-content/60">
+          {{
+            editingFoodId
+              ? "Update this food. New log entries will use the new serving values; existing log entries stay as logged."
+              : "Save a food with nutrition for one serving. You can log it afterward."
+          }}
         </p>
+        <details ref="foodsListEl" class="mt-4">
+          <summary class="cursor-pointer text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Your foods
+            <span class="font-normal normal-case tracking-normal">({{ foods.length }})</span>
+          </summary>
+          <p v-if="!foods.length" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            None yet. Use the form below to add one.
+          </p>
+          <ul v-else class="mt-2 max-h-40 space-y-2 overflow-y-auto overscroll-contain pr-0.5">
+            <li
+              v-for="food in foods"
+              :key="food.user_food_id"
+              class="flex items-start justify-between gap-3 rounded-md bg-gray-50 px-3 py-2 dark:bg-white/5"
+              :class="editingFoodId === food.user_food_id ? 'ring-1 ring-primary/40' : ''"
+            >
+              <div class="min-w-0">
+                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ foodLabel(food) }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ foodMeta(food) }}</p>
+              </div>
+              <button
+                type="button"
+                class="training-chip btn btn-ghost btn-xs rounded-full"
+                @click="startEditFood(food)"
+              >
+                {{ editingFoodId === food.user_food_id ? "Editing" : "Edit" }}
+              </button>
+            </li>
+          </ul>
+        </details>
+        <form class="mt-4 grid gap-3" novalidate @submit.prevent="saveFood">
+          <label class="form-control">
+            <span class="label py-1"><span class="label-text text-sm">Name</span></span>
+            <input
+              v-model.trim="foodForm.name"
+              type="text"
+              maxlength="160"
+              class="input input-bordered w-full"
+              placeholder="e.g. Butter"
+              required
+            />
+          </label>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <label class="form-control">
+              <span class="label py-1"><span class="label-text text-sm">Serving</span></span>
+              <input
+                v-model.trim="foodForm.serving"
+                type="text"
+                maxlength="80"
+                class="input input-bordered w-full"
+                placeholder="1 tablespoon"
+                required
+              />
+            </label>
+            <label class="form-control">
+              <span class="label py-1">
+                <span class="label-text text-sm">Serving size (oz)</span>
+                <span v-if="foodServingGramsPreview" class="label-text-alt text-xs text-gray-500">
+                  ≈ {{ foodServingGramsPreview }} g
+                </span>
+              </span>
+              <input
+                v-model="foodForm.serving_oz"
+                type="number"
+                min="0.01"
+                step="0.01"
+                class="input input-bordered w-full"
+                required
+              />
+            </label>
+          </div>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <label class="form-control">
+              <span class="label py-1"><span class="label-text text-sm">Calories</span></span>
+              <input v-model="foodForm.kcal" type="number" min="0" step="1" class="input input-bordered w-full" required />
+            </label>
+            <label class="form-control">
+              <span class="label py-1"><span class="label-text text-sm">Fat (g)</span></span>
+              <input v-model="foodForm.fat_g" type="number" min="0" step="0.1" class="input input-bordered w-full" required />
+            </label>
+            <label class="form-control">
+              <span class="label py-1"><span class="label-text text-sm">Protein (g)</span></span>
+              <input v-model="foodForm.protein_g" type="number" min="0" step="0.1" class="input input-bordered w-full" required />
+            </label>
+            <label class="form-control">
+              <span class="label py-1"><span class="label-text text-sm">Carbohydrate (g)</span></span>
+              <input v-model="foodForm.carb_g" type="number" min="0" step="0.1" class="input input-bordered w-full" required />
+            </label>
+          </div>
+          <p v-if="foodError" class="text-sm text-red-600 dark:text-red-400">{{ foodError }}</p>
+          <p v-else-if="foodNotice" class="text-sm text-emerald-700 dark:text-emerald-400">{{ foodNotice }}</p>
+          <div class="modal-action sticky bottom-0 mt-4 bg-base-100 pb-1">
+            <button
+              type="button"
+              class="training-chip btn btn-ghost btn-sm rounded-full"
+              :disabled="savingFood"
+              @click="closeFoodModal"
+            >
+              Cancel
+            </button>
+            <button type="submit" class="training-chip btn btn-primary btn-sm rounded-full" :disabled="savingFood">
+              {{ savingFood ? "Saving…" : editingFoodId ? "Save food" : "Add food" }}
+            </button>
+          </div>
+        </form>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button type="submit">close</button>
+      </form>
+    </dialog>
+
+    <dialog ref="planModalEl" class="modal" @close="onPlanModalClose">
+      <div class="modal-box max-h-[90vh] max-w-lg overflow-y-auto overscroll-contain">
+        <h3 class="text-lg font-semibold">{{ planMode === "new" ? "New daily plan" : "Edit daily plan" }}</h3>
+        <p class="mt-1 text-sm text-base-content/60">
+          {{
+            planMode === "new"
+              ? "Enter a name and targets. Saving replaces your current plan. Charts and today vs plan use the new targets."
+              : "Update this plan. Charts and today vs plan use the saved targets."
+          }}
+        </p>
+        <div v-if="currentPlan" class="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            class="training-chip btn btn-sm rounded-full"
+            :class="planMode === 'edit' ? 'btn-primary' : 'btn-ghost bg-base-200'"
+            @click="useCurrentPlan"
+          >
+            Modify current
+          </button>
+          <button
+            type="button"
+            class="training-chip btn btn-sm rounded-full"
+            :class="planMode === 'new' ? 'btn-primary' : 'btn-ghost bg-base-200'"
+            @click="startNewPlan"
+          >
+            New plan
+          </button>
+        </div>
         <form class="mt-4 grid gap-3 sm:grid-cols-2" @submit.prevent="savePlan">
           <label class="form-control sm:col-span-2">
             <span class="label py-1"><span class="label-text text-sm">Name</span></span>
-            <input v-model.trim="planForm.name" type="text" maxlength="80" class="input input-bordered w-full" />
+            <input
+              v-model.trim="planForm.name"
+              type="text"
+              maxlength="80"
+              class="input input-bordered w-full"
+              placeholder="e.g. Maintenance"
+              required
+            />
           </label>
           <label class="form-control">
             <span class="label py-1"><span class="label-text text-sm">Calories (kcal)</span></span>
@@ -316,28 +388,41 @@
             </span>
             <input v-model="planForm.carb_oz" type="number" min="0" step="0.01" class="input input-bordered w-full" required />
           </label>
-          <div class="sm:col-span-2">
-            <p v-if="planError" class="mb-2 text-sm text-red-600 dark:text-red-400">{{ planError }}</p>
-            <p v-else-if="planNotice" class="mb-2 text-sm text-emerald-700 dark:text-emerald-400">{{ planNotice }}</p>
+          <div class="modal-action sm:col-span-2 mt-0">
+            <p v-if="planError" class="mr-auto self-center text-sm text-red-600 dark:text-red-400">{{ planError }}</p>
+            <button
+              type="button"
+              class="training-chip btn btn-ghost btn-sm rounded-full"
+              :disabled="savingPlan"
+              @click="closePlanModal"
+            >
+              Cancel
+            </button>
             <button type="submit" class="training-chip btn btn-primary btn-sm rounded-full" :disabled="savingPlan">
-              {{ savingPlan ? "Saving…" : "Save plan" }}
+              {{ savingPlan ? "Saving…" : planMode === "new" ? "Replace plan" : "Save plan" }}
             </button>
           </div>
         </form>
-      </section>
-    </div>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button type="submit">close</button>
+      </form>
+    </dialog>
   </div>
 </template>
 
 <script setup>
+import { Combobox, ComboboxButton, ComboboxInput, ComboboxOption, ComboboxOptions } from "@headlessui/vue";
+import { ChevronDownIcon } from "@heroicons/vue/24/outline";
 import { parseFetchError } from "~/utils/parseFetchError";
 import {
-  formatPortionDropdownLabel,
   formatPortionGrams,
   formatPortionOunces,
   formatWeightOzGrams,
   ouncesToGrams,
 } from "~/utils/foodPortionLabel";
+
+const emit = defineEmits(["plan-change"]);
 
 const mealOptions = [
   { value: "breakfast", label: "Breakfast" },
@@ -356,6 +441,17 @@ function todayIso() {
 
 function localTimeValue(date = new Date()) {
   return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
+function isoToLocalTime(iso) {
+  if (!iso) return localTimeValue();
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return localTimeValue();
+  return localTimeValue(d);
+}
+
+function emptyLogForm() {
+  return { foodId: "", servings: "1", meal: "breakfast", time: localTimeValue() };
 }
 
 function eatenAtIso(dateStr, timeStr) {
@@ -392,35 +488,47 @@ function displayPortionLabel(label) {
   return raw;
 }
 
-function foodSearchLabel(food) {
+function foodLabel(food) {
   return food?.description || food?.name || "";
 }
 
-function isCustomFood(food) {
-  return Boolean(food?.user_food_id) || food?.source === "custom";
+function foodMeta(food) {
+  const serving = food?.serving_label || "1 serving";
+  const per = perServingMacros(food);
+  return `${serving} · ${formatMacro(per.kcal, 0)} kcal · P ${formatMacro(per.protein_g, 1)} g · F ${formatMacro(per.fat_g, 1)} g · C ${formatMacro(per.carb_g, 1)} g`;
 }
 
-function foodSearchKey(food) {
-  if (isCustomFood(food)) return `custom-${food.user_food_id || food.description}`;
-  return `fdc-${food?.fdc_id || food?.description}`;
-}
-
-function isBrandedFood(food) {
-  return Boolean(food?.is_branded) || String(food?.data_type || "").toLowerCase() === "branded";
-}
-
-function foodSearchMeta(food) {
-  if (isCustomFood(food)) {
-    const brand = food?.brand_name || food?.brand_owner;
-    const serving = food?.serving_label || "1 serving";
-    const kcal = `${formatMacro(food?.kcal_per_100g, 0)} kcal / ${formatWeightOzGrams(100)}`;
-    return brand ? `Your food · ${brand} · ${serving} · ${kcal}` : `Your food · ${serving} · ${kcal}`;
+function perServingMacros(food) {
+  if (!food) return { kcal: 0, protein_g: 0, fat_g: 0, carb_g: 0 };
+  if (food.kcal != null || food.protein_g != null || food.fat_g != null || food.carb_g != null) {
+    return {
+      kcal: Number(food.kcal) || 0,
+      protein_g: Number(food.protein_g) || 0,
+      fat_g: Number(food.fat_g) || 0,
+      carb_g: Number(food.carb_g) || 0,
+    };
   }
-  const brand = food?.brand_name || food?.brand_owner;
-  const kind = isBrandedFood(food) ? "Branded" : food?.category || food?.data_type || "USDA";
-  const kcal = `${formatMacro(food?.kcal_per_100g, 0)} kcal / ${formatWeightOzGrams(100)}`;
-  if (isBrandedFood(food) && brand) return `${kind} · ${brand} · ${kcal}`;
-  return `${kind} · ${kcal}`;
+  const grams = Number(food.serving_g);
+  return {
+    kcal: scaleMacro(food.kcal_per_100g, grams) || 0,
+    protein_g: scaleMacro(food.protein_g_per_100g, grams) || 0,
+    fat_g: scaleMacro(food.fat_g_per_100g, grams) || 0,
+    carb_g: scaleMacro(food.carb_g_per_100g, grams) || 0,
+  };
+}
+
+function scaleMacro(per100, grams) {
+  const n = Number(per100);
+  const g = Number(grams);
+  if (!Number.isFinite(n) || !Number.isFinite(g) || g <= 0) return null;
+  return (n * g) / 100;
+}
+
+function scaleByServings(perServing, servings) {
+  const n = Number(perServing);
+  const s = Number(servings);
+  if (!Number.isFinite(n) || !Number.isFinite(s) || s <= 0) return 0;
+  return Math.round(n * s * 10000) / 10000;
 }
 
 function formatMacro(value, digits = 1) {
@@ -462,12 +570,11 @@ function emptyPlanForm() {
   };
 }
 
-function emptyCustomForm() {
+function emptyFoodForm() {
   return {
     name: "",
-    brand: "",
-    serving_label: "1 serving",
-    serving_oz: formatPortionOunces(100) || "3.53",
+    serving: "1 serving",
+    serving_oz: "",
     kcal: "",
     protein_g: "",
     fat_g: "",
@@ -481,24 +588,28 @@ const loadError = ref("");
 const entries = ref([]);
 const comparison = ref(null);
 const planForm = ref(emptyPlanForm());
+const currentPlan = ref(null);
+const planMode = ref("edit");
+const planModalEl = ref(null);
 const savingPlan = ref(false);
 const planError = ref("");
 const planNotice = ref("");
-const searchInput = ref("");
 const foods = ref([]);
-const searching = ref(false);
-const searched = ref(false);
-const searchError = ref("");
-const fdcSearchMessage = ref("");
-const selectedFood = ref(null);
-const selectedPortions = ref([]);
-const logForm = ref({ meal: "breakfast", time: localTimeValue(), portionId: "", quantity: "1", ounces: formatPortionOunces(100) || "3.53" });
+const loadingFoods = ref(false);
+const foodsError = ref("");
+const logForm = ref(emptyLogForm());
+const foodSearchQuery = ref("");
 const logging = ref(false);
 const logError = ref("");
-const customForm = ref(emptyCustomForm());
-const savingCustom = ref(false);
-const customError = ref("");
-const customNotice = ref("");
+const editingEntryId = ref(null);
+const foodForm = ref(emptyFoodForm());
+const savingFood = ref(false);
+const foodError = ref("");
+const foodNotice = ref("");
+const editingFoodId = ref(null);
+const foodModalEl = ref(null);
+const foodsListEl = ref(null);
+const logCardEl = ref(null);
 const deletingId = ref(null);
 const { isNarrow } = useMobileShell();
 const chartRangeDays = ref(7);
@@ -507,10 +618,47 @@ const historyLoading = ref(false);
 const historyError = ref("");
 
 const eatenOnLabel = computed(() => (eatenOn.value === todayIso() ? "Today" : eatenOn.value));
+const foodServingGramsPreview = computed(() => formatPlanGrams(foodForm.value.serving_oz));
+const selectedFood = computed(() => {
+  const id = logForm.value.foodId;
+  if (id == null || id === "") return null;
+  return foods.value.find((food) => String(food.user_food_id) === String(id)) || null;
+});
+const filteredLogFoods = computed(() => {
+  const q = foodSearchQuery.value.trim().toLowerCase();
+  if (!q) return foods.value;
+  return foods.value.filter((food) => {
+    const label = foodLabel(food).toLowerCase();
+    const serving = String(food.serving_label || "").toLowerCase();
+    return label.includes(q) || serving.includes(q);
+  });
+});
 
-const customGramsPreview = computed(() => formatPlanGrams(logForm.value.ounces));
-const customServingGramsPreview = computed(() => formatPlanGrams(customForm.value.serving_oz));
-const visibleFoods = computed(() => foods.value);
+function foodDisplayValue(id) {
+  if (id == null || id === "") return "";
+  const food = foods.value.find((item) => String(item.user_food_id) === String(id));
+  return food ? foodLabel(food) : "";
+}
+
+watch(
+  () => logForm.value.foodId,
+  (id) => {
+    foodSearchQuery.value = "";
+    if (id == null) logForm.value.foodId = "";
+  },
+);
+const logPreview = computed(() => {
+  const food = selectedFood.value;
+  const servings = Number(logForm.value.servings);
+  if (!food || !Number.isFinite(servings) || servings <= 0) return null;
+  const per = perServingMacros(food);
+  return {
+    kcal: scaleByServings(per.kcal, servings),
+    protein_g: scaleByServings(per.protein_g, servings),
+    fat_g: scaleByServings(per.fat_g, servings),
+    carb_g: scaleByServings(per.carb_g, servings),
+  };
+});
 
 const macroRows = computed(() => {
   const consumed = comparison.value?.consumed || {};
@@ -588,10 +736,8 @@ const groupedEntries = computed(() => {
   return groups;
 });
 
-let searchTimer = null;
-let searchAbort = null;
-
 watch(eatenOn, () => {
+  if (editingEntryId.value) cancelEditEntry();
   void loadDay();
 });
 
@@ -603,24 +749,12 @@ watch(isNarrow, (narrow) => {
   if (!narrow) void loadHistory();
 });
 
-watch(searchInput, (value) => {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => {
-    void searchFoods(value);
-  }, 400);
-});
-
 onMounted(() => {
   void loadDay();
-  void searchFoods("");
+  void loadFoods();
 });
 
-onBeforeUnmount(() => {
-  clearTimeout(searchTimer);
-  searchAbort?.abort();
-});
-
-function applyPlan(plan) {
+function fillPlanForm(plan) {
   if (!plan) {
     planForm.value = emptyPlanForm();
     return;
@@ -632,6 +766,51 @@ function applyPlan(plan) {
     fat_oz: formatPortionOunces(plan.fat_g) || "0",
     carb_oz: formatPortionOunces(plan.carb_g) || "0",
   };
+}
+
+function applyPlan(plan) {
+  currentPlan.value = plan || null;
+  fillPlanForm(plan);
+  emit("plan-change", plan?.name || "");
+}
+
+function useCurrentPlan() {
+  planMode.value = "edit";
+  planError.value = "";
+  fillPlanForm(currentPlan.value);
+}
+
+function startNewPlan() {
+  planMode.value = "new";
+  planError.value = "";
+  planForm.value = {
+    ...emptyPlanForm(),
+    name: "",
+  };
+}
+
+function openPlanModal() {
+  planError.value = "";
+  planNotice.value = "";
+  if (currentPlan.value) {
+    planMode.value = "edit";
+    fillPlanForm(currentPlan.value);
+  } else {
+    planMode.value = "new";
+    fillPlanForm(null);
+  }
+  nextTick(() => planModalEl.value?.showModal());
+}
+
+function closePlanModal() {
+  planModalEl.value?.close();
+}
+
+function onPlanModalClose() {
+  planError.value = "";
+  planNotice.value = "";
+  fillPlanForm(currentPlan.value);
+  planMode.value = currentPlan.value ? "edit" : "new";
 }
 
 async function loadHistory() {
@@ -684,6 +863,7 @@ async function savePlan() {
     });
     applyPlan(data?.plan || null);
     planNotice.value = "Plan saved.";
+    closePlanModal();
     await loadDay();
   } catch (error) {
     planError.value = parseFetchError(error, "Failed to save nutrition plan.");
@@ -692,188 +872,199 @@ async function savePlan() {
   }
 }
 
-async function searchFoods(query) {
-  const q = String(query || "").trim();
-  if (q.length === 1) {
-    searchAbort?.abort();
-    searching.value = false;
-    searched.value = false;
-    searchError.value = "";
-    fdcSearchMessage.value = "";
-    return;
-  }
-  searchAbort?.abort();
-  const ac = new AbortController();
-  searchAbort = ac;
-  searching.value = q.length >= 2;
-  searchError.value = "";
-  fdcSearchMessage.value = "";
-  searched.value = q.length >= 2;
+async function loadFoods() {
+  loadingFoods.value = true;
+  foodsError.value = "";
   try {
-    const data = await $fetch("/api/physical/nutrition/foods", {
-      query: q ? { q } : {},
-      signal: ac.signal,
-    });
-    if (searchAbort !== ac) return;
+    const data = await $fetch("/api/physical/nutrition/foods", { query: { limit: 50 } });
     foods.value = data?.foods || [];
-    fdcSearchMessage.value = data?.fdc_search?.message || "";
-  } catch (error) {
-    if (searchAbort !== ac || error?.name === "AbortError" || error?.cause?.name === "AbortError") return;
-    foods.value = [];
-    fdcSearchMessage.value = "";
-    searchError.value = parseFetchError(error, "Failed to search foods.");
-  } finally {
-    if (searchAbort === ac) searching.value = false;
-  }
-}
-
-function applySelectedFood(food, portions = []) {
-  selectedFood.value = food;
-  selectedPortions.value = portions;
-  logForm.value = {
-    meal: logForm.value.meal || "breakfast",
-    time: logForm.value.time || localTimeValue(),
-    portionId: portions[0] ? String(portions[0].portion_id) : "",
-    quantity: "1",
-    ounces: formatPortionOunces(food.serving_g || portions[0]?.gram_weight || 100) || "3.53",
-  };
-}
-
-function isSelectedFood(food) {
-  if (!selectedFood.value) return false;
-  if (isCustomFood(food) || isCustomFood(selectedFood.value)) {
-    return Number(selectedFood.value.user_food_id) === Number(food.user_food_id);
-  }
-  return Number(selectedFood.value.fdc_id) === Number(food.fdc_id);
-}
-
-async function selectFood(food) {
-  applySelectedFood(food, food.portions || []);
-  logError.value = "";
-  try {
-    const query = isCustomFood(food)
-      ? { user_food_id: food.user_food_id }
-      : { fdc_id: food.fdc_id };
-    const data = await $fetch("/api/physical/nutrition/foods", { query });
-    applySelectedFood(data?.food || food, data?.food?.portions || food.portions || []);
-  } catch (error) {
-    logError.value = parseFetchError(error, "Failed to load food portions.");
-  }
-}
-
-function scaleMacro(per100, grams) {
-  const n = Number(per100);
-  const g = Number(grams);
-  if (!Number.isFinite(n) || !Number.isFinite(g) || g <= 0) return null;
-  return (n * g) / 100;
-}
-
-function customFoodPayload() {
-  const servingG = ouncesToGrams(customForm.value.serving_oz);
-  return {
-    name: customForm.value.name,
-    brand: customForm.value.brand,
-    serving_label: customForm.value.serving_label,
-    serving_g: servingG,
-    kcal: Number(customForm.value.kcal),
-    protein_g: Number(customForm.value.protein_g),
-    fat_g: Number(customForm.value.fat_g),
-    carb_g: Number(customForm.value.carb_g),
-  };
-}
-
-async function saveCustomFood(alsoLog) {
-  const payload = customFoodPayload();
-  const macros = [payload.kcal, payload.protein_g, payload.fat_g, payload.carb_g];
-  if (!payload.name || !(payload.serving_g > 0)) {
-    customError.value = "Enter a name and serving weight.";
-    return;
-  }
-  if (macros.some((n) => !Number.isFinite(n) || n < 0) || customForm.value.kcal === "") {
-    customError.value = "Enter calories and macros for one serving.";
-    return;
-  }
-  savingCustom.value = true;
-  customError.value = "";
-  customNotice.value = "";
-  try {
-    const data = await $fetch("/api/physical/nutrition/user-foods", {
-      method: "POST",
-      body: payload,
-    });
-    const food = data?.food;
-    if (!food) throw new Error("Missing custom food.");
-    customForm.value = emptyCustomForm();
-    applySelectedFood(food, food.portions || []);
-    foods.value = [
-      food,
-      ...foods.value.filter((item) => Number(item.user_food_id) !== Number(food.user_food_id)),
-    ];
-    if (alsoLog) {
-      await logSelectedFood();
-      customNotice.value = "Saved and added to today’s log.";
-    } else {
-      customNotice.value = "Saved to your foods.";
+    if (
+      logForm.value.foodId &&
+      !editingEntryId.value &&
+      !foods.value.some((food) => String(food.user_food_id) === String(logForm.value.foodId))
+    ) {
+      logForm.value.foodId = "";
     }
   } catch (error) {
-    customError.value = parseFetchError(error, "Failed to save custom food.");
+    foods.value = [];
+    foodsError.value = parseFetchError(error, "Failed to load foods.");
   } finally {
-    savingCustom.value = false;
+    loadingFoods.value = false;
   }
 }
 
-async function logSelectedFood() {
-  const food = selectedFood.value;
-  if (!food || (!food.fdc_id && !food.user_food_id)) {
-    throw new Error("Select a food first.");
-  }
-  const usingPortion = Boolean(logForm.value.portionId);
-  const quantity = usingPortion ? Number(logForm.value.quantity) : 1;
-  const portion = usingPortion
-    ? selectedPortions.value.find((item) => String(item.portion_id) === String(logForm.value.portionId))
-    : null;
-  const gramWeight = usingPortion
-    ? Number(portion?.gram_weight) * quantity
-    : ouncesToGrams(logForm.value.ounces);
-  if (!Number.isFinite(gramWeight) || gramWeight <= 0) {
-    throw new Error("Enter ounces or choose a serving.");
-  }
-  await $fetch("/api/physical/nutrition/intake", {
-    method: "POST",
-    body: {
-      eaten_on: eatenOn.value,
-      eaten_at: eatenAtIso(eatenOn.value, logForm.value.time),
-      meal_type: logForm.value.meal,
-      fdc_id: food.fdc_id || null,
-      user_food_id: food.user_food_id || null,
-      portion_id: usingPortion ? Number(logForm.value.portionId) : null,
-      quantity,
-      gram_weight: gramWeight,
-      food_name: food.description,
-      portion_label: usingPortion
-        ? portion?.measure_name || portion?.unit || portion?.label || "portion"
-        : "custom weight",
-      kcal_per_100g: food.kcal_per_100g,
-      protein_g_per_100g: food.protein_g_per_100g,
-      fat_g_per_100g: food.fat_g_per_100g,
-      carb_g_per_100g: food.carb_g_per_100g,
-      kcal: scaleMacro(food.kcal_per_100g, gramWeight),
-      protein_g: scaleMacro(food.protein_g_per_100g, gramWeight),
-      fat_g: scaleMacro(food.fat_g_per_100g, gramWeight),
-      carb_g: scaleMacro(food.carb_g_per_100g, gramWeight),
-    },
+function foodPayload() {
+  return {
+    name: foodForm.value.name,
+    serving_label: foodForm.value.serving,
+    serving_g: ouncesToGrams(foodForm.value.serving_oz),
+    kcal: Number(foodForm.value.kcal),
+    protein_g: Number(foodForm.value.protein_g),
+    fat_g: Number(foodForm.value.fat_g),
+    carb_g: Number(foodForm.value.carb_g),
+  };
+}
+
+function applyFoodToList(food) {
+  foods.value = [food, ...foods.value.filter((item) => Number(item.user_food_id) !== Number(food.user_food_id))];
+}
+
+function openAddFoodModal() {
+  cancelEditFood();
+  nextTick(() => foodModalEl.value?.showModal());
+}
+
+function closeFoodModal() {
+  foodModalEl.value?.close();
+}
+
+function onFoodModalClose() {
+  cancelEditFood();
+}
+
+function startEditFood(food) {
+  editingFoodId.value = food.user_food_id;
+  foodError.value = "";
+  foodNotice.value = "";
+  foodForm.value = {
+    name: foodLabel(food),
+    serving: food.serving_label || "1 serving",
+    serving_oz: formatPortionOunces(food.serving_g) || "",
+    kcal: food.kcal != null ? String(food.kcal) : "",
+    protein_g: food.protein_g != null ? String(food.protein_g) : "",
+    fat_g: food.fat_g != null ? String(food.fat_g) : "",
+    carb_g: food.carb_g != null ? String(food.carb_g) : "",
+  };
+  nextTick(() => {
+    if (foodsListEl.value) foodsListEl.value.open = true;
+    foodModalEl.value?.showModal();
   });
-  await loadDay();
+}
+
+function cancelEditFood() {
+  editingFoodId.value = null;
+  foodForm.value = emptyFoodForm();
+  foodError.value = "";
+  foodNotice.value = "";
+}
+
+async function saveFood() {
+  const payload = foodPayload();
+  const macros = [payload.kcal, payload.protein_g, payload.fat_g, payload.carb_g];
+  if (!payload.name || !(payload.serving_g > 0)) {
+    foodError.value = "Enter a name and serving size in ounces.";
+    return;
+  }
+  if (macros.some((n) => !Number.isFinite(n) || n < 0) || foodForm.value.kcal === "") {
+    foodError.value = "Enter calories and macros for one serving.";
+    return;
+  }
+  const foodId = editingFoodId.value;
+  savingFood.value = true;
+  foodError.value = "";
+  foodNotice.value = "";
+  try {
+    const data = foodId
+      ? await $fetch(`/api/physical/nutrition/user-foods/${foodId}`, { method: "PUT", body: payload })
+      : await $fetch("/api/physical/nutrition/user-foods", { method: "POST", body: payload });
+    const food = data?.food;
+    if (!food?.user_food_id) throw new Error("Missing food.");
+    applyFoodToList(food);
+    if (!editingEntryId.value) {
+      logForm.value.foodId = String(food.user_food_id);
+      logForm.value.servings = logForm.value.servings || "1";
+    }
+    if (foodsListEl.value) foodsListEl.value.open = true;
+    if (foodId) {
+      editingFoodId.value = food.user_food_id;
+      foodForm.value = {
+        name: foodLabel(food),
+        serving: food.serving_label || "1 serving",
+        serving_oz: formatPortionOunces(food.serving_g) || "",
+        kcal: food.kcal != null ? String(food.kcal) : "",
+        protein_g: food.protein_g != null ? String(food.protein_g) : "",
+        fat_g: food.fat_g != null ? String(food.fat_g) : "",
+        carb_g: food.carb_g != null ? String(food.carb_g) : "",
+      };
+      foodNotice.value = "Food updated. Existing log entries stay as logged.";
+    } else {
+      foodForm.value = emptyFoodForm();
+      editingFoodId.value = null;
+      foodNotice.value = "Food saved. You can add another or close this window.";
+    }
+  } catch (error) {
+    foodError.value = parseFetchError(error, foodId ? "Failed to update food." : "Failed to save food.");
+  } finally {
+    savingFood.value = false;
+  }
+}
+
+function startEditEntry(entry) {
+  const foodId = entry.user_food_id
+    || foods.value.find((food) => foodLabel(food) === (entry.food_description || entry.food_name))?.user_food_id
+    || "";
+  editingEntryId.value = entry.entry_id;
+  logError.value = "";
+  logForm.value = {
+    foodId: foodId ? String(foodId) : "",
+    servings: entry.quantity != null ? String(entry.quantity) : "1",
+    meal: entry.meal || entry.meal_type || "breakfast",
+    time: isoToLocalTime(entry.eaten_at),
+  };
+  foodSearchQuery.value = "";
+  if (!foodId) {
+    logError.value = "Pick the food this entry should use.";
+  }
+  nextTick(() => logCardEl.value?.scrollIntoView({ behavior: "smooth", block: "start" }));
+}
+
+function cancelEditEntry() {
+  editingEntryId.value = null;
+  logError.value = "";
+  foodSearchQuery.value = "";
+  logForm.value = {
+    ...emptyLogForm(),
+    meal: logForm.value.meal || "breakfast",
+    time: logForm.value.time || localTimeValue(),
+  };
 }
 
 async function logFood() {
-  if (!selectedFood.value || (!selectedFood.value.fdc_id && !selectedFood.value.user_food_id)) return;
+  const food = selectedFood.value;
+  const servings = Number(logForm.value.servings);
+  const preview = logPreview.value;
+  if (!food?.user_food_id || !preview) {
+    logError.value = "Pick a food and enter servings.";
+    return;
+  }
   logging.value = true;
   logError.value = "";
   try {
-    await logSelectedFood();
+    const gramWeight = Number(food.serving_g) * servings;
+    const body = {
+      eaten_on: eatenOn.value,
+      eaten_at: eatenAtIso(eatenOn.value, logForm.value.time),
+      meal_type: logForm.value.meal,
+      user_food_id: food.user_food_id,
+      portion_id: food.user_food_id,
+      quantity: servings,
+      gram_weight: gramWeight,
+      food_name: foodLabel(food),
+      portion_label: food.serving_label || "1 serving",
+      kcal: preview.kcal,
+      protein_g: preview.protein_g,
+      fat_g: preview.fat_g,
+      carb_g: preview.carb_g,
+    };
+    if (editingEntryId.value) {
+      await $fetch(`/api/physical/nutrition/intake/${editingEntryId.value}`, { method: "PUT", body });
+      editingEntryId.value = null;
+    } else {
+      await $fetch("/api/physical/nutrition/intake", { method: "POST", body });
+    }
+    await loadDay();
   } catch (error) {
-    logError.value = parseFetchError(error, "Failed to log food.");
+    logError.value = parseFetchError(error, editingEntryId.value ? "Failed to update food log." : "Failed to log food.");
   } finally {
     logging.value = false;
   }
@@ -884,6 +1075,7 @@ async function deleteEntry(entryId) {
   loadError.value = "";
   try {
     await $fetch(`/api/physical/nutrition/intake/${entryId}`, { method: "DELETE" });
+    if (editingEntryId.value === entryId) cancelEditEntry();
     await loadDay();
   } catch (error) {
     loadError.value = parseFetchError(error, "Failed to remove that food.");
@@ -891,4 +1083,8 @@ async function deleteEntry(entryId) {
     deletingId.value = null;
   }
 }
+
+const planName = computed(() => currentPlan.value?.name || "");
+
+defineExpose({ openAddFoodModal, openPlanModal, planName });
 </script>

@@ -1,11 +1,8 @@
 <template>
-  <section class="app-card px-4 py-4">
+  <section class="app-card flex h-full min-h-0 flex-col overflow-hidden px-4 py-4">
     <div class="flex flex-wrap items-end justify-between gap-3">
       <div>
         <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Calories by day</h2>
-        <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-          Stacked bars are calories from protein (×4), carbs (×4), and fat (×9). The line is logged kcal.
-        </p>
       </div>
       <div class="flex flex-wrap gap-2">
         <button
@@ -32,7 +29,8 @@
         <span
           v-else
           class="inline-block h-0.5 w-4"
-          :style="{ backgroundColor: item.color }"
+          :class="item.dashed ? 'border-t border-dashed' : ''"
+          :style="{ backgroundColor: item.color, borderColor: item.dashed ? item.color : undefined }"
           aria-hidden="true"
         />
         {{ item.label }}
@@ -41,28 +39,29 @@
 
     <div
       v-if="loading"
-      class="mt-3 rounded-lg border border-gray-200 bg-white px-4 py-10 text-center text-xs text-gray-500 md:text-sm dark:border-white/10 dark:bg-gray-900/40 dark:text-gray-400"
+      class="mt-3 flex min-h-0 flex-1 items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-10 text-center text-xs text-gray-500 md:text-sm dark:border-white/10 dark:bg-gray-900/40 dark:text-gray-400"
     >
       Loading chart…
     </div>
     <p v-else-if="error" class="mt-3 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
     <div
-      v-else-if="!hasIntake"
-      class="mt-3 rounded-lg border border-gray-200 bg-white px-4 py-10 text-center text-xs text-gray-500 md:text-sm dark:border-white/10 dark:bg-gray-900/40 dark:text-gray-400"
+      v-else-if="!showChart"
+      class="mt-3 flex min-h-0 flex-1 items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-10 text-center text-xs text-gray-500 md:text-sm dark:border-white/10 dark:bg-gray-900/40 dark:text-gray-400"
     >
       No foods logged in this range yet.
     </div>
     <div
       v-else
-      class="mt-3 overflow-x-auto rounded-lg border border-gray-200 bg-white p-3 sm:p-4 dark:border-white/10 dark:bg-gray-900/40"
+      class="mt-3 min-h-0 flex-1 overflow-x-auto overflow-y-hidden rounded-lg border border-gray-200 bg-white p-3 sm:p-4 dark:border-white/10 dark:bg-gray-900/40"
     >
+      <div ref="chartHostEl" class="h-full min-h-0">
       <div
         class="nutrition-daily-chart relative"
-        :style="{ minWidth: `${chartMinWidth}px`, height: `${height}px` }"
+        :style="{ minWidth: `${chartMinWidth}px`, height: `${chartHeight}px` }"
       >
         <VisXYContainer
           :data="chartRows"
-          :height="height"
+          :height="chartHeight"
           :padding="chartPaddingComputed"
           :x-domain="xDomain"
           :y-domain="yDomain"
@@ -84,6 +83,13 @@
             :point-size="6"
             :point-color="lineColor"
           />
+          <VisLine
+            v-if="planKcal != null"
+            :x="xAccessor"
+            :y="() => Number(planKcal) || 0"
+            :color="planLineColor"
+            :line-width="2"
+          />
           <VisAxis
             type="x"
             :tick-values="tickIndices"
@@ -101,6 +107,7 @@
           />
         </VisXYContainer>
       </div>
+      </div>
     </div>
   </section>
 </template>
@@ -114,7 +121,7 @@ import {
   VisTooltip,
   VisStackedBarSelectors,
 } from "@unovis/vue";
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { formatWeightOzGrams } from "~/utils/foodPortionLabel";
 
 export type NutritionHistoryDay = {
@@ -146,6 +153,7 @@ const PROTEIN_COLOR = "#7c3aed";
 const FAT_COLOR = "#ea580c";
 const CARB_COLOR = "#0d9488";
 const lineColor = "#0ea5e9";
+const planLineColor = "#64748b";
 const STACK_COLORS = [PROTEIN_COLOR, FAT_COLOR, CARB_COLOR];
 const rangeOptions = [7, 14] as const;
 
@@ -154,27 +162,60 @@ const days = defineModel<number>("days", { default: 7 });
 const props = withDefaults(
   defineProps<{
     data: NutritionHistoryDay[];
+    planKcal?: number | null;
     loading?: boolean;
     error?: string;
     height?: number;
   }>(),
   {
+    planKcal: null,
     loading: false,
     error: "",
     height: 280,
   },
 );
 
-const legendItems = [
-  { key: "protein", kind: "bar" as const, color: PROTEIN_COLOR, label: "Protein kcal" },
-  { key: "fat", kind: "bar" as const, color: FAT_COLOR, label: "Fat kcal" },
-  { key: "carb", kind: "bar" as const, color: CARB_COLOR, label: "Carb kcal" },
-  { key: "logged", kind: "line" as const, color: lineColor, label: "Logged calories" },
-];
+const legendItems = computed(() => {
+  const items = [
+    { key: "protein", kind: "bar" as const, color: PROTEIN_COLOR, label: "Protein kcal", dashed: false },
+    { key: "fat", kind: "bar" as const, color: FAT_COLOR, label: "Fat kcal", dashed: false },
+    { key: "carb", kind: "bar" as const, color: CARB_COLOR, label: "Carb kcal", dashed: false },
+    { key: "logged", kind: "line" as const, color: lineColor, label: "Logged calories", dashed: false },
+  ];
+  if (props.planKcal != null) {
+    items.push({
+      key: "plan",
+      kind: "line" as const,
+      color: planLineColor,
+      label: "Plan calories",
+      dashed: true,
+    });
+  }
+  return items;
+});
 
 const MOBILE_MQ = "(max-width: 767px)";
 const isMobile = ref(false);
+const chartHostEl = ref<HTMLElement | null>(null);
+const measuredHeight = ref(0);
 let mobileMqCleanup: (() => void) | null = null;
+let chartResizeObserver: ResizeObserver | null = null;
+
+const chartHeight = computed(() => measuredHeight.value || props.height);
+
+function syncChartObserver() {
+  chartResizeObserver?.disconnect();
+  chartResizeObserver = null;
+  const el = chartHostEl.value;
+  if (!el) return;
+  const apply = () => {
+    const h = Math.round(el.clientHeight);
+    if (h > 0) measuredHeight.value = h;
+  };
+  apply();
+  chartResizeObserver = new ResizeObserver(apply);
+  chartResizeObserver.observe(el);
+}
 
 onMounted(() => {
   const mq = window.matchMedia(MOBILE_MQ);
@@ -184,10 +225,12 @@ onMounted(() => {
   sync();
   mq.addEventListener("change", sync);
   mobileMqCleanup = () => mq.removeEventListener("change", sync);
+  watch(chartHostEl, syncChartObserver, { immediate: true });
 });
 
 onUnmounted(() => {
   mobileMqCleanup?.();
+  chartResizeObserver?.disconnect();
 });
 
 function asNumber(value: unknown) {
@@ -233,6 +276,7 @@ const chartRows = computed<ChartRow[]>(() =>
 const hasIntake = computed(() =>
   chartRows.value.some((row) => row.kcal > 0 || row.macroKcal > 0),
 );
+const showChart = computed(() => hasIntake.value || props.planKcal != null);
 
 const xAccessor = (_d: ChartRow, i: number) => i;
 const yAccessors = [
@@ -269,6 +313,7 @@ const yDomain = computed(() => {
   for (const row of chartRows.value) {
     max = Math.max(max, row.macroKcal, row.kcal);
   }
+  if (props.planKcal != null) max = Math.max(max, Number(props.planKcal) || 0);
   const top = max <= 0 ? 100 : max * 1.15;
   return [0, top];
 });
@@ -313,6 +358,11 @@ function nutritionTooltipHtml(d: unknown, index?: number) {
     `<${tag} class="${tooltipLineClass}">Macro kcal: ${formatKcal(row.macroKcal)}</${tag}>`,
     `<${tag} class="${tooltipLineClass}">Logged calories: ${formatKcal(row.kcal)} kcal</${tag}>`,
   ];
+  if (props.planKcal != null) {
+    lines.push(
+      `<${tag} class="${tooltipLineClass}">Plan: ${formatKcal(Number(props.planKcal) || 0)} kcal</${tag}>`,
+    );
+  }
   if (Math.abs(row.kcal - row.macroKcal) >= 1) {
     lines.push(
       `<${tag} class="${tooltipLineClass} text-gray-500">Logged kcal can differ from 4/4/9 when foods include fiber, alcohol, or rounding.</${tag}>`,

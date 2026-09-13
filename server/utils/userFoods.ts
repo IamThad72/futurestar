@@ -78,6 +78,10 @@ export function userFoodToSearchHit(food: UserFood): NutritionFoodSearchHit {
     carb_g_per_100g: per100(food.carb_g, food.serving_g),
     serving_g: food.serving_g,
     serving_label: food.serving_label,
+    kcal: food.kcal,
+    protein_g: food.protein_g,
+    fat_g: food.fat_g,
+    carb_g: food.carb_g,
     is_branded: Boolean(food.brand),
     brand_owner: food.brand,
     brand_name: food.brand,
@@ -214,5 +218,43 @@ export async function createUserFood(client: Client, userId: number, input: User
       input.carb_g,
     ],
   );
+  return mapUserFood(result.rows[0]);
+}
+
+export async function updateUserFood(
+  client: Client,
+  userId: number,
+  foodId: number,
+  input: UserFoodInput,
+): Promise<UserFood> {
+  const result = await client.query(
+    `UPDATE user_foods
+     SET name = $3,
+         brand = $4,
+         serving_label = $5,
+         serving_g = $6,
+         kcal = $7,
+         protein_g = $8,
+         fat_g = $9,
+         carb_g = $10,
+         updated_at = NOW()
+     WHERE food_id = $2 AND ${privateUserClauseAt("", 1)}
+     RETURNING ${USER_FOOD_COLUMNS}`,
+    [
+      userId,
+      foodId,
+      input.name,
+      input.brand,
+      input.serving_label,
+      input.serving_g,
+      input.kcal,
+      input.protein_g,
+      input.fat_g,
+      input.carb_g,
+    ],
+  );
+  if (!result.rows[0]) {
+    throw createError({ statusCode: 404, statusMessage: "Food not found." });
+  }
   return mapUserFood(result.rows[0]);
 }

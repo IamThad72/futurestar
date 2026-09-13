@@ -12,48 +12,7 @@
       </div>
     </details>
 
-    <div class="grid gap-6 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
-      <aside class="space-y-3 lg:self-start">
-        <div class="app-card px-4 py-4">
-          <div class="flex items-center justify-between gap-2">
-            <h2 class="text-sm font-semibold text-gray-900 dark:text-white">History</h2>
-            <button type="button" class="training-chip btn btn-ghost btn-xs rounded-full" @click="onNew">New</button>
-          </div>
-          <p v-if="listError" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ listError }}</p>
-          <p v-else-if="listLoading && !sessions.length" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Loading sessions…
-          </p>
-          <p v-else-if="!sessions.length" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            No journal entries yet.
-          </p>
-          <div v-else class="mt-3">
-            <section v-for="group in groupedHistory" :key="group.key">
-              <ion-list lines="full" class="journal-ion-list">
-                <ion-list-header>{{ group.label }}</ion-list-header>
-                <ion-item
-                  v-for="item in group.sessions"
-                  :key="item.sessionId"
-                  button
-                  :detail="false"
-                  class="journal-history-item"
-                  :class="{ 'journal-history-item--current': draft.sessionId === item.sessionId }"
-                  @click="openSession(item.sessionId)"
-                >
-                  <ion-label>
-                    <h2>{{ sessionTitle(item) }}</h2>
-                    <p>
-                      {{ formatWhen(item.performedAt) }} · {{ item.exerciseCount }}
-                      {{ item.exerciseCount === 1 ? "exercise" : "exercises" }}
-                    </p>
-                  </ion-label>
-                </ion-item>
-              </ion-list>
-            </section>
-          </div>
-        </div>
-      </aside>
-
-      <div class="min-w-0 space-y-4">
+    <div class="min-w-0 space-y-4">
         <section
           v-if="!draft.sessionId"
           class="app-card px-4 py-4"
@@ -296,7 +255,51 @@
             </div>
           </div>
       </div>
-    </div>
+
+    <dialog ref="historyModalEl" class="modal">
+      <div class="modal-box flex max-h-[90vh] max-w-lg flex-col overflow-y-auto overscroll-contain">
+        <h3 class="text-lg font-semibold">History</h3>
+        <p v-if="listError" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ listError }}</p>
+        <p v-else-if="listLoading && !sessions.length" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          Loading sessions…
+        </p>
+        <p v-else-if="!sessions.length" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          No journal entries yet.
+        </p>
+        <div v-else class="mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <section v-for="group in groupedHistory" :key="group.key">
+            <ion-list lines="full" class="journal-ion-list">
+              <ion-list-header>{{ group.label }}</ion-list-header>
+              <ion-item
+                v-for="item in group.sessions"
+                :key="item.sessionId"
+                button
+                :detail="false"
+                class="journal-history-item"
+                :class="{ 'journal-history-item--current': draft.sessionId === item.sessionId }"
+                @click="openSession(item.sessionId)"
+              >
+                <ion-label>
+                  <h2>{{ sessionTitle(item) }}</h2>
+                  <p>
+                    {{ formatWhen(item.performedAt) }} · {{ item.exerciseCount }}
+                    {{ item.exerciseCount === 1 ? "exercise" : "exercises" }}
+                  </p>
+                </ion-label>
+              </ion-item>
+            </ion-list>
+          </section>
+        </div>
+        <div class="modal-action sticky bottom-0 mt-4 bg-base-100 pb-1">
+          <form method="dialog">
+            <button type="submit" class="training-chip btn btn-ghost btn-sm rounded-full">Close</button>
+          </form>
+        </div>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button type="submit">close</button>
+      </form>
+    </dialog>
   </div>
 </template>
 
@@ -326,7 +329,7 @@ const learnMore = [
   },
   {
     name: "History",
-    text: "Past sessions stay on this journal. Open one to review or edit it, or choose New to start another.",
+    text: "Past sessions stay on this journal. Open History to review or edit one.",
   },
 ];
 
@@ -353,6 +356,7 @@ function toDatetimeLocalValue(iso) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+const historyModalEl = ref(null);
 const sessions = ref([]);
 const listLoading = ref(false);
 const listError = ref("");
@@ -567,7 +571,16 @@ async function startSession() {
   }
 }
 
+function openHistoryModal() {
+  nextTick(() => historyModalEl.value?.showModal());
+}
+
+function closeHistoryModal() {
+  historyModalEl.value?.close();
+}
+
 async function openSession(sessionId) {
+  closeHistoryModal();
   if (draft.value.sessionId === sessionId) return;
   if (dirty.value) await saveSession();
   saveError.value = "";
@@ -622,11 +635,6 @@ async function deleteSession() {
   } finally {
     saving.value = false;
   }
-}
-
-async function onNew() {
-  if (draft.value.sessionId && dirty.value) await saveSession();
-  closeEditor();
 }
 
 function closeEditor() {
@@ -791,6 +799,8 @@ onBeforeUnmount(() => {
   clearTimeout(saveTimer);
   if (draft.value.sessionId && dirty.value) void saveSession();
 });
+
+defineExpose({ openHistoryModal });
 </script>
 
 <style scoped>

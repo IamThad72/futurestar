@@ -44,6 +44,10 @@ export type NutritionFoodSearchHit = {
   carb_g_per_100g: number | null;
   serving_g?: number | null;
   serving_label?: string | null;
+  kcal?: number | null;
+  protein_g?: number | null;
+  fat_g?: number | null;
+  carb_g?: number | null;
   is_branded: boolean;
   brand_owner: string | null;
   brand_name: string | null;

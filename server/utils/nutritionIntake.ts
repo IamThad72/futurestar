@@ -15,9 +15,9 @@ import { getUserFood } from "./userFoods";
 
 /**
  * Physical nutrition helpers.
- * Food search/detail is USDA FoodData Central (live API). Plans, intake rows, and
- * daily totals are always scoped to `app_users.user_id` — never `group_id`.
- * Linked accounts do not share nutrition.
+ * Foods are user-defined. Plans, intake rows, and daily totals are always
+ * scoped to `app_users.user_id` — never `group_id`. Linked accounts do not
+ * share nutrition.
  */
 
 export const NUTRITION_MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack", "other"] as const;
@@ -31,6 +31,7 @@ export type NutritionIntakeEntry = {
   meal: string | null;
   meal_type: string | null;
   fdc_id: number | null;
+  user_food_id?: number | null;
   portion_id: number | null;
   quantity: number;
   gram_weight: number | null;
@@ -286,7 +287,7 @@ export function mapNutritionWriteError(error: unknown, fallback: string) {
   if (code === "23514" || /gram_weight is required/i.test(msg)) {
     return createError({
       statusCode: 400,
-      statusMessage: msg || "Enter grams or a USDA portion.",
+      statusMessage: msg || "Enter servings or a serving size.",
     });
   }
   return createError({ statusCode: 500, statusMessage: fallback });
@@ -351,16 +352,6 @@ export async function getNutritionFoodDetail(fdcId: number) {
   return detailPayload(detail);
 }
 
-function macrosPer100FromServing(kcal: number, protein: number, fat: number, carb: number, servingG: number) {
-  if (!(servingG > 0)) return { kcal: null, protein_g: null, fat_g: null, carb_g: null };
-  return {
-    kcal: (kcal * 100) / servingG,
-    protein_g: (protein * 100) / servingG,
-    fat_g: (fat * 100) / servingG,
-    carb_g: (carb * 100) / servingG,
-  };
-}
-
 async function resolveLoggedServing(client: Client, userId: number, input: NutritionIntakeInput) {
   const custom = input.user_food_id ? await getUserFood(client, userId, input.user_food_id) : null;
   if (input.user_food_id && !custom) {
@@ -382,7 +373,7 @@ async function resolveLoggedServing(client: Client, userId: number, input: Nutri
   if (gramWeight == null || gramWeight <= 0) {
     throw createError({
       statusCode: 400,
-      statusMessage: "Provide a USDA portion or gram_weight.",
+      statusMessage: "Enter servings or a serving size.",
     });
   }
 
@@ -390,7 +381,7 @@ async function resolveLoggedServing(client: Client, userId: number, input: Nutri
   if (!foodName) {
     throw createError({
       statusCode: 400,
-      statusMessage: "Could not load that food from USDA FoodData Central.",
+      statusMessage: "Could not load that food.",
     });
   }
 
@@ -400,24 +391,37 @@ async function resolveLoggedServing(client: Client, userId: number, input: Nutri
     (portion ? householdPortionLabel(portion) || portion.label : "") ||
     (input.portion_id != null ? "portion" : "custom grams");
 
-  const customPer100 = custom
-    ? macrosPer100FromServing(custom.kcal, custom.protein_g, custom.fat_g, custom.carb_g, custom.serving_g)
-    : null;
+  if (custom) {
+    return {
+      fdc_id: null,
+      user_food_id: input.user_food_id,
+      food_name: foodName,
+      portion_label: portionLabel,
+      gram_weight: gramWeight,
+      kcal: custom.kcal * input.quantity,
+      protein_g: custom.protein_g * input.quantity,
+      fat_g: custom.fat_g * input.quantity,
+      carb_g: custom.carb_g * input.quantity,
+      portion_id: input.portion_id,
+      quantity: input.quantity,
+    };
+  }
+
   const per100 = {
-    kcal: input.kcal_per_100g ?? customPer100?.kcal ?? detail?.kcal_per_100g ?? null,
-    protein_g: input.protein_g_per_100g ?? customPer100?.protein_g ?? detail?.protein_g_per_100g ?? null,
-    fat_g: input.fat_g_per_100g ?? customPer100?.fat_g ?? detail?.fat_g_per_100g ?? null,
-    carb_g: input.carb_g_per_100g ?? customPer100?.carb_g ?? detail?.carb_g_per_100g ?? null,
+    kcal: input.kcal_per_100g ?? detail?.kcal_per_100g ?? null,
+    protein_g: input.protein_g_per_100g ?? detail?.protein_g_per_100g ?? null,
+    fat_g: input.fat_g_per_100g ?? detail?.fat_g_per_100g ?? null,
+    carb_g: input.carb_g_per_100g ?? detail?.carb_g_per_100g ?? null,
   };
   const scaled = scaleMacrosToGrams(per100, gramWeight);
 
   const hasEatenSnapshot =
     input.kcal != null || input.protein_g != null || input.fat_g != null || input.carb_g != null;
   const hasPer100 = per100.kcal != null || per100.protein_g != null || per100.fat_g != null || per100.carb_g != null;
-  if (!detail && !custom && !hasEatenSnapshot && !hasPer100) {
+  if (!detail && !hasEatenSnapshot && !hasPer100) {
     throw createError({
       statusCode: 400,
-      statusMessage: "Could not load that food from USDA FoodData Central.",
+      statusMessage: "Could not load that food.",
     });
   }
 
@@ -442,7 +446,7 @@ export async function listIntakeEntries(
   eatenOn: string,
 ): Promise<NutritionIntakeEntry[]> {
   const result = await client.query(
-    `SELECT e.entry_id, e.user_id, e.eaten_on::text, e.eaten_at, e.meal, e.fdc_id, e.portion_id,
+    `SELECT e.entry_id, e.user_id, e.eaten_on::text, e.eaten_at, e.meal, e.fdc_id, e.user_food_id, e.portion_id,
             e.quantity, e.gram_weight, e.created_at,
             e.food_name, e.portion_label,
             e.kcal, e.protein_g, e.fat_g, e.carb_g
@@ -462,6 +466,7 @@ export async function listIntakeEntries(
       meal,
       meal_type: meal,
       fdc_id: row.fdc_id != null ? Number(row.fdc_id) : null,
+      user_food_id: row.user_food_id != null ? Number(row.user_food_id) : null,
       portion_id: row.portion_id != null ? Number(row.portion_id) : null,
       quantity: asFiniteNumber(row.quantity, 1),
       gram_weight: asNullableNumber(row.gram_weight),
@@ -600,6 +605,56 @@ export async function createIntakeEntry(
       snapshot.portion_label,
     ],
   );
+  return { entry_id: Number(result.rows[0].entry_id) };
+}
+
+export async function updateIntakeEntry(
+  client: Client,
+  userId: number,
+  entryId: number,
+  input: NutritionIntakeInput,
+): Promise<{ entry_id: number }> {
+  const snapshot = await resolveLoggedServing(client, userId, input);
+  const result = await client.query(
+    `UPDATE nutrition_intake_entries
+     SET eaten_on = $3,
+         eaten_at = $4,
+         meal = $5,
+         fdc_id = $6,
+         user_food_id = $7,
+         portion_id = $8,
+         quantity = $9,
+         gram_weight = $10,
+         food_name = $11,
+         kcal = $12,
+         protein_g = $13,
+         fat_g = $14,
+         carb_g = $15,
+         portion_label = $16
+     WHERE entry_id = $2 AND ${privateUserClauseAt("", 1)}
+     RETURNING entry_id`,
+    [
+      userId,
+      entryId,
+      input.eaten_on,
+      input.eaten_at,
+      input.meal,
+      snapshot.fdc_id,
+      snapshot.user_food_id,
+      snapshot.portion_id,
+      snapshot.quantity,
+      snapshot.gram_weight,
+      snapshot.food_name,
+      snapshot.kcal,
+      snapshot.protein_g,
+      snapshot.fat_g,
+      snapshot.carb_g,
+      snapshot.portion_label,
+    ],
+  );
+  if (!result.rowCount) {
+    throw createError({ statusCode: 404, statusMessage: "Intake entry not found." });
+  }
   return { entry_id: Number(result.rows[0].entry_id) };
 }
 
