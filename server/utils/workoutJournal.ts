@@ -133,6 +133,14 @@ export function parseOptionalName(value: unknown): string | null {
   return name;
 }
 
+export function parseRequiredName(value: unknown): string {
+  const name = parseOptionalName(value);
+  if (!name) {
+    throw createError({ statusCode: 400, statusMessage: "Session name is required." });
+  }
+  return name;
+}
+
 export function parsePerformedAt(value: unknown): Date {
   if (value == null || value === "") return new Date();
   if (value instanceof Date) {

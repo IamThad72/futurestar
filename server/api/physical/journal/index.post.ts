@@ -5,7 +5,7 @@ import {
   createJournalSession,
   mapJournalWriteError,
   parseJournalExerciseInputs,
-  parseOptionalName,
+  parseRequiredName,
   parseOptionalWorkoutId,
   parsePerformedAt,
 } from "../../../utils/workoutJournal";
@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
   const userId = await requirePrivateUserId(event);
   const body = omitGroupScope((await readBody(event)) as Record<string, unknown>);
   const performedAt = parsePerformedAt(body.performedAt ?? body.performed_at);
-  const name = parseOptionalName(body.name);
+  const name = parseRequiredName(body.name);
   const notes = parseWorkoutNotes(body.notes);
   const workoutId = parseOptionalWorkoutId(body.workoutId ?? body.workout_id);
   const exercises = parseJournalExerciseInputs(body.exercises);

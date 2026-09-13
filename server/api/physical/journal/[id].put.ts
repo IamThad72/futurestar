@@ -4,7 +4,7 @@ import { omitGroupScope, requirePrivateUserId } from "../../../utils/privateUser
 import {
   mapJournalWriteError,
   parseJournalExerciseInputs,
-  parseOptionalName,
+  parseRequiredName,
   parsePerformedAt,
   parseSessionId,
   updateJournalSession,
@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
   const sessionId = parseSessionId(getRouterParam(event, "id"));
   const body = omitGroupScope((await readBody(event)) as Record<string, unknown>);
   const performedAt = parsePerformedAt(body.performedAt ?? body.performed_at);
-  const name = parseOptionalName(body.name);
+  const name = parseRequiredName(body.name);
   const notes = parseWorkoutNotes(body.notes);
   const exercises = parseJournalExerciseInputs(body.exercises);
 

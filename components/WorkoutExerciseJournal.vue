@@ -38,6 +38,7 @@
                 maxlength="120"
                 class="input input-bordered w-full"
                 placeholder="e.g. Evening lift"
+                required
               />
             </label>
             <label class="form-control w-full max-w-sm">
@@ -72,14 +73,24 @@
                   <span v-else-if="saving" class="ml-2">Saving…</span>
                 </p>
               </div>
-              <button
-                type="button"
-                class="training-chip btn btn-ghost btn-sm rounded-full text-red-600 dark:text-red-400"
-                :disabled="saving"
-                @click="deleteSession"
-              >
-                Delete
-              </button>
+              <div class="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  class="training-chip btn btn-primary btn-sm rounded-full"
+                  :disabled="saving || !sessionNameReady"
+                  @click="finishSession"
+                >
+                  {{ saving ? "Saving…" : "Save" }}
+                </button>
+                <button
+                  type="button"
+                  class="training-chip btn btn-ghost btn-sm rounded-full text-red-600 dark:text-red-400"
+                  :disabled="saving"
+                  @click="deleteSession"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
             <div class="mt-4 grid gap-3 sm:grid-cols-2">
               <label class="form-control">
@@ -98,6 +109,7 @@
                   type="text"
                   maxlength="120"
                   class="input input-bordered w-full"
+                  required
                   @input="markDirty"
                 />
               </label>
@@ -420,8 +432,14 @@ function localDateKey(iso) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+const sessionNameReady = computed(() => Boolean(String(draft.value.name || "").trim()));
+const startNameReady = computed(() => Boolean(String(startForm.value.name || "").trim()));
 const canStartSession = computed(
-  () => !saving.value && !workoutLoading.value && draft.value.exercises.length > 0,
+  () =>
+    !saving.value &&
+    !workoutLoading.value &&
+    draft.value.exercises.length > 0 &&
+    startNameReady.value,
 );
 
 const groupedHistory = computed(() => {
@@ -519,7 +537,7 @@ function markDirty() {
 
 function scheduleSave() {
   clearTimeout(saveTimer);
-  if (!draft.value.sessionId) return;
+  if (!draft.value.sessionId || !sessionNameReady.value) return;
   saveTimer = setTimeout(() => {
     void saveSession();
   }, 800);
@@ -549,13 +567,17 @@ async function loadWorkouts() {
 }
 
 async function startSession() {
+  if (!startNameReady.value) {
+    saveError.value = "Session name is required.";
+    return;
+  }
   saving.value = true;
   starting.value = true;
   saveError.value = "";
   try {
     const body = {
       performedAt: fromDatetimeLocalValue(startForm.value.performedAt),
-      name: startForm.value.name || null,
+      name: startForm.value.name.trim(),
       workoutId: startForm.value.workoutId ? Number(startForm.value.workoutId) : null,
       exercises: payloadForSave().exercises,
     };
@@ -593,8 +615,23 @@ async function openSession(sessionId) {
   }
 }
 
+async function finishSession() {
+  clearTimeout(saveTimer);
+  if (!sessionNameReady.value) {
+    saveError.value = "Session name is required.";
+    return;
+  }
+  const ok = await saveSession();
+  if (!ok) return;
+  closeEditor();
+}
+
 async function saveSession() {
   if (!draft.value.sessionId) return false;
+  if (!sessionNameReady.value) {
+    saveError.value = "Session name is required.";
+    return false;
+  }
   saving.value = true;
   saveError.value = "";
   dirty.value = false;
