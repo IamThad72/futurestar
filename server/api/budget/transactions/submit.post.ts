@@ -397,8 +397,8 @@ export default defineEventHandler(async (event) => {
 
     const txAmount = amount != null && !isNaN(amount) ? Math.abs(amount) : 0;
     const fiscalYear = yearFromDateString(dateStr);
-    // Tax / Income cards read the active budget. Add onto that stored
-    // baseline — never write a period-budget copy or rebuild from rows.
+    // Add onto the active budget's stored baseline. The tax page sums every
+    // household budget for the year, so switching plans does not hide YTD.
     const active = await getActiveBudget(client, userId, groupId);
 
     if (type === "income" && incomeTypeForAdjust === "tax") {

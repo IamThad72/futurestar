@@ -2,8 +2,8 @@ import { createError, getQuery } from "h3";
 import { createDbClient } from "../../utils/db";
 import { getSessionUserId } from "../../utils/auth";
 import { getUserGroupId } from "../../utils/group";
-import { getActiveBudget } from "../../utils/budgetAccess";
-import { listTaxAnnualTotals } from "../../utils/taxAnnualTotals";
+import { getActiveBudget, listBudgets } from "../../utils/budgetAccess";
+import { listTaxAnnualTotalsForBudgets } from "../../utils/taxAnnualTotals";
 
 export default defineEventHandler(async (event) => {
   const userId = await getSessionUserId(event);
@@ -16,10 +16,15 @@ export default defineEventHandler(async (event) => {
     await client.connect();
     const groupId = await getUserGroupId(client, userId);
     const active = await getActiveBudget(client, userId, groupId);
+    const budgets = await listBudgets(client, userId, groupId);
 
-    // Read stored YTD only. Never rebuild from transactions — that wipes the
-    // manual baseline. Paycheck tax lines increment via applyTaxAnnualTotalDelta.
-    const listed = await listTaxAnnualTotals(client, active.budget_id, taxYear);
+    // Stored YTD only — never rebuild from transactions. Deltas are written
+    // onto whichever budget is active that day, so sum every household budget.
+    const listed = await listTaxAnnualTotalsForBudgets(
+      client,
+      budgets.map((b) => b.budget_id),
+      taxYear,
+    );
 
     return {
       tax_year: taxYear,

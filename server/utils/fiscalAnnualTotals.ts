@@ -326,23 +326,7 @@ export async function applyFiscalAnnualTotalDelta(
   );
 }
 
-export async function listFiscalAnnualTotals(
-  client: DbClient,
-  budgetId: number,
-  taxYear: number,
-) {
-  const result = await client.query(
-    `SELECT section, total_kind, total_amount, updated_at
-     FROM fiscal_annual_totals
-     WHERE budget_id = $1 AND tax_year = $2`,
-    [budgetId, taxYear],
-  );
-
-  const byKey = new Map<string, number>();
-  for (const row of result.rows) {
-    byKey.set(`${row.section}:${row.total_kind}`, Number(row.total_amount) || 0);
-  }
-
+function assembleFiscalAnnualTotals(byKey: Map<string, number>) {
   const gross = byKey.get("income:gross") ?? 0;
 
   const pretax = FISCAL_PRETAX_KINDS.map((kind) => ({
@@ -370,4 +354,41 @@ export async function listFiscalAnnualTotals(
   }));
 
   return { income, pretax, posttax };
+}
+
+export async function listFiscalAnnualTotals(
+  client: DbClient,
+  budgetId: number,
+  taxYear: number,
+) {
+  return listFiscalAnnualTotalsForBudgets(client, [budgetId], taxYear);
+}
+
+/**
+ * Year-to-date income and deductions are household-wide. Paycheck deltas
+ * land on whichever budget is active at the time, so a read has to add
+ * every owned budget. Taxable income is recomputed from those sums.
+ */
+export async function listFiscalAnnualTotalsForBudgets(
+  client: DbClient,
+  budgetIds: number[],
+  taxYear: number,
+) {
+  const ids = [...new Set(budgetIds.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0))];
+  if (!ids.length) return assembleFiscalAnnualTotals(new Map());
+
+  const result = await client.query(
+    `SELECT section, total_kind, SUM(total_amount) AS total_amount
+     FROM fiscal_annual_totals
+     WHERE budget_id = ANY($1::int[]) AND tax_year = $2
+     GROUP BY section, total_kind`,
+    [ids, taxYear],
+  );
+
+  const byKey = new Map<string, number>();
+  for (const row of result.rows) {
+    byKey.set(`${row.section}:${row.total_kind}`, Number(row.total_amount) || 0);
+  }
+
+  return assembleFiscalAnnualTotals(byKey);
 }

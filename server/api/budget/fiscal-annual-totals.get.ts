@@ -2,8 +2,8 @@ import { createError, getQuery } from "h3";
 import { createDbClient } from "../../utils/db";
 import { getSessionUserId } from "../../utils/auth";
 import { getUserGroupId } from "../../utils/group";
-import { getActiveBudget } from "../../utils/budgetAccess";
-import { listFiscalAnnualTotals } from "../../utils/fiscalAnnualTotals";
+import { getActiveBudget, listBudgets } from "../../utils/budgetAccess";
+import { listFiscalAnnualTotalsForBudgets } from "../../utils/fiscalAnnualTotals";
 
 export default defineEventHandler(async (event) => {
   const userId = await getSessionUserId(event);
@@ -16,7 +16,12 @@ export default defineEventHandler(async (event) => {
     await client.connect();
     const groupId = await getUserGroupId(client, userId);
     const active = await getActiveBudget(client, userId, groupId);
-    const { income, pretax, posttax } = await listFiscalAnnualTotals(client, active.budget_id, taxYear);
+    const budgets = await listBudgets(client, userId, groupId);
+    const { income, pretax, posttax } = await listFiscalAnnualTotalsForBudgets(
+      client,
+      budgets.map((b) => b.budget_id),
+      taxYear,
+    );
 
     // Stored Gross / Net only. Taxable is Gross − the five Pre-Tax kinds
     // (never a separate override, never rebuilt from income rows).

@@ -63,22 +63,7 @@ export async function upsertTaxAnnualTotal(
   );
 }
 
-export async function listTaxAnnualTotals(
-  client: DbClient,
-  budgetId: number,
-  taxYear: number,
-) {
-  const result = await client.query(
-    `SELECT tax_kind, total_amount, updated_at
-     FROM tax_annual_totals
-     WHERE budget_id = $1 AND tax_year = $2`,
-    [budgetId, taxYear],
-  );
-
-  const byKind = Object.fromEntries(
-    result.rows.map((r) => [String(r.tax_kind), Number(r.total_amount) || 0]),
-  ) as Record<string, number>;
-
+function taxTotalsFromKindAmounts(byKind: Record<string, number>) {
   const totals = TAX_ANNUAL_KINDS.map((kind: TaxAnnualKind) => ({
     tax_kind: kind,
     label: TAX_ANNUAL_KIND_LABELS[kind],
@@ -89,6 +74,41 @@ export async function listTaxAnnualTotals(
     totals,
     grand_total: totals.reduce((sum, t) => sum + t.total_amount, 0),
   };
+}
+
+export async function listTaxAnnualTotals(
+  client: DbClient,
+  budgetId: number,
+  taxYear: number,
+) {
+  return listTaxAnnualTotalsForBudgets(client, [budgetId], taxYear);
+}
+
+/**
+ * Year-to-date tax is household-wide. Paycheck deltas land on whichever
+ * budget is active at the time, so a read has to add every owned budget.
+ */
+export async function listTaxAnnualTotalsForBudgets(
+  client: DbClient,
+  budgetIds: number[],
+  taxYear: number,
+) {
+  const ids = [...new Set(budgetIds.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0))];
+  if (!ids.length) return taxTotalsFromKindAmounts({});
+
+  const result = await client.query(
+    `SELECT tax_kind, SUM(total_amount) AS total_amount
+     FROM tax_annual_totals
+     WHERE budget_id = ANY($1::int[]) AND tax_year = $2
+     GROUP BY tax_kind`,
+    [ids, taxYear],
+  );
+
+  const byKind = Object.fromEntries(
+    result.rows.map((r) => [String(r.tax_kind), Number(r.total_amount) || 0]),
+  ) as Record<string, number>;
+
+  return taxTotalsFromKindAmounts(byKind);
 }
 
 /**
