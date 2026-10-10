@@ -75,6 +75,7 @@ const migrations = [
   "create_fiscal_annual_totals.sql",
   "alter_fiscal_annual_totals_add_posttax.sql",
   "alter_fiscal_annual_totals_add_stock_option_offset.sql",
+  "alter_annual_totals_household.sql",
   "create_budget_month_assignments.sql",
   "alter_budget_transactions_add_classification.sql",
   "create_exercise_catalog.sql",

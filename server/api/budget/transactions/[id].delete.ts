@@ -2,7 +2,6 @@ import { createError } from "h3";
 import { createDbClient } from "../../../utils/db";
 import { getSessionUserId } from "../../../utils/auth";
 import { getUserGroupId, groupAccessClauseAt, soloUserClauseAt } from "../../../utils/group";
-import { getActiveBudget } from "../../../utils/budgetAccess";
 import { reverseDebtPayment } from "../../../utils/debtPayment";
 import { applyFiscalTotalsForTransaction } from "../../../utils/fiscalAnnualTotals";
 import { adjustTaxAnnualTotalForClassification, yearFromDateString } from "../../../utils/taxAnnualTotals";
@@ -30,7 +29,7 @@ export default defineEventHandler(async (event) => {
       `DELETE FROM budget_transactions
        WHERE transaction_id = $1 AND ${accessClause}
        RETURNING transaction_id, debt_id, amount, principal_applied, income_id, transaction_date,
-                 item_type, category, sub_category`,
+                 item_type, category, sub_category, from_gross_pay`,
       params,
     );
 
@@ -64,13 +63,10 @@ export default defineEventHandler(async (event) => {
     const txAmount = row?.amount != null && !isNaN(Number(row.amount)) ? Math.abs(Number(row.amount)) : 0;
     const fiscalYear = yearFromDateString(dateStr);
 
-    if (txAmount > 0) {
-      const active = await getActiveBudget(client, userId, groupId);
-
+    if (txAmount > 0 && row?.from_gross_pay === true) {
       if (incomeId && !isNaN(incomeId) && incomeId > 0 && itemType === "tax") {
         await adjustTaxAnnualTotalForClassification(
           client,
-          active.budget_id,
           userId,
           groupId,
           fiscalYear,
@@ -80,22 +76,14 @@ export default defineEventHandler(async (event) => {
         );
       }
 
-      const itemKind =
-        incomeId && !isNaN(incomeId) && incomeId > 0 ? "income" : "expense";
-      await applyFiscalTotalsForTransaction(
-        client,
-        active.budget_id,
-        userId,
-        groupId,
-        fiscalYear,
-        {
-          itemKind,
-          itemType,
-          category,
-          subCategory,
-          signedAmount: -txAmount,
-        },
-      );
+      const itemKind = incomeId && !isNaN(incomeId) && incomeId > 0 ? "income" : "expense";
+      await applyFiscalTotalsForTransaction(client, userId, groupId, fiscalYear, {
+        itemKind,
+        itemType,
+        category,
+        subCategory,
+        signedAmount: -txAmount,
+      });
     }
 
     return { success: true };

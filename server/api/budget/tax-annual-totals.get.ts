@@ -2,8 +2,7 @@ import { createError, getQuery } from "h3";
 import { createDbClient } from "../../utils/db";
 import { getSessionUserId } from "../../utils/auth";
 import { getUserGroupId } from "../../utils/group";
-import { getActiveBudget, listBudgets } from "../../utils/budgetAccess";
-import { listTaxAnnualTotalsForBudgets } from "../../utils/taxAnnualTotals";
+import { listTaxAnnualTotals } from "../../utils/taxAnnualTotals";
 
 export default defineEventHandler(async (event) => {
   const userId = await getSessionUserId(event);
@@ -15,20 +14,12 @@ export default defineEventHandler(async (event) => {
   try {
     await client.connect();
     const groupId = await getUserGroupId(client, userId);
-    const active = await getActiveBudget(client, userId, groupId);
-    const budgets = await listBudgets(client, userId, groupId);
 
-    // Stored YTD only — never rebuild from transactions. Deltas are written
-    // onto whichever budget is active that day, so sum every household budget.
-    const listed = await listTaxAnnualTotalsForBudgets(
-      client,
-      budgets.map((b) => b.budget_id),
-      taxYear,
-    );
+    // Stored household totals only. Gross-pay actuals add to these rows.
+    const listed = await listTaxAnnualTotals(client, userId, groupId, taxYear);
 
     return {
       tax_year: taxYear,
-      budget_id: active.budget_id,
       ...listed,
     };
   } catch (error: unknown) {

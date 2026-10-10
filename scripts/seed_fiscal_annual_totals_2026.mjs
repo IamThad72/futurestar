@@ -73,38 +73,39 @@ if (!budget.rowCount) {
   process.exit(1);
 }
 
-const { budget_id: budgetId, user_id: userId, group_id: groupId, name } = budget.rows[0];
-console.log(`Seeding fiscal totals for budget ${budgetId} (${name}), year ${YEAR}`);
+const { user_id: userId, group_id: groupId, name } = budget.rows[0];
+const householdKey = groupId != null ? `g:${groupId}` : `u:${userId}`;
+console.log(`Seeding fiscal totals for household ${householdKey} (${name}), year ${YEAR}`);
 
 for (const row of TOTALS) {
   await client.query(
     `INSERT INTO fiscal_annual_totals
-       (budget_id, user_id, group_id, tax_year, section, total_kind, total_amount, updated_at)
+       (user_id, group_id, household_key, tax_year, section, total_kind, total_amount, updated_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-     ON CONFLICT (budget_id, tax_year, section, total_kind)
+     ON CONFLICT (household_key, tax_year, section, total_kind)
      DO UPDATE SET
        total_amount = EXCLUDED.total_amount,
        user_id = EXCLUDED.user_id,
        group_id = EXCLUDED.group_id,
        updated_at = NOW()`,
-    [budgetId, userId, groupId, YEAR, row.section, row.total_kind, row.total_amount],
+    [userId, groupId, householdKey, YEAR, row.section, row.total_kind, row.total_amount],
   );
   console.log(`  ${row.section}/${row.total_kind} = ${row.total_amount}`);
 }
 
-console.log(`Seeding tax totals for budget ${budgetId} (${name}), year ${YEAR}`);
+console.log(`Seeding tax totals for household ${householdKey} (${name}), year ${YEAR}`);
 for (const row of TAX_TOTALS) {
   await client.query(
     `INSERT INTO tax_annual_totals
-       (budget_id, user_id, group_id, tax_year, tax_kind, total_amount, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, NOW())
-     ON CONFLICT (budget_id, tax_year, tax_kind)
+       (user_id, group_id, household_key, tax_year, tax_kind, total_amount, updated_at)
+     VALUES ($1, $2, $3, $4, $5, NOW())
+     ON CONFLICT (household_key, tax_year, tax_kind)
      DO UPDATE SET
        total_amount = EXCLUDED.total_amount,
        user_id = EXCLUDED.user_id,
        group_id = EXCLUDED.group_id,
        updated_at = NOW()`,
-    [budgetId, userId, groupId, YEAR, row.tax_kind, row.total_amount],
+    [userId, groupId, householdKey, YEAR, row.tax_kind, row.total_amount],
   );
   console.log(`  tax/${row.tax_kind} = ${row.total_amount}`);
 }

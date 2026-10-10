@@ -2369,6 +2369,7 @@ async function doSubmitGrossIncomePaycheck() {
           income_source_id: ctx.effectiveIncomeSourceId,
           investment_source_id: null,
           savings_source_id: null,
+          from_gross_pay: true,
         },
       });
     }
@@ -2389,6 +2390,7 @@ async function doSubmitGrossIncomePaycheck() {
           income_source_id: ctx.effectiveIncomeSourceId,
           investment_source_id: null,
           savings_source_id: null,
+          from_gross_pay: true,
         },
       });
     }
@@ -2412,6 +2414,7 @@ async function doSubmitGrossIncomePaycheck() {
             income_source_id: ctx.effectiveIncomeSourceId,
             investment_source_id: null,
             savings_source_id: null,
+            from_gross_pay: true,
           },
         });
         continue;
@@ -2446,6 +2449,7 @@ async function doSubmitGrossIncomePaycheck() {
           income_source_id: null,
           investment_source_id: null,
           savings_source_id: null,
+          from_gross_pay: true,
         },
       });
     }

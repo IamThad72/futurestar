@@ -2,7 +2,6 @@ import { createError, readBody } from "h3";
 import { createDbClient } from "../../utils/db";
 import { getSessionUserId } from "../../utils/auth";
 import { getUserGroupId } from "../../utils/group";
-import { getActiveBudget } from "../../utils/budgetAccess";
 import {
   isFiscalIncomeKind,
   isFiscalPosttaxKind,
@@ -35,7 +34,6 @@ export default defineEventHandler(async (event) => {
   try {
     await client.connect();
     const groupId = await getUserGroupId(client, userId);
-    const active = await getActiveBudget(client, userId, groupId);
 
     for (const row of totals) {
       const section = String(row.section || "").trim().toLowerCase() as FiscalSection;
@@ -64,7 +62,6 @@ export default defineEventHandler(async (event) => {
 
       await upsertFiscalAnnualTotal(
         client,
-        active.budget_id,
         userId,
         groupId,
         taxYear,
@@ -74,19 +71,12 @@ export default defineEventHandler(async (event) => {
       );
     }
 
-    await syncTaxableIncomeFromGrossAndPretax(
-      client,
-      active.budget_id,
-      userId,
-      groupId,
-      taxYear,
-    );
+    await syncTaxableIncomeFromGrossAndPretax(client, userId, groupId, taxYear);
 
-    const listed = await listFiscalAnnualTotals(client, active.budget_id, taxYear);
+    const listed = await listFiscalAnnualTotals(client, userId, groupId, taxYear);
     return {
       success: true,
       tax_year: taxYear,
-      budget_id: active.budget_id,
       ...listed,
     };
   } catch (error: unknown) {

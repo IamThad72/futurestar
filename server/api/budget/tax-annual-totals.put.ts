@@ -2,7 +2,6 @@ import { createError, readBody } from "h3";
 import { createDbClient } from "../../utils/db";
 import { getSessionUserId } from "../../utils/auth";
 import { getUserGroupId } from "../../utils/group";
-import { getActiveBudget } from "../../utils/budgetAccess";
 import {
   isTaxAnnualKind,
   listTaxAnnualTotals,
@@ -30,7 +29,6 @@ export default defineEventHandler(async (event) => {
   try {
     await client.connect();
     const groupId = await getUserGroupId(client, userId);
-    const active = await getActiveBudget(client, userId, groupId);
 
     for (const row of totals) {
       const kind = String(row.tax_kind || "").trim().toLowerCase();
@@ -45,7 +43,6 @@ export default defineEventHandler(async (event) => {
 
       await upsertTaxAnnualTotal(
         client,
-        active.budget_id,
         userId,
         groupId,
         taxYear,
@@ -54,11 +51,10 @@ export default defineEventHandler(async (event) => {
       );
     }
 
-    const listed = await listTaxAnnualTotals(client, active.budget_id, taxYear);
+    const listed = await listTaxAnnualTotals(client, userId, groupId, taxYear);
     return {
       success: true,
       tax_year: taxYear,
-      budget_id: active.budget_id,
       ...listed,
     };
   } catch (error: unknown) {

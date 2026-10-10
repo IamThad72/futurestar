@@ -56,8 +56,53 @@ export const soloUserClauseAt = (alias = "", userParam = 1) => {
   return `${prefix}user_id = $${userParam}`;
 };
 
+async function mergeAnnualTotalsIntoGroup(
+  client: DbClient,
+  table: "tax_annual_totals" | "fiscal_annual_totals",
+  groupId: number,
+  userId: number,
+) {
+  const groupKey = `g:${groupId}`;
+  const soloKey = `u:${userId}`;
+  const kindMatch =
+    table === "tax_annual_totals"
+      ? "g.tax_kind = s.tax_kind"
+      : "g.section = s.section AND g.total_kind = s.total_kind";
+
+  await client.query(
+    `UPDATE ${table} g
+     SET total_amount = g.total_amount + s.total_amount,
+         updated_at = NOW()
+     FROM ${table} s
+     WHERE g.household_key = $1
+       AND s.household_key = $2
+       AND g.tax_year = s.tax_year
+       AND ${kindMatch}`,
+    [groupKey, soloKey],
+  );
+  await client.query(
+    `DELETE FROM ${table} s
+     USING ${table} g
+     WHERE s.household_key = $2
+       AND g.household_key = $1
+       AND s.tax_year = g.tax_year
+       AND ${kindMatch}`,
+    [groupKey, soloKey],
+  );
+  await client.query(
+    `UPDATE ${table}
+     SET group_id = $1
+     WHERE household_key = $2`,
+    [groupId, soloKey],
+  );
+}
+
 export const backfillGroupIdForUser = async (client: DbClient, groupId: number, userId: number) => {
   for (const table of GROUP_SHARED_TABLES) {
+    if (table === "tax_annual_totals" || table === "fiscal_annual_totals") {
+      await mergeAnnualTotalsIntoGroup(client, table, groupId, userId);
+      continue;
+    }
     await client.query(`UPDATE ${table} SET group_id = $1 WHERE user_id = $2 AND group_id IS NULL`, [groupId, userId]);
   }
 };

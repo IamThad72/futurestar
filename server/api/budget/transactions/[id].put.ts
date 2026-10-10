@@ -2,7 +2,6 @@ import { createError, readBody } from "h3";
 import { createDbClient } from "../../../utils/db";
 import { getSessionUserId } from "../../../utils/auth";
 import { getUserGroupId, groupAccessClause, groupAccessClauseAt, soloUserClauseAt } from "../../../utils/group";
-import { getActiveBudget } from "../../../utils/budgetAccess";
 import { applyDebtPayment, reverseDebtPayment } from "../../../utils/debtPayment";
 import { applyFiscalTotalsForTransaction } from "../../../utils/fiscalAnnualTotals";
 import { adjustTaxAnnualTotalForClassification, yearFromDateString } from "../../../utils/taxAnnualTotals";
@@ -76,7 +75,7 @@ export default defineEventHandler(async (event) => {
 
     const existingRes = await client.query(
       `SELECT debt_id, amount, principal_applied, expense_id, income_id, transaction_date,
-              item_type, category, sub_category
+              item_type, category, sub_category, from_gross_pay
        FROM budget_transactions WHERE transaction_id = $1 AND ${accessClause}`,
       accessParams,
     );
@@ -334,61 +333,45 @@ export default defineEventHandler(async (event) => {
       oldRow.income_id != null && Number(oldRow.income_id) > 0 ? "income" : "expense";
     const newItemKind = finalIncomeId != null && finalIncomeId > 0 ? "income" : "expense";
 
-    const active = await getActiveBudget(client, userId, groupId);
+    if (oldRow.from_gross_pay === true) {
+      if (oldWasTax) {
+        await adjustTaxAnnualTotalForClassification(
+          client,
+          userId,
+          groupId,
+          yearFromDateString(oldDate),
+          oldCategory,
+          oldSubCategory,
+          -oldAmount,
+        );
+      }
+      if (newIsTax) {
+        await adjustTaxAnnualTotalForClassification(
+          client,
+          userId,
+          groupId,
+          yearFromDateString(dateStr),
+          finalCategory,
+          finalSubCategory,
+          newAmount,
+        );
+      }
 
-    if (oldWasTax) {
-      await adjustTaxAnnualTotalForClassification(
-        client,
-        active.budget_id,
-        userId,
-        groupId,
-        yearFromDateString(oldDate),
-        oldCategory,
-        oldSubCategory,
-        -oldAmount,
-      );
-    }
-    if (newIsTax) {
-      await adjustTaxAnnualTotalForClassification(
-        client,
-        active.budget_id,
-        userId,
-        groupId,
-        yearFromDateString(dateStr),
-        finalCategory,
-        finalSubCategory,
-        newAmount,
-      );
-    }
-
-    await applyFiscalTotalsForTransaction(
-      client,
-      active.budget_id,
-      userId,
-      groupId,
-      yearFromDateString(oldDate),
-      {
+      await applyFiscalTotalsForTransaction(client, userId, groupId, yearFromDateString(oldDate), {
         itemKind: oldItemKind,
         itemType: oldItemType,
         category: oldCategory,
         subCategory: oldSubCategory,
         signedAmount: -oldAmount,
-      },
-    );
-    await applyFiscalTotalsForTransaction(
-      client,
-      active.budget_id,
-      userId,
-      groupId,
-      yearFromDateString(dateStr),
-      {
+      });
+      await applyFiscalTotalsForTransaction(client, userId, groupId, yearFromDateString(dateStr), {
         itemKind: newItemKind,
         itemType: newItemType,
         category: finalCategory,
         subCategory: finalSubCategory,
         signedAmount: newAmount,
-      },
-    );
+      });
+    }
 
     return { success: true };
   } catch (error) {

@@ -14,16 +14,38 @@ CREATE TABLE IF NOT EXISTS tax_annual_totals (
     CONSTRAINT tax_annual_totals_year_check CHECK (tax_year >= 2000 AND tax_year <= 2100)
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_tax_annual_totals_unique
-  ON tax_annual_totals (budget_id, tax_year, tax_kind);
-
-CREATE INDEX IF NOT EXISTS idx_tax_annual_totals_budget_year
-  ON tax_annual_totals (budget_id, tax_year);
 CREATE INDEX IF NOT EXISTS idx_tax_annual_totals_group
   ON tax_annual_totals (group_id) WHERE group_id IS NOT NULL;
 
--- Backfill from existing tax transactions
-INSERT INTO tax_annual_totals (budget_id, user_id, group_id, tax_year, tax_kind, total_amount, updated_at)
+DO $tax_budget_idx$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'tax_annual_totals'
+      AND column_name = 'budget_id'
+  ) THEN
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_tax_annual_totals_unique
+      ON tax_annual_totals (budget_id, tax_year, tax_kind);
+    CREATE INDEX IF NOT EXISTS idx_tax_annual_totals_budget_year
+      ON tax_annual_totals (budget_id, tax_year);
+  END IF;
+END
+$tax_budget_idx$;
+
+-- Backfill from existing tax transactions. Skipped once totals are no longer stored per budget.
+DO $tax_backfill$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'tax_annual_totals'
+      AND column_name = 'budget_id'
+  ) THEN
+    RETURN;
+  END IF;
+
+  INSERT INTO tax_annual_totals (budget_id, user_id, group_id, tax_year, tax_kind, total_amount, updated_at)
 SELECT
   classified.budget_id,
   classified.user_id,
@@ -56,3 +78,5 @@ WHERE classified.tax_kind IS NOT NULL
 GROUP BY classified.budget_id, classified.user_id, classified.group_id, classified.tax_year, classified.tax_kind
 -- Do not overwrite a stored YTD baseline (seed / paycheck deltas).
 ON CONFLICT (budget_id, tax_year, tax_kind) DO NOTHING;
+END
+$tax_backfill$;

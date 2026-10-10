@@ -2,7 +2,7 @@ import { createError, readBody } from "h3";
 import { createDbClient } from "../../../utils/db";
 import { getSessionUserId } from "../../../utils/auth";
 import { getUserGroupId, groupAccessClauseAt, soloUserClauseAt } from "../../../utils/group";
-import { getActiveBudget, getBudgetForPeriod } from "../../../utils/budgetAccess";
+import { getBudgetForPeriod } from "../../../utils/budgetAccess";
 import { applyDebtPayment } from "../../../utils/debtPayment";
 import { applyFiscalTotalsForTransaction } from "../../../utils/fiscalAnnualTotals";
 import { adjustTaxAnnualTotalForClassification, yearFromDateString } from "../../../utils/taxAnnualTotals";
@@ -44,6 +44,7 @@ export default defineEventHandler(async (event) => {
     savingsSourceIdRaw !== undefined && savingsSourceIdRaw !== null && savingsSourceIdRaw !== ""
       ? parseInt(String(savingsSourceIdRaw), 10)
       : null;
+  const fromGrossPay = body?.from_gross_pay === true;
 
   if (type !== "income" && type !== "expense") {
     throw createError({
@@ -339,9 +340,9 @@ export default defineEventHandler(async (event) => {
          user_id, group_id, income_id, expense_id, transaction_date, amount, description,
          cash_investment_id, debt_id, from_cash_investment_id, income_source_id, investment_source_id,
          savings_source_id, principal_applied, interest_applied,
-         item_kind, item_type, category, sub_category
+         item_kind, item_type, category, sub_category, from_gross_pay
        )
-       VALUES ($1, $2, $3, $4, $5::date, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
+       VALUES ($1, $2, $3, $4, $5::date, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`,
       [
         userId,
         groupId ?? null,
@@ -362,6 +363,7 @@ export default defineEventHandler(async (event) => {
         itemType,
         category,
         subCategory,
+        fromGrossPay,
       ],
     );
 
@@ -397,37 +399,28 @@ export default defineEventHandler(async (event) => {
 
     const txAmount = amount != null && !isNaN(amount) ? Math.abs(amount) : 0;
     const fiscalYear = yearFromDateString(dateStr);
-    // Add onto the active budget's stored baseline. The tax page sums every
-    // household budget for the year, so switching plans does not hide YTD.
-    const active = await getActiveBudget(client, userId, groupId);
+    // Tax page totals are household-owned. Only a gross-pay actual changes them.
+    if (fromGrossPay && txAmount > 0) {
+      if (type === "income" && incomeTypeForAdjust === "tax") {
+        await adjustTaxAnnualTotalForClassification(
+          client,
+          userId,
+          groupId,
+          fiscalYear,
+          category,
+          subCategory,
+          txAmount,
+        );
+      }
 
-    if (type === "income" && incomeTypeForAdjust === "tax") {
-      await adjustTaxAnnualTotalForClassification(
-        client,
-        active.budget_id,
-        userId,
-        groupId,
-        fiscalYear,
-        category,
-        subCategory,
-        txAmount,
-      );
-    }
-
-    await applyFiscalTotalsForTransaction(
-      client,
-      active.budget_id,
-      userId,
-      groupId,
-      fiscalYear,
-      {
+      await applyFiscalTotalsForTransaction(client, userId, groupId, fiscalYear, {
         itemKind: type === "income" ? "income" : "expense",
         itemType: type === "income" ? incomeTypeForAdjust : expenseTypeForAdjust,
         category,
         subCategory,
         signedAmount: txAmount,
-      },
-    );
+      });
+    }
 
     return { success: true };
   } catch (error) {

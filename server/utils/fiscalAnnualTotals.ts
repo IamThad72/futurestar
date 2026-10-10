@@ -1,3 +1,5 @@
+import { annualTotalsHouseholdKey } from "./taxAnnualTotals";
+
 export const FISCAL_INCOME_KINDS = ["gross", "net", "taxable"] as const;
 export const FISCAL_PRETAX_KINDS = ["medical", "dental", "vision", "401k", "hsa"] as const;
 export const FISCAL_POSTTAX_KINDS = ["supplemental_life", "stock_option_offset"] as const;
@@ -160,7 +162,6 @@ export function sumFiscalPretaxAmounts(
 /** Persist Taxable Income from stored Gross and the five Pre-Tax kinds. */
 export async function syncTaxableIncomeFromGrossAndPretax(
   client: DbClient,
-  budgetId: number,
   userId: number,
   groupId: number | null,
   taxYear: number | null | undefined,
@@ -168,18 +169,9 @@ export async function syncTaxableIncomeFromGrossAndPretax(
   const year = taxYear == null ? NaN : Number(taxYear);
   if (!Number.isFinite(year) || year < 2000 || year > 2100) return;
 
-  const { income } = await listFiscalAnnualTotals(client, budgetId, year);
+  const { income } = await listFiscalAnnualTotals(client, userId, groupId, year);
   const taxable = income.find((r) => r.total_kind === "taxable")?.total_amount ?? 0;
-  await upsertFiscalAnnualTotal(
-    client,
-    budgetId,
-    userId,
-    groupId,
-    year,
-    "income",
-    "taxable",
-    taxable,
-  );
+  await upsertFiscalAnnualTotal(client, userId, groupId, year, "income", "taxable", taxable);
 }
 
 /**
@@ -189,7 +181,6 @@ export async function syncTaxableIncomeFromGrossAndPretax(
  */
 export async function applyFiscalTotalsForTransaction(
   client: DbClient,
-  budgetId: number,
   userId: number,
   groupId: number | null,
   taxYear: number | null | undefined,
@@ -215,7 +206,6 @@ export async function applyFiscalTotalsForTransaction(
       if (posttaxKind) {
         await applyFiscalAnnualTotalDelta(
           client,
-          budgetId,
           userId,
           groupId,
           year,
@@ -228,7 +218,6 @@ export async function applyFiscalTotalsForTransaction(
         if (pretaxKind) {
           await applyFiscalAnnualTotalDelta(
             client,
-            budgetId,
             userId,
             groupId,
             year,
@@ -244,7 +233,6 @@ export async function applyFiscalTotalsForTransaction(
       if (incomeKind) {
         await applyFiscalAnnualTotalDelta(
           client,
-          budgetId,
           userId,
           groupId,
           year,
@@ -260,7 +248,6 @@ export async function applyFiscalTotalsForTransaction(
     if (pretaxKind) {
       await applyFiscalAnnualTotalDelta(
         client,
-        budgetId,
         userId,
         groupId,
         year,
@@ -273,13 +260,12 @@ export async function applyFiscalTotalsForTransaction(
   }
 
   if (syncTaxable) {
-    await syncTaxableIncomeFromGrossAndPretax(client, budgetId, userId, groupId, year);
+    await syncTaxableIncomeFromGrossAndPretax(client, userId, groupId, year);
   }
 }
 
 export async function upsertFiscalAnnualTotal(
   client: DbClient,
-  budgetId: number,
   userId: number,
   groupId: number | null,
   taxYear: number,
@@ -288,21 +274,20 @@ export async function upsertFiscalAnnualTotal(
   totalAmount: number,
 ) {
   await client.query(
-    `INSERT INTO fiscal_annual_totals (budget_id, user_id, group_id, tax_year, section, total_kind, total_amount, updated_at)
+    `INSERT INTO fiscal_annual_totals (user_id, group_id, household_key, tax_year, section, total_kind, total_amount, updated_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-     ON CONFLICT (budget_id, tax_year, section, total_kind)
+     ON CONFLICT (household_key, tax_year, section, total_kind)
      DO UPDATE SET
        total_amount = EXCLUDED.total_amount,
        user_id = EXCLUDED.user_id,
        group_id = EXCLUDED.group_id,
        updated_at = NOW()`,
-    [budgetId, userId, groupId, taxYear, section, totalKind, totalAmount],
+    [userId, groupId, annualTotalsHouseholdKey(userId, groupId), taxYear, section, totalKind, totalAmount],
   );
 }
 
 export async function applyFiscalAnnualTotalDelta(
   client: DbClient,
-  budgetId: number,
   userId: number,
   groupId: number | null,
   taxYear: number,
@@ -314,15 +299,15 @@ export async function applyFiscalAnnualTotalDelta(
   if (!Number.isFinite(delta) || delta === 0) return;
 
   await client.query(
-    `INSERT INTO fiscal_annual_totals (budget_id, user_id, group_id, tax_year, section, total_kind, total_amount, updated_at)
+    `INSERT INTO fiscal_annual_totals (user_id, group_id, household_key, tax_year, section, total_kind, total_amount, updated_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-     ON CONFLICT (budget_id, tax_year, section, total_kind)
+     ON CONFLICT (household_key, tax_year, section, total_kind)
      DO UPDATE SET
        total_amount = GREATEST(0, fiscal_annual_totals.total_amount + EXCLUDED.total_amount),
        user_id = EXCLUDED.user_id,
        group_id = EXCLUDED.group_id,
        updated_at = NOW()`,
-    [budgetId, userId, groupId, taxYear, section, totalKind, delta],
+    [userId, groupId, annualTotalsHouseholdKey(userId, groupId), taxYear, section, totalKind, delta],
   );
 }
 
@@ -358,31 +343,16 @@ function assembleFiscalAnnualTotals(byKey: Map<string, number>) {
 
 export async function listFiscalAnnualTotals(
   client: DbClient,
-  budgetId: number,
+  userId: number,
+  groupId: number | null,
   taxYear: number,
 ) {
-  return listFiscalAnnualTotalsForBudgets(client, [budgetId], taxYear);
-}
-
-/**
- * Year-to-date income and deductions are household-wide. Paycheck deltas
- * land on whichever budget is active at the time, so a read has to add
- * every owned budget. Taxable income is recomputed from those sums.
- */
-export async function listFiscalAnnualTotalsForBudgets(
-  client: DbClient,
-  budgetIds: number[],
-  taxYear: number,
-) {
-  const ids = [...new Set(budgetIds.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0))];
-  if (!ids.length) return assembleFiscalAnnualTotals(new Map());
-
+  const householdKey = annualTotalsHouseholdKey(userId, groupId);
   const result = await client.query(
-    `SELECT section, total_kind, SUM(total_amount) AS total_amount
+    `SELECT section, total_kind, total_amount
      FROM fiscal_annual_totals
-     WHERE budget_id = ANY($1::int[]) AND tax_year = $2
-     GROUP BY section, total_kind`,
-    [ids, taxYear],
+     WHERE household_key = $1 AND tax_year = $2`,
+    [householdKey, taxYear],
   );
 
   const byKey = new Map<string, number>();

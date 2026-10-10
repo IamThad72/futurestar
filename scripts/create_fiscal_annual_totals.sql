@@ -22,10 +22,21 @@ CREATE TABLE IF NOT EXISTS fiscal_annual_totals (
     CONSTRAINT fiscal_annual_totals_year_check CHECK (tax_year >= 2000 AND tax_year <= 2100)
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_fiscal_annual_totals_unique
-  ON fiscal_annual_totals (budget_id, tax_year, section, total_kind);
-
-CREATE INDEX IF NOT EXISTS idx_fiscal_annual_totals_budget_year
-  ON fiscal_annual_totals (budget_id, tax_year);
 CREATE INDEX IF NOT EXISTS idx_fiscal_annual_totals_group
   ON fiscal_annual_totals (group_id) WHERE group_id IS NOT NULL;
+
+DO $fiscal_budget_idx$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'fiscal_annual_totals'
+      AND column_name = 'budget_id'
+  ) THEN
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_fiscal_annual_totals_unique
+      ON fiscal_annual_totals (budget_id, tax_year, section, total_kind);
+    CREATE INDEX IF NOT EXISTS idx_fiscal_annual_totals_budget_year
+      ON fiscal_annual_totals (budget_id, tax_year);
+  END IF;
+END
+$fiscal_budget_idx$;

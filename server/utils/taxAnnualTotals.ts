@@ -24,6 +24,13 @@ export function isTaxAnnualKind(kind: string): kind is TaxAnnualKind {
   return (TAX_ANNUAL_KINDS as readonly string[]).includes(kind);
 }
 
+/** Tax totals belong to the household, not to a budget plan. */
+export function annualTotalsHouseholdKey(userId: number, groupId: number | null | undefined) {
+  const group = groupId == null ? NaN : Number(groupId);
+  if (Number.isFinite(group) && group > 0) return `g:${group}`;
+  return `u:${Number(userId)}`;
+}
+
 /** Map tax income category/subcategory text to a standard annual total kind. */
 export function classifyTaxAnnualKind(
   category: string | null | undefined,
@@ -41,7 +48,6 @@ export function classifyTaxAnnualKind(
 
 export async function upsertTaxAnnualTotal(
   client: DbClient,
-  budgetId: number,
   userId: number,
   groupId: number | null,
   taxYear: number,
@@ -50,16 +56,17 @@ export async function upsertTaxAnnualTotal(
 ) {
   const amount = Number(totalAmount);
   if (!Number.isFinite(amount)) return;
+  const householdKey = annualTotalsHouseholdKey(userId, groupId);
   await client.query(
-    `INSERT INTO tax_annual_totals (budget_id, user_id, group_id, tax_year, tax_kind, total_amount, updated_at)
+    `INSERT INTO tax_annual_totals (user_id, group_id, household_key, tax_year, tax_kind, total_amount, updated_at)
      VALUES ($1, $2, $3, $4, $5, $6, NOW())
-     ON CONFLICT (budget_id, tax_year, tax_kind)
+     ON CONFLICT (household_key, tax_year, tax_kind)
      DO UPDATE SET
        total_amount = EXCLUDED.total_amount,
        user_id = EXCLUDED.user_id,
        group_id = EXCLUDED.group_id,
        updated_at = NOW()`,
-    [budgetId, userId, groupId, taxYear, taxKind, amount],
+    [userId, groupId, householdKey, taxYear, taxKind, amount],
   );
 }
 
@@ -78,30 +85,16 @@ function taxTotalsFromKindAmounts(byKind: Record<string, number>) {
 
 export async function listTaxAnnualTotals(
   client: DbClient,
-  budgetId: number,
+  userId: number,
+  groupId: number | null,
   taxYear: number,
 ) {
-  return listTaxAnnualTotalsForBudgets(client, [budgetId], taxYear);
-}
-
-/**
- * Year-to-date tax is household-wide. Paycheck deltas land on whichever
- * budget is active at the time, so a read has to add every owned budget.
- */
-export async function listTaxAnnualTotalsForBudgets(
-  client: DbClient,
-  budgetIds: number[],
-  taxYear: number,
-) {
-  const ids = [...new Set(budgetIds.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0))];
-  if (!ids.length) return taxTotalsFromKindAmounts({});
-
+  const householdKey = annualTotalsHouseholdKey(userId, groupId);
   const result = await client.query(
-    `SELECT tax_kind, SUM(total_amount) AS total_amount
+    `SELECT tax_kind, total_amount
      FROM tax_annual_totals
-     WHERE budget_id = ANY($1::int[]) AND tax_year = $2
-     GROUP BY tax_kind`,
-    [ids, taxYear],
+     WHERE household_key = $1 AND tax_year = $2`,
+    [householdKey, taxYear],
   );
 
   const byKind = Object.fromEntries(
@@ -166,10 +159,10 @@ export async function refreshTaxAnnualTotalsForYear(
     const total = byKind.get(kind);
     if (total == null) continue;
     await client.query(
-      `INSERT INTO tax_annual_totals (budget_id, user_id, group_id, tax_year, tax_kind, total_amount, updated_at)
+      `INSERT INTO tax_annual_totals (user_id, group_id, household_key, tax_year, tax_kind, total_amount, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, NOW())
-       ON CONFLICT (budget_id, tax_year, tax_kind) DO NOTHING`,
-      [budgetId, userId, groupId, taxYear, kind, total],
+       ON CONFLICT (household_key, tax_year, tax_kind) DO NOTHING`,
+      [userId, groupId, annualTotalsHouseholdKey(userId, groupId), taxYear, kind, total],
     );
   }
 }
@@ -201,7 +194,6 @@ export async function refreshTaxAnnualTotalsAfterChange(
  */
 export async function applyTaxAnnualTotalDelta(
   client: DbClient,
-  budgetId: number,
   userId: number,
   groupId: number | null,
   taxYear: number | null | undefined,
@@ -214,22 +206,21 @@ export async function applyTaxAnnualTotalDelta(
   if (!Number.isFinite(delta) || delta === 0) return;
 
   await client.query(
-    `INSERT INTO tax_annual_totals (budget_id, user_id, group_id, tax_year, tax_kind, total_amount, updated_at)
+    `INSERT INTO tax_annual_totals (user_id, group_id, household_key, tax_year, tax_kind, total_amount, updated_at)
      VALUES ($1, $2, $3, $4, $5, $6, NOW())
-     ON CONFLICT (budget_id, tax_year, tax_kind)
+     ON CONFLICT (household_key, tax_year, tax_kind)
      DO UPDATE SET
        total_amount = GREATEST(0, tax_annual_totals.total_amount + EXCLUDED.total_amount),
        user_id = EXCLUDED.user_id,
        group_id = EXCLUDED.group_id,
        updated_at = NOW()`,
-    [budgetId, userId, groupId, year, taxKind, delta],
+    [userId, groupId, annualTotalsHouseholdKey(userId, groupId), year, taxKind, delta],
   );
 }
 
-/** Add/subtract a tax transaction amount from the matching annual kind total. */
+/** Add/subtract a gross-pay tax actual from the matching stored kind total. */
 export async function adjustTaxAnnualTotalForClassification(
   client: DbClient,
-  budgetId: number,
   userId: number,
   groupId: number | null,
   taxYear: number | null | undefined,
@@ -239,7 +230,7 @@ export async function adjustTaxAnnualTotalForClassification(
 ) {
   const kind = classifyTaxAnnualKind(category, subCategory);
   if (!kind) return;
-  await applyTaxAnnualTotalDelta(client, budgetId, userId, groupId, taxYear, kind, signedAmount);
+  await applyTaxAnnualTotalDelta(client, userId, groupId, taxYear, kind, signedAmount);
 }
 
 export function yearFromDateString(dateStr: string | null | undefined): number | null {
