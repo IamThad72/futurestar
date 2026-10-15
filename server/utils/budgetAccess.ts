@@ -1,5 +1,5 @@
 import { createError } from "h3";
-import { groupAccessClause, soloUserClause } from "./group";
+import { groupAccessClause, groupAccessClauseAt, soloUserClause, soloUserClauseAt } from "./group";
 
 /** Financial budget helpers. Linked-account `group_id` applies here only. */
 
@@ -272,6 +272,92 @@ export async function getBudgetById(
     throw createError({ statusCode: 404, statusMessage: "Budget not found." });
   }
   return row;
+}
+
+export type ResolvedBudgetLine = {
+  id: number;
+  item_type: string;
+  category: string;
+  sub_category: string | null;
+};
+
+/**
+ * Line to store for a transaction date.
+ * If the chosen line belongs to another of this household's budgets, use the
+ * same type/category/sub-category on the budget that owns that month.
+ */
+export async function resolveLineForPeriodBudget(
+  client: DbClient,
+  userId: number,
+  groupId: number | null,
+  kind: "income" | "expense",
+  lineId: number,
+  periodBudgetId: number,
+): Promise<ResolvedBudgetLine | null> {
+  if (!Number.isFinite(lineId) || lineId <= 0) return null;
+
+  const table = kind === "income" ? "income" : "expenses";
+  const idCol = kind === "income" ? "income_id" : "expense_id";
+  const typeCol = kind === "income" ? "income_type" : "expense_type";
+  const catCol = kind === "income" ? "income_category" : "expense_category";
+  const defaultType = kind === "income" ? "gross" : "expense";
+  const access = groupId ? groupAccessClauseAt("", 2, 3) : soloUserClauseAt("", 2);
+  const ownerParams = groupId ? [userId, groupId] : [userId];
+
+  const source = await client.query(
+    `SELECT ${idCol} AS id, budget_id,
+            COALESCE(${typeCol}, '${defaultType}') AS item_type,
+            COALESCE(${catCol}, '') AS category,
+            sub_category
+     FROM ${table}
+     WHERE ${idCol} = $1 AND ${access}
+     LIMIT 1`,
+    [lineId, ...ownerParams],
+  );
+  const row = source.rows[0] as
+    | { id: number; budget_id: number; item_type: string; category: string; sub_category: string | null }
+    | undefined;
+  if (!row) return null;
+
+  const resolved: ResolvedBudgetLine = {
+    id: Number(row.id),
+    item_type: String(row.item_type || defaultType),
+    category: String(row.category || ""),
+    sub_category: row.sub_category != null ? String(row.sub_category) : null,
+  };
+  if (Number(row.budget_id) === periodBudgetId) return resolved;
+
+  const matchAccess = groupId ? groupAccessClauseAt("", 2, 3) : soloUserClauseAt("", 2);
+  const typeParam = groupId ? "$4" : "$3";
+  const catParam = groupId ? "$5" : "$4";
+  const subParam = groupId ? "$6" : "$5";
+  const match = await client.query(
+    `SELECT ${idCol} AS id,
+            COALESCE(${typeCol}, '${defaultType}') AS item_type,
+            COALESCE(${catCol}, '') AS category,
+            sub_category
+     FROM ${table}
+     WHERE budget_id = $1
+       AND ${matchAccess}
+       AND lower(trim(COALESCE(${typeCol}, '${defaultType}'))) = lower(trim(${typeParam}))
+       AND lower(trim(COALESCE(${catCol}, ''))) = lower(trim(${catParam}))
+       AND lower(trim(COALESCE(sub_category, ''))) = lower(trim(COALESCE(${subParam}, '')))
+     ORDER BY ${idCol}
+     LIMIT 1`,
+    groupId
+      ? [periodBudgetId, userId, groupId, resolved.item_type, resolved.category, resolved.sub_category]
+      : [periodBudgetId, userId, resolved.item_type, resolved.category, resolved.sub_category],
+  );
+  const matched = match.rows[0] as
+    | { id: number; item_type: string; category: string; sub_category: string | null }
+    | undefined;
+  if (!matched) return null;
+  return {
+    id: Number(matched.id),
+    item_type: String(matched.item_type || defaultType),
+    category: String(matched.category || ""),
+    sub_category: matched.sub_category != null ? String(matched.sub_category) : null,
+  };
 }
 
 /** Resolve selected budget (query/body) or fall back to active. */

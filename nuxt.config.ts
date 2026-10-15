@@ -38,6 +38,9 @@ export default defineNuxtConfig({
     exerciseDbBaseUrl: "",
     // USDA FoodData Central search (Foundation + Branded). FDC_API_KEY or USDA_FDC_API_KEY.
     fdcApiKey: process.env.FDC_API_KEY || process.env.USDA_FDC_API_KEY || "",
+    // Meal logging and expense-file categorization. GROQ_API_KEY or NUXT_GROQ_API_KEY.
+    groqApiKey: process.env.GROQ_API_KEY || "",
+    groqModel: process.env.GROQ_MODEL || "openai/gpt-oss-20b",
     public: {
       supabaseUrl: process.env.SUPABASE_URL,
       supabasePublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY,

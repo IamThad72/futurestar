@@ -53,8 +53,43 @@
             {{ editingEntryId ? "Edit log entry" : "Log food" }}
           </h2>
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Choose a saved food and how many servings you ate.
+            Describe what you ate. Include the brand and serving size when you know them, or choose a saved food.
           </p>
+          <form v-if="!editingEntryId" class="mt-3 grid gap-3" @submit.prevent="logFromDescription">
+            <label class="form-control">
+              <span class="label py-1"><span class="label-text text-sm">Describe a meal</span></span>
+              <textarea
+                v-model="describeText"
+                rows="2"
+                class="textarea textarea-bordered w-full"
+                placeholder="1 container Chobani greek yogurt, 5.3 oz"
+                maxlength="800"
+              />
+            </label>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <label class="form-control">
+                <span class="label py-1"><span class="label-text text-sm">Meal</span></span>
+                <select v-model="logForm.meal" class="select select-bordered w-full">
+                  <option v-for="meal in mealOptions" :key="`describe-${meal.value}`" :value="meal.value">{{ meal.label }}</option>
+                </select>
+              </label>
+              <label class="form-control">
+                <span class="label py-1"><span class="label-text text-sm">Time</span></span>
+                <input v-model="logForm.time" type="time" class="input input-bordered w-full" required />
+              </label>
+            </div>
+            <p v-if="describeError" class="text-sm text-red-600 dark:text-red-400">{{ describeError }}</p>
+            <p v-else-if="describeMessage" class="text-sm text-gray-600 dark:text-gray-300">{{ describeMessage }}</p>
+            <div>
+              <button
+                type="submit"
+                class="training-chip btn btn-primary btn-sm rounded-full"
+                :disabled="describing || !describeText.trim()"
+              >
+                {{ describing ? "Adding…" : "Add from description" }}
+              </button>
+            </div>
+          </form>
           <p v-if="foodsError" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ foodsError }}</p>
           <p v-else-if="loadingFoods" class="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading foods…</p>
           <p v-else-if="!foods.length" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
@@ -601,6 +636,10 @@ const logForm = ref(emptyLogForm());
 const foodSearchQuery = ref("");
 const logging = ref(false);
 const logError = ref("");
+const describeText = ref("");
+const describing = ref(false);
+const describeError = ref("");
+const describeMessage = ref("");
 const editingEntryId = ref(null);
 const foodForm = ref(emptyFoodForm());
 const savingFood = ref(false);
@@ -1027,6 +1066,36 @@ function cancelEditEntry() {
     meal: logForm.value.meal || "breakfast",
     time: logForm.value.time || localTimeValue(),
   };
+}
+
+async function logFromDescription() {
+  const text = describeText.value.trim();
+  if (text.length < 2 || describing.value) return;
+  describing.value = true;
+  describeError.value = "";
+  describeMessage.value = "";
+  try {
+    const result = await $fetch("/api/physical/nutrition/intake/describe", {
+      method: "POST",
+      body: {
+        text,
+        eaten_on: eatenOn.value,
+        eaten_at: eatenAtIso(eatenOn.value, logForm.value.time),
+        meal: logForm.value.meal,
+      },
+    });
+    const names = (result?.entries || []).map((entry) => entry.name).filter(Boolean);
+    const unmatched = Array.isArray(result?.unmatched) ? result.unmatched.filter(Boolean) : [];
+    describeText.value = "";
+    describeMessage.value = names.length
+      ? `Added ${names.join(", ")}.${unmatched.length ? ` Could not match: ${unmatched.join(", ")}.` : ""}`
+      : "Added that meal.";
+    await loadDay();
+  } catch (error) {
+    describeError.value = parseFetchError(error, "Failed to add that meal.");
+  } finally {
+    describing.value = false;
+  }
 }
 
 async function logFood() {

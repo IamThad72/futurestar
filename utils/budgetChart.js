@@ -110,8 +110,16 @@ export function isPayrollCategory(category) {
   return /payroll/i.test((category || "").trim());
 }
 
+function normBudgetLabel(text) {
+  return String(text || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ");
+}
+
 function labelLooksLikeGrossIncome(text) {
-  const t = (text || "").toLowerCase().trim();
+  const t = normBudgetLabel(text);
   if (!t) return false;
   return (
     t === "gross" ||
@@ -123,6 +131,7 @@ function labelLooksLikeGrossIncome(text) {
 }
 
 function subcategoryLooksLikeNetIncome(sub) {
+  sub = normBudgetLabel(sub);
   if (!sub) return false;
   return (
     /\bnet\s+income\b/.test(sub) ||
@@ -146,8 +155,8 @@ export function isGrossIncomeBudgetLine(item) {
 }
 
 export function isNetIncomeBudgetLine(item) {
-  const cat = (item.category || "").trim().toLowerCase();
-  const sub = (item.sub_category || "").trim().toLowerCase();
+  const cat = normBudgetLabel(item?.category);
+  const sub = normBudgetLabel(item?.sub_category);
   if (subcategoryLooksLikeNetIncome(sub)) return true;
   if (labelLooksLikeGrossIncome(sub)) return false;
   if (labelLooksLikeGrossIncome(cat)) return false;
@@ -241,12 +250,23 @@ function sumActualForItemIds(byItem, itemIds, listType) {
   return itemIds.reduce((sum, id) => sum + getActual(byItem, id, listType), 0);
 }
 
+function calendarParts(dateVal) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dateVal ?? ""));
+  if (match) return { year: Number(match[1]), month: Number(match[2]) };
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return null;
+  return { year: d.getFullYear(), month: d.getMonth() + 1 };
+}
+
 function actualByItemForMonth(transactions, year, month) {
   const byItem = {};
   for (const tx of transactions ?? []) {
-    const d = new Date(tx.date);
-    if (d.getFullYear() !== year || d.getMonth() + 1 !== month) continue;
-    const key = tx.income_id != null ? `income-${tx.income_id}` : `expense-${tx.expense_id}`;
+    const parts = calendarParts(tx.date);
+    if (!parts || parts.year !== year || parts.month !== month) continue;
+    const incomeId = tx.matched_income_id ?? tx.income_id;
+    const expenseId = tx.matched_expense_id ?? tx.expense_id;
+    if (incomeId == null && expenseId == null) continue;
+    const key = incomeId != null ? `income-${incomeId}` : `expense-${expenseId}`;
     byItem[key] = (byItem[key] || 0) + Number(tx.amount);
   }
   return byItem;

@@ -2,6 +2,7 @@ import { createError, readBody } from "h3";
 import { createDbClient } from "../../../utils/db";
 import { getSessionUserId } from "../../../utils/auth";
 import { getUserGroupId, groupAccessClause, groupAccessClauseAt, soloUserClauseAt } from "../../../utils/group";
+import { resolveRecordingTarget } from "../../../utils/budgetCategories";
 import { applyDebtPayment, reverseDebtPayment } from "../../../utils/debtPayment";
 import { applyFiscalTotalsForTransaction } from "../../../utils/fiscalAnnualTotals";
 import { adjustTaxAnnualTotalForClassification, yearFromDateString } from "../../../utils/taxAnnualTotals";
@@ -75,7 +76,7 @@ export default defineEventHandler(async (event) => {
 
     const existingRes = await client.query(
       `SELECT debt_id, amount, principal_applied, expense_id, income_id, transaction_date,
-              item_type, category, sub_category, from_gross_pay
+              item_kind, item_type, category, sub_category, from_gross_pay
        FROM budget_transactions WHERE transaction_id = $1 AND ${accessClause}`,
       accessParams,
     );
@@ -92,6 +93,12 @@ export default defineEventHandler(async (event) => {
     let finalDebtId = oldDebtId != null && !isNaN(oldDebtId) && oldDebtId > 0 ? oldDebtId : null;
     let finalExpenseId = oldRow.expense_id != null ? Number(oldRow.expense_id) : null;
     let finalIncomeId = oldRow.income_id != null ? Number(oldRow.income_id) : null;
+    let finalItemKind: "income" | "expense" =
+      oldRow.item_kind === "income" || oldRow.item_kind === "expense"
+        ? oldRow.item_kind
+        : oldRow.income_id != null
+          ? "income"
+          : "expense";
     let finalItemType = oldRow.item_type != null ? String(oldRow.item_type) : null;
     let finalCategory = oldRow.category != null ? String(oldRow.category) : null;
     let finalSubCategory = oldRow.sub_category != null ? String(oldRow.sub_category) : null;
@@ -119,6 +126,7 @@ export default defineEventHandler(async (event) => {
       finalIncomeId = incomeId;
       finalExpenseId = null;
       finalDebtId = null;
+      finalItemKind = "income";
       finalItemType = row.item_type != null ? String(row.item_type) : null;
       finalCategory = row.category != null ? String(row.category || "Uncategorized") : "Uncategorized";
       finalSubCategory = row.sub_category != null ? String(row.sub_category) : null;
@@ -140,6 +148,7 @@ export default defineEventHandler(async (event) => {
       paramIndex += 4;
       finalExpenseId = expenseId;
       finalIncomeId = null;
+      finalItemKind = "expense";
       finalItemType = row.item_type != null ? String(row.item_type) : null;
       finalCategory = row.category != null ? String(row.category || "Uncategorized") : "Uncategorized";
       finalSubCategory = row.sub_category != null ? String(row.sub_category) : null;
@@ -148,6 +157,31 @@ export default defineEventHandler(async (event) => {
         statusCode: 400,
         statusMessage: "Provide either income_id or expense_id, not both.",
       });
+    } else if (body?.item_kind === "income" || body?.item_kind === "expense") {
+      const recorded = await resolveRecordingTarget(client, userId, groupId, {
+        kind: body.item_kind,
+        lineId: null,
+        itemType: body?.item_type,
+        category: body?.category,
+        subCategory: body?.sub_category,
+      });
+      setClause += `, income_id = $${paramIndex}, expense_id = $${paramIndex + 1}, item_kind = $${paramIndex + 2}, item_type = $${paramIndex + 3}, category = $${paramIndex + 4}, sub_category = $${paramIndex + 5}`;
+      params.push(
+        recorded.incomeId,
+        recorded.expenseId,
+        recorded.itemKind,
+        recorded.itemType,
+        recorded.category || "Uncategorized",
+        recorded.subCategory,
+      );
+      paramIndex += 6;
+      finalIncomeId = recorded.incomeId;
+      finalExpenseId = recorded.expenseId;
+      finalItemKind = recorded.itemKind;
+      finalItemType = recorded.itemType;
+      finalCategory = recorded.category || "Uncategorized";
+      finalSubCategory = recorded.subCategory;
+      if (recorded.itemKind === "income") finalDebtId = null;
     }
 
     if (fromCashInvestmentIdFromBody !== undefined) {
@@ -279,7 +313,7 @@ export default defineEventHandler(async (event) => {
 
     let principalApplied: number | null = null;
     let interestApplied: number | null = null;
-    const isExpense = finalExpenseId != null && finalIncomeId == null;
+    const isExpense = finalItemKind === "expense";
     if (isExpense && finalDebtId != null && amount > 0) {
       const applied = await applyDebtPayment(client, finalDebtId, amount, userId, groupId);
       principalApplied = applied.principal;
@@ -329,9 +363,13 @@ export default defineEventHandler(async (event) => {
     const newAmount = amount != null && !isNaN(amount) ? Math.abs(amount) : 0;
     const oldCategory = oldRow.category != null ? String(oldRow.category) : null;
     const oldSubCategory = oldRow.sub_category != null ? String(oldRow.sub_category) : null;
-    const oldItemKind =
-      oldRow.income_id != null && Number(oldRow.income_id) > 0 ? "income" : "expense";
-    const newItemKind = finalIncomeId != null && finalIncomeId > 0 ? "income" : "expense";
+    const oldItemKind: "income" | "expense" =
+      oldRow.item_kind === "income" || oldRow.item_kind === "expense"
+        ? oldRow.item_kind
+        : oldRow.income_id != null && Number(oldRow.income_id) > 0
+          ? "income"
+          : "expense";
+    const newItemKind = finalItemKind;
 
     if (oldRow.from_gross_pay === true) {
       if (oldWasTax) {

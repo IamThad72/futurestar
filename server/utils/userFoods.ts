@@ -167,7 +167,7 @@ export async function listUserFoods(
   limit = 25,
 ): Promise<UserFood[]> {
   const q = String(query || "").trim();
-  const cap = Math.min(Math.max(limit, 1), 50);
+  const cap = Math.min(Math.max(limit, 1), 200);
   if (q) {
     const result = await client.query(
       `SELECT ${USER_FOOD_COLUMNS}

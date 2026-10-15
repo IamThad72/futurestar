@@ -36,7 +36,11 @@ export function classifyTaxAnnualKind(
   category: string | null | undefined,
   subCategory: string | null | undefined = null,
 ): TaxAnnualKind | null {
-  const blob = `${category || ""} ${subCategory || ""}`.trim().toLowerCase();
+  const blob = `${category || ""} ${subCategory || ""}`
+    .trim()
+    .toLowerCase()
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ");
   if (!blob) return null;
   if (/social\s*security|fica|\boasdi\b/.test(blob)) return "social_security";
   if (/medicare/.test(blob)) return "medicare";

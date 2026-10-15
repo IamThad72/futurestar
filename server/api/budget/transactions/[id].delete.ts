@@ -2,9 +2,11 @@ import { createError } from "h3";
 import { createDbClient } from "../../../utils/db";
 import { getSessionUserId } from "../../../utils/auth";
 import { getUserGroupId, groupAccessClauseAt, soloUserClauseAt } from "../../../utils/group";
-import { reverseDebtPayment } from "../../../utils/debtPayment";
-import { applyFiscalTotalsForTransaction } from "../../../utils/fiscalAnnualTotals";
-import { adjustTaxAnnualTotalForClassification, yearFromDateString } from "../../../utils/taxAnnualTotals";
+import {
+  GROSS_PAY_TX_COLUMNS,
+  loadPaycheckRows,
+  reverseStoredTransactionEffects,
+} from "../../../utils/grossPayTransaction";
 
 export default defineEventHandler(async (event) => {
   const userId = await getSessionUserId(event);
@@ -22,71 +24,54 @@ export default defineEventHandler(async (event) => {
   try {
     await client.connect();
     const groupId = await getUserGroupId(client, userId);
-    const accessClause = groupId ? groupAccessClauseAt("", 2, 3) : soloUserClauseAt("", 2);
-    const params = groupId ? [id, userId, groupId] : [id, userId];
+    await client.query("BEGIN");
 
-    const result = await client.query(
-      `DELETE FROM budget_transactions
-       WHERE transaction_id = $1 AND ${accessClause}
-       RETURNING transaction_id, debt_id, amount, principal_applied, income_id, transaction_date,
-                 item_type, category, sub_category, from_gross_pay`,
-      params,
-    );
+    try {
+      const accessClause = groupId ? groupAccessClauseAt("", 2, 3) : soloUserClauseAt("", 2);
+      const params = groupId ? [id, userId, groupId] : [id, userId];
 
-    if (result.rowCount === 0) {
-      throw createError({
-        statusCode: 404,
-        statusMessage: "Transaction not found.",
-      });
-    }
+      const existing = await client.query(
+        `SELECT ${GROSS_PAY_TX_COLUMNS}
+         FROM budget_transactions
+         WHERE transaction_id = $1 AND ${accessClause}
+         FOR UPDATE`,
+        params,
+      );
 
-    const row = result.rows[0];
-    const debtId = row?.debt_id != null ? Number(row.debt_id) : null;
-    if (debtId && !isNaN(debtId) && debtId > 0) {
-      const principal =
-        row.principal_applied != null && Number(row.principal_applied) > 0
-          ? Number(row.principal_applied)
-          : Number(row.amount) > 0
-            ? Number(row.amount)
-            : 0;
-      await reverseDebtPayment(client, debtId, principal);
-    }
-
-    const incomeId = row?.income_id != null ? Number(row.income_id) : null;
-    const itemType = String(row?.item_type || "").toLowerCase();
-    const dateStr =
-      row.transaction_date instanceof Date
-        ? row.transaction_date.toISOString().slice(0, 10)
-        : String(row.transaction_date || "");
-    const category = row?.category != null ? String(row.category) : null;
-    const subCategory = row?.sub_category != null ? String(row.sub_category) : null;
-    const txAmount = row?.amount != null && !isNaN(Number(row.amount)) ? Math.abs(Number(row.amount)) : 0;
-    const fiscalYear = yearFromDateString(dateStr);
-
-    if (txAmount > 0 && row?.from_gross_pay === true) {
-      if (incomeId && !isNaN(incomeId) && incomeId > 0 && itemType === "tax") {
-        await adjustTaxAnnualTotalForClassification(
-          client,
-          userId,
-          groupId,
-          fiscalYear,
-          category,
-          subCategory,
-          -txAmount,
-        );
+      if (existing.rowCount === 0) {
+        throw createError({
+          statusCode: 404,
+          statusMessage: "Transaction not found.",
+        });
       }
 
-      const itemKind = incomeId && !isNaN(incomeId) && incomeId > 0 ? "income" : "expense";
-      await applyFiscalTotalsForTransaction(client, userId, groupId, fiscalYear, {
-        itemKind,
-        itemType,
-        category,
-        subCategory,
-        signedAmount: -txAmount,
-      });
-    }
+      const rows = await loadPaycheckRows(client, userId, groupId, existing.rows[0]);
+      for (const row of rows) {
+        await reverseStoredTransactionEffects(client, userId, groupId, row);
+      }
 
-    return { success: true };
+      const ids = rows.map((row) => Number(row.transaction_id)).filter((n) => Number.isFinite(n) && n > 0);
+      const deleteAccess = groupId ? groupAccessClauseAt("", 2, 3) : soloUserClauseAt("", 2);
+      const deleteParams = groupId ? [ids, userId, groupId] : [ids, userId];
+      const deleted = await client.query(
+        `DELETE FROM budget_transactions
+         WHERE transaction_id = ANY($1::int[]) AND ${deleteAccess}`,
+        deleteParams,
+      );
+
+      if ((deleted.rowCount ?? 0) !== ids.length) {
+        throw createError({
+          statusCode: 409,
+          statusMessage: "Could not remove every paycheck transaction.",
+        });
+      }
+
+      await client.query("COMMIT");
+      return { success: true, deleted_count: ids.length };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    }
   } catch (error) {
     if (error?.statusCode) throw error;
     console.error("Transaction delete failed", error);

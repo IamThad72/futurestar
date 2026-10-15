@@ -78,6 +78,7 @@ const migrations = [
   "alter_annual_totals_household.sql",
   "create_budget_month_assignments.sql",
   "alter_budget_transactions_add_classification.sql",
+  "alter_budget_transactions_add_pay_batch_id.sql",
   "create_exercise_catalog.sql",
   "alter_exercise_catalog_pull_equipment.sql",
   "alter_exercise_catalog_body_category.sql",

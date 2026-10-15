@@ -49,7 +49,7 @@ export default defineEventHandler(async (event) => {
       `SELECT t.transaction_id as id, t.transaction_date as date, t.amount, t.description,
               t.income_id, t.expense_id, t.cash_investment_id, t.debt_id, t.from_cash_investment_id,
               t.income_source_id, t.investment_source_id, t.savings_source_id,
-              t.principal_applied, t.interest_applied,
+              t.principal_applied, t.interest_applied, t.from_gross_pay,
               COALESCE(t.item_kind, CASE WHEN t.income_id IS NOT NULL THEN 'income' ELSE 'expense' END) as item_kind,
               COALESCE(t.item_type, i.income_type, e.expense_type) as item_type,
               COALESCE(t.category, i.income_category, e.expense_category) as category,

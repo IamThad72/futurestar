@@ -1,5 +1,7 @@
 /** CSV expense import: historical budget-line suggestions and duplicate detection. */
 
+import { classSelectionKey, parseClassSelectionKey, recordingMatchKey } from "./recordingCategory.js";
+
 /** Normalize to YYYY-MM-DD so CSV rows match DB transaction dates */
 export function normalizeDateForDedupe(dateVal) {
   if (dateVal == null || dateVal === "") return null;
@@ -52,6 +54,12 @@ export function csvBudgetItemKey(kind, id) {
 
 export function parseCsvBudgetItemKey(key) {
   if (key == null || key === "") return null;
+  const classification = parseClassSelectionKey(key);
+  if (classification) {
+    const kind =
+      classification.item_kind === "income" && classification.item_type === "deduction" ? "insurance" : "expense";
+    return { kind, id: null, classification };
+  }
   const m = String(key).match(/^([ei]):(\d+)$/);
   if (m) {
     const id = parseInt(m[2], 10);
@@ -64,12 +72,17 @@ export function parseCsvBudgetItemKey(key) {
 }
 
 function transactionBudgetItemKey(tx) {
-  if (tx.type === "expense" || (tx.expense_id != null && tx.income_id == null)) {
-    if (tx.expense_id == null) return null;
-    return csvBudgetItemKey("expense", tx.expense_id);
+  const itemType = String(tx.item_type || "").toLowerCase();
+  if (itemType === "deduction" || tx.type === "insurance") {
+    if (tx.income_id != null) return csvBudgetItemKey("insurance", tx.income_id);
+    if (tx.category) return classSelectionKey("income", "deduction", tx.category, tx.sub_category);
+    return null;
   }
-  if (tx.income_id != null && (tx.item_type === "deduction" || tx.type === "insurance")) {
-    return csvBudgetItemKey("insurance", tx.income_id);
+  if (tx.type === "expense" || tx.item_kind === "expense" || (tx.expense_id != null && tx.income_id == null)) {
+    if (tx.expense_id != null) return csvBudgetItemKey("expense", tx.expense_id);
+    if (tx.category && (tx.item_kind === "expense" || tx.type === "expense")) {
+      return classSelectionKey("expense", tx.item_type || "expense", tx.category, tx.sub_category);
+    }
   }
   return null;
 }
@@ -77,6 +90,7 @@ function transactionBudgetItemKey(tx) {
 function rowBudgetItemKey(row) {
   if (row?.budgetItemId != null && row.budgetItemId !== "") {
     const parsed = parseCsvBudgetItemKey(row.budgetItemId);
+    if (parsed?.classification) return String(row.budgetItemId);
     if (parsed) return csvBudgetItemKey(parsed.kind, parsed.id);
   }
   if (row?.expense_id != null) return csvBudgetItemKey("expense", row.expense_id);
@@ -143,6 +157,15 @@ export function budgetCsvDedupeKey(budgetItemKey, dateStr, amount) {
   if (!d) return null;
   const amt = normalizeAmountForDedupe(amount);
   if (amt == null) return null;
+  if (parsed.classification) {
+    const identity = recordingMatchKey(
+      parsed.classification.item_kind,
+      parsed.classification.item_type,
+      parsed.classification.category,
+      parsed.classification.sub_category,
+    );
+    return `c:${identity}|${d}|${amt}`;
+  }
   const prefix = parsed.kind === "insurance" ? "i" : "e";
   return `${prefix}:${parsed.id}|${d}|${amt}`;
 }

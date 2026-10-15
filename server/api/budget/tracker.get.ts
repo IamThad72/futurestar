@@ -3,11 +3,14 @@ import { createDbClient } from "../../utils/db";
 import { getSessionUserId } from "../../utils/auth";
 import { getUserGroupId, groupAccessClause, soloUserClause } from "../../utils/group";
 import { ensureActiveBudget, getBudgetForPeriod, listBudgets, monthDateRange, parseYearMonth } from "../../utils/budgetAccess";
+import { listRecordingCatalog } from "../../utils/budgetCategories";
 import { partitionTransactionsForBudget } from "../../utils/budgetTransactions";
+import { listFiscalAnnualTotals } from "../../utils/fiscalAnnualTotals";
+import { listTaxAnnualTotals } from "../../utils/taxAnnualTotals";
 
 /**
  * Single-request bootstrap for Budget Tracker.
- * Transactions are loaded by date for the month, then matched to the period budget by classification.
+ * The month's budget is the plan. Transactions are recorded by category and are not rewritten when that plan changes.
  */
 export default defineEventHandler(async (event) => {
   const userId = await getSessionUserId(event);
@@ -85,7 +88,7 @@ export default defineEventHandler(async (event) => {
         `SELECT t.transaction_id as id, t.transaction_date as date, t.amount, t.description,
                 t.income_id, t.expense_id, t.cash_investment_id, t.debt_id, t.from_cash_investment_id,
                 t.income_source_id, t.investment_source_id, t.savings_source_id,
-                t.principal_applied, t.interest_applied,
+                t.principal_applied, t.interest_applied, t.from_gross_pay,
                 COALESCE(t.item_kind, CASE WHEN t.income_id IS NOT NULL THEN 'income' ELSE 'expense' END) as item_kind,
                 COALESCE(t.item_type, i.income_type, e.expense_type) as item_type,
                 COALESCE(t.category, i.income_category, e.expense_category) as category,
@@ -131,6 +134,26 @@ export default defineEventHandler(async (event) => {
       expensesResult.rows,
     );
 
+    const [catalog, taxTotals, fiscalTotals] = await Promise.all([
+      listRecordingCatalog(client, userId, groupId, budget.budget_id),
+      listTaxAnnualTotals(client, userId, groupId, year),
+      listFiscalAnnualTotals(client, userId, groupId, year),
+    ]);
+    const recording_categories = catalog
+      .filter((entry) => !entry.on_period_plan)
+      .map((entry) => ({
+        id: entry.item_kind === "income" ? entry.income_id : entry.expense_id,
+        item_kind: entry.item_kind,
+        item_type: entry.item_type,
+        category: entry.category,
+        sub_category: entry.sub_category,
+        description: entry.description,
+        cash_investment_id: entry.cash_investment_id,
+        from_cash_investment_id: entry.from_cash_investment_id,
+        debt_id: entry.debt_id,
+        off_plan: true,
+      }));
+
     return {
       year,
       month,
@@ -143,11 +166,18 @@ export default defineEventHandler(async (event) => {
       expenses: expensesResult.rows,
       transactions,
       orphans,
+      recording_categories,
       cash_accounts: cashResult.rows,
       debt_records: debtResult.rows,
       income_sources: incomeSrcResult.rows,
       investment_sources: invSrcResult.rows,
       savings_sources: savSrcResult.rows,
+      annual_totals: {
+        tax: taxTotals.totals,
+        income: fiscalTotals.income,
+        pretax: fiscalTotals.pretax,
+        posttax: fiscalTotals.posttax,
+      },
     };
   } catch (error: unknown) {
     if (error && typeof error === "object" && "statusCode" in error) throw error;

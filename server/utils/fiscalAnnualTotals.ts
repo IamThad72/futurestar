@@ -45,23 +45,27 @@ export function isFiscalPosttaxKind(kind: string): kind is FiscalPosttaxKind {
   return (FISCAL_POSTTAX_KINDS as readonly string[]).includes(kind);
 }
 
+function normFiscalLabel(value: string | null | undefined) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ");
+}
+
 function labelBlob(
   category: string | null | undefined,
   subCategory: string | null | undefined = null,
 ) {
-  return `${category || ""} ${subCategory || ""}`.trim().toLowerCase();
+  return `${normFiscalLabel(category)} ${normFiscalLabel(subCategory)}`.trim();
 }
 
 function looksLikeNetIncome(
   category: string | null | undefined,
   subCategory: string | null | undefined = null,
 ) {
-  const cat = String(category || "")
-    .trim()
-    .toLowerCase();
-  const sub = String(subCategory || "")
-    .trim()
-    .toLowerCase();
+  const cat = normFiscalLabel(category);
+  const sub = normFiscalLabel(subCategory);
   if (
     /\bnet\s+income\b/.test(sub) ||
     /\bnet\s+pay\b/.test(sub) ||
@@ -79,12 +83,8 @@ function looksLikeGrossIncome(
   subCategory: string | null | undefined = null,
 ) {
   if (looksLikeNetIncome(category, subCategory)) return false;
-  const cat = String(category || "")
-    .trim()
-    .toLowerCase();
-  const sub = String(subCategory || "")
-    .trim()
-    .toLowerCase();
+  const cat = normFiscalLabel(category);
+  const sub = normFiscalLabel(subCategory);
   const looksGross = (t: string) =>
     t === "gross" ||
     t.includes("gross income") ||
