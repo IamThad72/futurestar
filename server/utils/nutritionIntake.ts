@@ -392,16 +392,18 @@ async function resolveLoggedServing(client: Client, userId: number, input: Nutri
     (input.portion_id != null ? "portion" : "custom grams");
 
   if (custom) {
+    const scale =
+      custom.serving_g > 0 && gramWeight != null ? gramWeight / custom.serving_g : input.quantity;
     return {
       fdc_id: null,
       user_food_id: input.user_food_id,
       food_name: foodName,
       portion_label: portionLabel,
       gram_weight: gramWeight,
-      kcal: custom.kcal * input.quantity,
-      protein_g: custom.protein_g * input.quantity,
-      fat_g: custom.fat_g * input.quantity,
-      carb_g: custom.carb_g * input.quantity,
+      kcal: custom.kcal * scale,
+      protein_g: custom.protein_g * scale,
+      fat_g: custom.fat_g * scale,
+      carb_g: custom.carb_g * scale,
       portion_id: input.portion_id,
       quantity: input.quantity,
     };

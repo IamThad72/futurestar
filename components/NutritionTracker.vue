@@ -53,7 +53,7 @@
             {{ editingEntryId ? "Edit log entry" : "Log food" }}
           </h2>
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Describe what you ate. Include the brand and serving size when you know them, or choose a saved food.
+            Describe what you ate, including the brand and serving size. You'll review each food and its size before it is logged.
           </p>
           <form v-if="!editingEntryId" class="mt-3 grid gap-3" @submit.prevent="logFromDescription">
             <label class="form-control">
@@ -86,7 +86,7 @@
                 class="training-chip btn btn-primary btn-sm rounded-full"
                 :disabled="describing || !describeText.trim()"
               >
-                {{ describing ? "Adding…" : "Add from description" }}
+                {{ describing ? "Reading…" : "Review foods" }}
               </button>
             </div>
           </form>
@@ -352,6 +352,93 @@
             </button>
           </div>
         </form>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button type="submit">close</button>
+      </form>
+    </dialog>
+
+    <dialog ref="describeModalEl" class="modal" @close="onDescribeModalClose">
+      <div class="modal-box flex max-h-[90vh] max-w-lg flex-col overflow-hidden">
+        <h3 class="text-lg font-semibold">Review foods</h3>
+        <p class="mt-1 text-sm text-base-content/60">
+          Adjust the servings or the size. Nothing is logged until you add them.
+        </p>
+        <p v-if="describeUnmatched.length" class="mt-3 text-sm text-amber-700 dark:text-amber-400">
+          Could not match: {{ describeUnmatched.join(", ") }}.
+        </p>
+        <div class="mt-4 min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-0.5">
+          <div
+            v-for="(row, index) in describeProposals"
+            :key="row.key"
+            class="rounded-md bg-gray-50 px-3 py-3 dark:bg-white/5"
+          >
+            <div class="flex items-start justify-between gap-2">
+              <label class="form-control min-w-0 flex-1">
+                <span class="label py-0"><span class="label-text text-xs">Food</span></span>
+                <input v-model.trim="row.name" type="text" maxlength="160" class="input input-bordered input-sm w-full" />
+              </label>
+              <button
+                type="button"
+                class="training-chip btn btn-ghost btn-xs mt-6 rounded-full text-red-600 dark:text-red-400"
+                @click="removeProposal(index)"
+              >
+                Remove
+              </button>
+            </div>
+            <p v-if="row.requestedServing" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              From your description: {{ row.requestedServing }}
+            </p>
+            <div class="mt-2 grid gap-2 sm:grid-cols-3">
+              <label class="form-control">
+                <span class="label py-0"><span class="label-text text-xs">Servings</span></span>
+                <input v-model="row.quantity" type="number" min="0.01" step="0.01" class="input input-bordered input-sm w-full" />
+              </label>
+              <label class="form-control">
+                <span class="label py-0">
+                  <span class="label-text text-xs">Size (oz)</span>
+                  <span v-if="proposalServingGrams(row)" class="label-text-alt text-xs text-gray-500">
+                    ≈ {{ proposalServingGrams(row) }} g
+                  </span>
+                </span>
+                <input v-model="row.servingOz" type="number" min="0.01" step="0.01" class="input input-bordered input-sm w-full" />
+              </label>
+              <label class="form-control">
+                <span class="label py-0"><span class="label-text text-xs">Serving</span></span>
+                <input v-model.trim="row.portionLabel" type="text" maxlength="160" class="input input-bordered input-sm w-full" />
+              </label>
+            </div>
+            <p class="mt-2 text-xs tabular-nums text-gray-600 dark:text-gray-300">
+              <template v-if="proposalPreview(row)">
+                {{ formatMacro(proposalPreview(row).kcal, 0) }} kcal ·
+                P {{ formatMacro(proposalPreview(row).protein_g, 1) }} g ·
+                F {{ formatMacro(proposalPreview(row).fat_g, 1) }} g ·
+                C {{ formatMacro(proposalPreview(row).carb_g, 1) }} g
+                <span v-if="proposalTotalWeight(row)"> · {{ proposalTotalWeight(row) }}</span>
+              </template>
+              <template v-else>Enter a serving count and a size.</template>
+            </p>
+          </div>
+        </div>
+        <p v-if="describeReviewError" class="mt-3 text-sm text-red-600 dark:text-red-400">{{ describeReviewError }}</p>
+        <div class="modal-action sticky bottom-0 mt-4 bg-base-100 pb-1">
+          <button
+            type="button"
+            class="training-chip btn btn-ghost btn-sm rounded-full"
+            :disabled="describeSaving"
+            @click="closeDescribeModal"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="training-chip btn btn-primary btn-sm rounded-full"
+            :disabled="describeSaving || !describeProposals.length"
+            @click="confirmDescribedFoods"
+          >
+            {{ describeSaving ? "Adding…" : "Add to log" }}
+          </button>
+        </div>
       </div>
       <form method="dialog" class="modal-backdrop">
         <button type="submit">close</button>
@@ -640,6 +727,12 @@ const describeText = ref("");
 const describing = ref(false);
 const describeError = ref("");
 const describeMessage = ref("");
+const describeModalEl = ref(null);
+const describeProposals = ref([]);
+const describeUnmatched = ref([]);
+const describeSaving = ref(false);
+const describeReviewError = ref("");
+let describeKey = 0;
 const editingEntryId = ref(null);
 const foodForm = ref(emptyFoodForm());
 const savingFood = ref(false);
@@ -1068,6 +1161,68 @@ function cancelEditEntry() {
   };
 }
 
+function proposalServingGrams(row) {
+  return formatPlanGrams(row?.servingOz);
+}
+
+function proposalGrams(row) {
+  const ounces = Number(row?.servingOz);
+  const quantity = Number(row?.quantity);
+  if (!Number.isFinite(ounces) || ounces <= 0 || !Number.isFinite(quantity) || quantity <= 0) return null;
+  const one = ouncesToGrams(ounces);
+  if (one == null) return null;
+  return one * quantity;
+}
+
+function proposalPreview(row) {
+  const grams = proposalGrams(row);
+  if (grams == null) return null;
+  return {
+    kcal: scaleMacro(row.kcal_per_100g, grams) || 0,
+    protein_g: scaleMacro(row.protein_g_per_100g, grams) || 0,
+    fat_g: scaleMacro(row.fat_g_per_100g, grams) || 0,
+    carb_g: scaleMacro(row.carb_g_per_100g, grams) || 0,
+  };
+}
+
+function proposalTotalWeight(row) {
+  const grams = proposalGrams(row);
+  return grams ? formatWeightOzGrams(grams) : "";
+}
+
+function proposalFromItem(item) {
+  describeKey += 1;
+  const servingG = Number(item?.serving_g);
+  return {
+    key: describeKey,
+    name: String(item?.name || ""),
+    quantity: item?.quantity != null ? String(item.quantity) : "1",
+    servingOz: Number.isFinite(servingG) && servingG > 0 ? formatPortionOunces(servingG) || "" : "",
+    portionLabel: String(item?.portion_label || "1 serving"),
+    requestedServing: item?.requested_serving ? String(item.requested_serving) : "",
+    fdc_id: item?.fdc_id ?? null,
+    user_food_id: item?.user_food_id ?? null,
+    portion_id: item?.portion_id ?? null,
+    kcal_per_100g: item?.kcal_per_100g ?? null,
+    protein_g_per_100g: item?.protein_g_per_100g ?? null,
+    fat_g_per_100g: item?.fat_g_per_100g ?? null,
+    carb_g_per_100g: item?.carb_g_per_100g ?? null,
+  };
+}
+
+function removeProposal(index) {
+  describeProposals.value = describeProposals.value.filter((_, itemIndex) => itemIndex !== index);
+}
+
+function closeDescribeModal() {
+  describeModalEl.value?.close();
+}
+
+function onDescribeModalClose() {
+  describeSaving.value = false;
+  describeReviewError.value = "";
+}
+
 async function logFromDescription() {
   const text = describeText.value.trim();
   if (text.length < 2 || describing.value) return;
@@ -1079,22 +1234,75 @@ async function logFromDescription() {
       method: "POST",
       body: {
         text,
-        eaten_on: eatenOn.value,
-        eaten_at: eatenAtIso(eatenOn.value, logForm.value.time),
         meal: logForm.value.meal,
       },
     });
-    const names = (result?.entries || []).map((entry) => entry.name).filter(Boolean);
-    const unmatched = Array.isArray(result?.unmatched) ? result.unmatched.filter(Boolean) : [];
-    describeText.value = "";
-    describeMessage.value = names.length
-      ? `Added ${names.join(", ")}.${unmatched.length ? ` Could not match: ${unmatched.join(", ")}.` : ""}`
-      : "Added that meal.";
-    await loadDay();
+    const items = Array.isArray(result?.items) ? result.items : [];
+    describeUnmatched.value = Array.isArray(result?.unmatched) ? result.unmatched.filter(Boolean) : [];
+    describeProposals.value = items.map(proposalFromItem);
+    describeReviewError.value = "";
+    if (!describeProposals.value.length) {
+      describeError.value = "Could not match those foods. Add them as saved foods, or try a simpler name.";
+      return;
+    }
+    nextTick(() => describeModalEl.value?.showModal());
   } catch (error) {
-    describeError.value = parseFetchError(error, "Failed to add that meal.");
+    describeError.value = parseFetchError(error, "Failed to read that meal.");
   } finally {
     describing.value = false;
+  }
+}
+
+async function confirmDescribedFoods() {
+  if (describeSaving.value || !describeProposals.value.length) return;
+  const rows = describeProposals.value;
+  for (const row of rows) {
+    if (!String(row.name || "").trim() || !proposalPreview(row)) {
+      describeReviewError.value = "Each food needs a name, a serving count, and a size.";
+      return;
+    }
+  }
+  describeSaving.value = true;
+  describeReviewError.value = "";
+  const savedNames = [];
+  try {
+    const eatenAt = eatenAtIso(eatenOn.value, logForm.value.time);
+    for (const row of rows) {
+      const grams = proposalGrams(row);
+      await $fetch("/api/physical/nutrition/intake", {
+        method: "POST",
+        body: {
+          eaten_on: eatenOn.value,
+          eaten_at: eatenAt,
+          meal_type: logForm.value.meal,
+          fdc_id: row.fdc_id,
+          user_food_id: row.user_food_id,
+          portion_id: row.portion_id,
+          quantity: Number(row.quantity),
+          gram_weight: grams,
+          food_name: row.name.trim(),
+          portion_label: row.portionLabel || "1 serving",
+          kcal_per_100g: row.kcal_per_100g,
+          protein_g_per_100g: row.protein_g_per_100g,
+          fat_g_per_100g: row.fat_g_per_100g,
+          carb_g_per_100g: row.carb_g_per_100g,
+        },
+      });
+      savedNames.push(row.name.trim());
+      describeProposals.value = describeProposals.value.filter((item) => item.key !== row.key);
+    }
+    describeText.value = "";
+    describeMessage.value = savedNames.length ? `Added ${savedNames.join(", ")}.` : "Added that meal.";
+    closeDescribeModal();
+    await loadDay();
+  } catch (error) {
+    if (savedNames.length) await loadDay();
+    const reason = parseFetchError(error, "Failed to add that meal.");
+    describeReviewError.value = savedNames.length
+      ? `${reason} Added ${savedNames.join(", ")}. The foods still listed were not added.`
+      : reason;
+  } finally {
+    describeSaving.value = false;
   }
 }
 

@@ -54,7 +54,9 @@
             <option value="">Choose a virtue</option>
             <option v-if="customVirtue" :value="customVirtue">{{ customVirtue }}</option>
             <optgroup v-for="group in virtueGroups" :key="group.name" :label="group.name">
-              <option v-for="virtue in group.virtues" :key="virtue" :value="virtue">{{ virtue }}</option>
+              <option v-for="virtue in group.virtues" :key="virtue.name" :value="virtue.name">
+                {{ virtue.name }} — {{ virtue.definition }}
+              </option>
             </optgroup>
           </select>
         </label>

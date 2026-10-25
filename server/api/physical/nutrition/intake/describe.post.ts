@@ -4,10 +4,7 @@ import { generateJson } from "../../../../utils/groq";
 import { getFdcFoodDetail, searchFdcFoods, type FdcFoodPortion } from "../../../../utils/fdcApi";
 import {
   NUTRITION_MEAL_TYPES,
-  createIntakeEntry,
   mapNutritionWriteError,
-  parseEatenAt,
-  parseEatenOn,
   parseMealType,
   type NutritionMealType,
 } from "../../../../utils/nutritionIntake";
@@ -25,6 +22,26 @@ type ParsedItem = {
   unit: string;
   meal: NutritionMealType | null;
 };
+
+type FoodProposal = {
+  name: string;
+  quantity: number;
+  portion_label: string;
+  serving_g: number;
+  requested_serving: string | null;
+  fdc_id: number | null;
+  user_food_id: number | null;
+  portion_id: number | null;
+  kcal_per_100g: number | null;
+  protein_g_per_100g: number | null;
+  fat_g_per_100g: number | null;
+  carb_g_per_100g: number | null;
+};
+
+function per100FromServing(amount: number, servingG: number): number | null {
+  if (!(servingG > 0) || !Number.isFinite(amount)) return null;
+  return (amount * 100) / servingG;
+}
 
 const SERVING_UNITS: Record<string, string> = {
   g: "g",
@@ -178,8 +195,6 @@ export default defineEventHandler(async (event) => {
   if (text.length < 2 || text.length > 800) {
     throw createError({ statusCode: 400, statusMessage: "Describe the meal in a short sentence." });
   }
-  const eatenOn = parseEatenOn(body?.eaten_on ?? body?.date);
-  const eatenAt = parseEatenAt(body?.eaten_at);
   const fallbackMeal = parseMealType(body?.meal ?? body?.meal_type);
 
   const parsed = parseItems(
@@ -205,7 +220,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const client = createDbClient();
-  const logged: Array<{ entry_id: number; name: string }> = [];
+  const items: FoodProposal[] = [];
   const unmatched: string[] = [];
   try {
     await client.connect();
@@ -218,31 +233,24 @@ export default defineEventHandler(async (event) => {
           const grams =
             item.unit === "g" ? item.quantity : item.unit === "oz" ? item.quantity * OZ_IN_GRAMS : null;
           const quantity = grams != null ? grams / custom.serving_g : item.quantity;
-          if (!(quantity > 0) || quantity > 50) {
+          if (!(quantity > 0)) {
             unmatched.push(item.name);
             continue;
           }
-          const created = await createIntakeEntry(client, userId, {
-            eaten_on: eatenOn,
-            eaten_at: eatenAt,
-            meal: item.meal,
+          items.push({
+            name: custom.name,
+            quantity,
+            portion_label: custom.serving_label,
+            serving_g: custom.serving_g,
+            requested_serving: item.serving,
             fdc_id: null,
             user_food_id: custom.food_id,
             portion_id: null,
-            quantity,
-            gram_weight: custom.serving_g * quantity,
-            food_name: custom.name,
-            portion_label: custom.serving_label,
-            kcal: null,
-            protein_g: null,
-            fat_g: null,
-            carb_g: null,
-            kcal_per_100g: null,
-            protein_g_per_100g: null,
-            fat_g_per_100g: null,
-            carb_g_per_100g: null,
+            kcal_per_100g: per100FromServing(custom.kcal, custom.serving_g),
+            protein_g_per_100g: per100FromServing(custom.protein_g, custom.serving_g),
+            fat_g_per_100g: per100FromServing(custom.fat_g, custom.serving_g),
+            carb_g_per_100g: per100FromServing(custom.carb_g, custom.serving_g),
           });
-          logged.push({ entry_id: created.entry_id, name: custom.name });
           continue;
         }
 
@@ -272,31 +280,25 @@ export default defineEventHandler(async (event) => {
               : portion
                 ? portion.gram_weight * item.quantity
                 : null;
-        if (gramWeight == null || gramWeight <= 0 || gramWeight > 2000) {
+        if (gramWeight == null || gramWeight <= 0) {
           unmatched.push(item.name);
           continue;
         }
-        const created = await createIntakeEntry(client, userId, {
-          eaten_on: eatenOn,
-          eaten_at: eatenAt,
-          meal: item.meal,
+        const quantity = item.unit === "g" || item.unit === "oz" ? 1 : item.quantity;
+        items.push({
+          name: detail.description,
+          quantity,
+          portion_label: portion?.label || item.serving || `${Math.round(gramWeight)} g`,
+          serving_g: gramWeight / quantity,
+          requested_serving: item.serving,
           fdc_id: detail.fdc_id,
           user_food_id: null,
           portion_id: portion?.portion_id ?? null,
-          quantity: item.unit === "g" || item.unit === "oz" ? 1 : item.quantity,
-          gram_weight: gramWeight,
-          food_name: detail.description,
-          portion_label: portion?.label || item.serving || `${Math.round(gramWeight)} g`,
-          kcal: null,
-          protein_g: null,
-          fat_g: null,
-          carb_g: null,
-          kcal_per_100g: null,
-          protein_g_per_100g: null,
-          fat_g_per_100g: null,
-          carb_g_per_100g: null,
+          kcal_per_100g: detail.kcal_per_100g,
+          protein_g_per_100g: detail.protein_g_per_100g,
+          fat_g_per_100g: detail.fat_g_per_100g,
+          carb_g_per_100g: detail.carb_g_per_100g,
         });
-        logged.push({ entry_id: created.entry_id, name: detail.description });
       } catch (error) {
         if (error && typeof error === "object" && "statusCode" in error) {
           const status = Number((error as { statusCode?: number }).statusCode);
@@ -308,17 +310,17 @@ export default defineEventHandler(async (event) => {
   } catch (error: unknown) {
     if (error && typeof error === "object" && "statusCode" in error) throw error;
     console.error("nutrition describe failed", error);
-    throw mapNutritionWriteError(error, "Failed to log that meal.");
+    throw mapNutritionWriteError(error, "Failed to read that meal.");
   } finally {
     await client.end().catch(() => undefined);
   }
 
-  if (!logged.length) {
+  if (!items.length) {
     throw createError({
       statusCode: 422,
       statusMessage: "Could not match those foods. Add them as saved foods, or try a simpler name.",
     });
   }
 
-  return { entries: logged, unmatched };
+  return { items, unmatched };
 });

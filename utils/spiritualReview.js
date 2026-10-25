@@ -25,23 +25,41 @@ export const MORNING_INTENTION_FIELDS = [
 ];
 
 export const VIRTUE_GROUPS = [
-  { name: "Theological", virtues: ["Faith", "Hope", "Charity"] },
-  { name: "Cardinal", virtues: ["Prudence", "Justice", "Fortitude", "Temperance"] },
-  { name: "Daily practice", virtues: [
-    "Humility",
-    "Patience",
-    "Kindness",
-    "Honesty",
-    "Generosity",
-    "Gratitude",
-    "Mercy",
-    "Diligence",
-    "Gentleness",
-    "Self-control",
-  ] },
+  {
+    name: "Theological",
+    virtues: [
+      { name: "Faith", definition: "Trust in God and what He has revealed" },
+      { name: "Hope", definition: "Confidence in God's promises" },
+      { name: "Charity", definition: "Love of God above all, and of neighbor for His sake" },
+    ],
+  },
+  {
+    name: "Cardinal",
+    virtues: [
+      { name: "Prudence", definition: "Right judgment about what to do" },
+      { name: "Justice", definition: "Giving God and others what is due" },
+      { name: "Fortitude", definition: "Courage to do what is right" },
+      { name: "Temperance", definition: "Right measure in desires and pleasures" },
+    ],
+  },
+  {
+    name: "Daily practice",
+    virtues: [
+      { name: "Humility", definition: "A truthful view of yourself before God" },
+      { name: "Patience", definition: "Bearing difficulty without resentment" },
+      { name: "Kindness", definition: "Goodwill shown in word and action" },
+      { name: "Honesty", definition: "Speech and action that match the truth" },
+      { name: "Generosity", definition: "Giving freely of what you have" },
+      { name: "Gratitude", definition: "Receiving the day's gifts with thanks" },
+      { name: "Mercy", definition: "Compassion that forgives and helps" },
+      { name: "Diligence", definition: "Steady care in the work given to you" },
+      { name: "Gentleness", definition: "Strength used without harshness" },
+      { name: "Self-control", definition: "Ordering desires toward what is good" },
+    ],
+  },
 ];
 
-export const VIRTUES = VIRTUE_GROUPS.flatMap((group) => group.virtues);
+export const VIRTUES = VIRTUE_GROUPS.flatMap((group) => group.virtues.map((virtue) => virtue.name));
 
 export const EXAMEN_FIELDS = [
   { key: "grateful", label: "What am I grateful for today?" },

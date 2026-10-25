@@ -36,11 +36,11 @@ const sections = [
   },
   {
     name: "Exercise Journal",
-    text: "Record what you actually trained. Start from a saved workout or add catalog exercises for a one-off session. History stays on this journal; plans in Workout Manager are not changed.",
+    text: "Start a saved plan or an empty session, then log the sets you did. Past sessions stay on this page. A log copies a plan and leaves the saved plan as you wrote it.",
   },
   {
     name: "Workout Manager",
-    text: "Build and save workout plans. Open a training list, add the exercises you want, then reorder and name the session so you can load it later from the Exercise Journal.",
+    text: "Save the plans you repeat. Open a plan to name it, add exercises, and set one target each. Start that plan later from the Exercise Journal.",
   },
 ];
 </script>

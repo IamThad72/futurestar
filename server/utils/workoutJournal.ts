@@ -354,6 +354,78 @@ async function insertExercises(client: Client, sessionId: number, exercises: Jou
   }
 }
 
+export type PreviousExercisePerformance = {
+  exerciseId: string;
+  logMode: JournalLogMode;
+  performedAt: string;
+  sets: Array<{
+    reps: number | null;
+    weight: number | null;
+    weightUnit: "lb" | "kg";
+    durationSeconds: number | null;
+  }>;
+};
+
+/** Latest logged sets for each exercise, excluding the session currently open. */
+export async function listPreviousExercises(
+  client: Client,
+  userId: number,
+  excludeSessionId: number | null,
+): Promise<PreviousExercisePerformance[]> {
+  const params: unknown[] = [userId];
+  let excludeSql = "";
+  if (excludeSessionId != null && Number.isInteger(excludeSessionId) && excludeSessionId > 0) {
+    params.push(excludeSessionId);
+    excludeSql = "AND s.session_id <> $2";
+  }
+  const result = await client.query(
+    `WITH latest AS (
+       SELECT DISTINCT ON (e.exercise_id)
+         e.exercise_id,
+         e.journal_exercise_id,
+         e.log_mode,
+         s.performed_at
+       FROM workout_journal_exercises e
+       JOIN workout_journal_sessions s ON s.session_id = e.session_id
+       WHERE ${privateUserClause("s")}
+         AND e.exercise_id IS NOT NULL
+         AND btrim(e.exercise_id) <> ''
+         ${excludeSql}
+       ORDER BY e.exercise_id, s.performed_at DESC, s.session_id DESC
+     )
+     SELECT latest.exercise_id, latest.log_mode, latest.performed_at,
+            st.reps, st.weight, st.weight_unit, st.duration_seconds
+     FROM latest
+     JOIN workout_journal_sets st ON st.journal_exercise_id = latest.journal_exercise_id
+     ORDER BY latest.exercise_id, st.sort_order ASC, st.journal_set_id ASC`,
+    params,
+  );
+
+  const grouped = new Map<string, PreviousExercisePerformance>();
+  for (const row of result.rows) {
+    const exerciseId = String(row.exercise_id);
+    let entry = grouped.get(exerciseId);
+    if (!entry) {
+      const performed = row.performed_at;
+      entry = {
+        exerciseId,
+        logMode: row.log_mode === "duration" ? "duration" : "reps",
+        performedAt: performed instanceof Date ? performed.toISOString() : String(performed),
+        sets: [],
+      };
+      grouped.set(exerciseId, entry);
+    }
+    const unit = String(row.weight_unit || "lb").toLowerCase() === "kg" ? "kg" : "lb";
+    entry.sets.push({
+      reps: asNumber(row.reps),
+      weight: asNumber(row.weight),
+      weightUnit: unit,
+      durationSeconds: asNumber(row.duration_seconds),
+    });
+  }
+  return [...grouped.values()];
+}
+
 export async function listJournalSessions(
   client: Client,
   userId: number,

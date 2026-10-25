@@ -135,6 +135,24 @@ export function dateSeed(iso: string, salt = 0) {
   return hash;
 }
 
+function calendarDayNumber(iso: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || "").trim());
+  if (!match) return 0;
+  return Math.floor(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])) / 86_400_000);
+}
+
+function positiveMod(value: number, length: number) {
+  return ((value % length) + length) % length;
+}
+
+/** Indexes for one day. The window moves by a full set, so it does not reuse yesterday. */
+export function morningPrayerIndexes(date: string, count = 3) {
+  const length = MORNING_PRAYER_REFS.length;
+  const size = Math.max(1, Math.min(count, length));
+  const start = positiveMod(calendarDayNumber(date) * size, length);
+  return Array.from({ length: size }, (_, offset) => (start + offset) % length);
+}
+
 function passageFromVerses(ref: PassageRef, verses: BibleVerse[]): BiblePassage | null {
   if (!verses.length) return null;
   return {
@@ -205,11 +223,21 @@ export async function listMorningPrayers(client: Client, date: string, count = 3
     return { catalog, weekly: null, prayers: [] as BiblePassage[] };
   }
   const weekly = await getPassage(client, WEEKLY_SCRIPTURE_REF);
-  const start = dateSeed(date, 17) % MORNING_PRAYER_REFS.length;
+  const todayIndexes = morningPrayerIndexes(date, count);
+  const yesterday = new Date(`${date}T00:00:00Z`);
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+  const yesterdayIso = yesterday.toISOString().slice(0, 10);
+  const blocked = new Set(morningPrayerIndexes(yesterdayIso, count));
+  const ordered = [
+    ...todayIndexes,
+    ...MORNING_PRAYER_REFS.map((_, index) => index).filter(
+      (index) => !todayIndexes.includes(index) && !blocked.has(index),
+    ),
+  ];
   const prayers: BiblePassage[] = [];
-  for (let i = 0; i < MORNING_PRAYER_REFS.length && prayers.length < count; i += 1) {
-    const ref = MORNING_PRAYER_REFS[(start + i) % MORNING_PRAYER_REFS.length];
-    const passage = await getPassage(client, ref);
+  for (const index of ordered) {
+    if (prayers.length >= todayIndexes.length) break;
+    const passage = await getPassage(client, MORNING_PRAYER_REFS[index]);
     if (passage) prayers.push(passage);
   }
   return { catalog, weekly, prayers };

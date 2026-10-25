@@ -9,12 +9,12 @@ export const PHYSICAL_SECTIONS = [
   {
     name: "Exercise Journal",
     slug: "workout-journal",
-    description: "Record completed sessions from a saved workout or log random catalog exercises.",
+    description: "Start a saved plan or an empty session, then log the sets you actually did.",
   },
   {
     name: "Workout Manager",
     slug: "workouts",
-    description: "Build a workout plan, then drag exercises in from a training list.",
+    description: "Save workout plans. Open one to edit its exercises and targets.",
   },
 ];
 

@@ -13,16 +13,6 @@
           <PlusSmallIcon class="size-5 shrink-0" aria-hidden="true" />
           <span>Food Inventory</span>
         </button>
-        <button
-          v-else-if="section.slug === 'workout-journal'"
-          type="button"
-          class="training-chip journal-history-btn btn btn-primary btn-sm rounded-full"
-          aria-label="History"
-          @click="openHistory"
-        >
-          <ClockIcon class="size-5 shrink-0" aria-hidden="true" />
-          <span>History</span>
-        </button>
       </div>
       <div v-if="section.slug === 'nutrition'" class="mt-2 flex flex-wrap items-center gap-2">
         <span class="text-lg font-bold text-base-content">{{ currentPlanName || "No daily plan" }}</span>
@@ -40,15 +30,12 @@
       ref="nutritionTracker"
       @plan-change="onPlanChange"
     />
-    <WorkoutExerciseJournal
-      v-else-if="section.slug === 'workout-journal'"
-      ref="exerciseJournal"
-    />
+    <WorkoutExerciseJournal v-else-if="section.slug === 'workout-journal'" />
   </section>
 </template>
 
 <script setup>
-import { ClockIcon, PlusSmallIcon } from "@heroicons/vue/20/solid";
+import { PlusSmallIcon } from "@heroicons/vue/20/solid";
 import WorkoutExerciseJournal from "~/components/WorkoutExerciseJournal.vue";
 import {
   canonicalPhysicalSlug,
@@ -58,7 +45,6 @@ import {
 
 const route = useRoute();
 const nutritionTracker = ref(null);
-const exerciseJournal = ref(null);
 const currentPlanName = ref("");
 
 function openAddFood() {
@@ -67,10 +53,6 @@ function openAddFood() {
 
 function openPlan() {
   nutritionTracker.value?.openPlanModal();
-}
-
-function openHistory() {
-  exerciseJournal.value?.openHistoryModal();
 }
 
 function onPlanChange(name) {
@@ -89,9 +71,7 @@ watch(
   (raw) => {
     const canonical = canonicalPhysicalSlug(raw);
     if (physicalTrainingBySlug(canonical) || canonical === "workouts") {
-      const href =
-        canonical === "workouts" ? "/physical/workouts" : `/physical/workouts/${canonical}`;
-      void navigateTo(href, { replace: true });
+      void navigateTo("/physical/workouts", { replace: true });
       return;
     }
     if (canonical !== "nutrition" && canonical !== "workout-journal") {
