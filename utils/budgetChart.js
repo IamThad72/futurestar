@@ -430,6 +430,7 @@ function makeSummaryChartRow({ id, categoryLabel, listType, budgeted, actual, se
 
 /**
  * Second dashboard chart: fixed bars — Net Income, Investments, Savings, Tax, Insurance.
+ * Net Income is the recorded net-pay lines when the plan has them.
  * @param {{ income?: unknown[], expenses?: unknown[] }} budgets
  * @param {unknown[]} transactions
  * @param {number} year
@@ -446,6 +447,8 @@ export function buildOtherBudgetChartRows(budgets, transactions, year, month) {
   };
 
   const totalIncome = sumIncomeBudgetActual(budgets, byItem, isTotalIncomeLine);
+  const recordedNet = sumIncomeBudgetActual(budgets, byItem, isNetIncomeBudgetLine);
+  const hasRecordedNet = (budgets?.income ?? []).some((item) => isNetIncomeBudgetLine(item));
   const tax = sumIncomeBudgetActual(budgets, byItem, (i) => i.income_type === "tax");
   const insurance = sumIncomeBudgetActual(budgets, byItem, (i) => i.income_type === "deduction");
   const savings = sumExpenseBudgetActual(
@@ -455,14 +458,20 @@ export function buildOtherBudgetChartRows(budgets, transactions, year, month) {
   );
   const investments = sumExpenseBudgetActual(budgets, byItem, (e) => e.expense_type === "investment");
 
-  const netBudgeted = Math.max(
-    0,
-    Math.round((totalIncome.budgeted - tax.budgeted - insurance.budgeted - savings.budgeted) * 100) / 100,
-  );
-  const netActual = Math.max(
-    0,
-    Math.round((totalIncome.actual - tax.actual - insurance.actual - savings.actual) * 100) / 100,
-  );
+  // Recorded Net Income lines are the paycheck take-home. Use those amounts exactly.
+  // Gross minus tax, insurance, and savings is only a stand-in when no net line exists.
+  const netBudgeted = hasRecordedNet
+    ? Math.round(recordedNet.budgeted * 100) / 100
+    : Math.max(
+        0,
+        Math.round((totalIncome.budgeted - tax.budgeted - insurance.budgeted - savings.budgeted) * 100) / 100,
+      );
+  const netActual = hasRecordedNet
+    ? Math.round(recordedNet.actual * 100) / 100
+    : Math.max(
+        0,
+        Math.round((totalIncome.actual - tax.actual - insurance.actual - savings.actual) * 100) / 100,
+      );
 
   return [
     makeSummaryChartRow({
