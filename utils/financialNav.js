@@ -8,6 +8,12 @@ export const FINANCIAL_NAV_TABS = [
     match: (path) => path === "/financial" || path.startsWith("/financial/"),
   },
   {
+    name: "Investments",
+    href: "/investments",
+    description: "Cost basis, current value, and unrealized gain or loss.",
+    match: (path) => path === "/investments" || path.startsWith("/investments/"),
+  },
+  {
     name: "Estate Management",
     href: "/estate_mgmt",
     description: "Assets, debts, insurance, and net worth.",

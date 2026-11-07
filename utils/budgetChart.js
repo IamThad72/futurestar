@@ -277,6 +277,23 @@ function getActual(byItem, itemId, listType) {
   return byItem[key] ?? 0;
 }
 
+/** Expense spending by category, including payments whose subcategory is not on the current plan. */
+function expenseSpentByCategoryForMonth(transactions, year, month) {
+  const byCat = new Map();
+  for (const tx of transactions ?? []) {
+    const parts = calendarParts(tx.date);
+    if (!parts || parts.year !== year || parts.month !== month) continue;
+    const kind = String(tx.item_kind || tx.type || "").toLowerCase();
+    if (kind === "income") continue;
+    const itemType = String(tx.item_type || "expense").toLowerCase();
+    if (itemType !== "expense") continue;
+    const cat = String(tx.category || "").trim().toLowerCase();
+    if (!cat) continue;
+    byCat.set(cat, (byCat.get(cat) || 0) + (Number(tx.amount) || 0));
+  }
+  return byCat;
+}
+
 /** @returns {{ variance: number, isOver: boolean, varianceLabel: string }} isOver = unfavorable (red) */
 export function budgetVariance(listType, budgeted, actual) {
   const b = toNumber(budgeted);
@@ -304,6 +321,7 @@ export function budgetVariance(listType, budgeted, actual) {
  */
 export function buildBudgetChartRows(budgets, transactions, year, month) {
   const byItem = actualByItemForMonth(transactions, year, month);
+  const expenseSpentByCategory = expenseSpentByCategoryForMonth(transactions, year, month);
   const rows = [];
 
   for (const section of SECTION_DEFS) {
@@ -359,7 +377,9 @@ export function buildBudgetChartRows(budgets, transactions, year, month) {
       const actual =
         group.precomputedActual != null
           ? group.precomputedActual
-          : sumActualForItemIds(byItem, group.itemIds, group.listType);
+          : section.key === "expense"
+            ? expenseSpentByCategory.get(String(group.category || "").trim().toLowerCase()) ?? 0
+            : sumActualForItemIds(byItem, group.itemIds, group.listType);
       const { isOver, varianceLabel, difference } = budgetVariance(
         group.listType,
         group.budgeted,

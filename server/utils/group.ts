@@ -32,6 +32,7 @@ export const GROUP_SHARED_TABLES = [
   "account_map_layouts",
   "account_map_edges",
   "estate_documents",
+  "investment_positions",
 ] as const;
 
 /** $1 = userId, $2 = groupId */

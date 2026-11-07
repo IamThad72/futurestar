@@ -69,7 +69,13 @@ export function useBudgetChartData() {
         income: budgetData?.income ?? [],
         expenses: budgetData?.expenses ?? [],
       };
-      transactions.value = txData?.transactions ?? txData ?? [];
+      const matched = Array.isArray(txData?.transactions)
+        ? txData.transactions
+        : Array.isArray(txData)
+          ? txData
+          : [];
+      const orphans = Array.isArray(txData?.orphans) ? txData.orphans : [];
+      transactions.value = orphans.length ? [...matched, ...orphans] : matched;
     } catch (error) {
       console.error("Failed to load budget chart data", error);
       loadError.value = parseFetchError(error, "Failed to load budget charts.");

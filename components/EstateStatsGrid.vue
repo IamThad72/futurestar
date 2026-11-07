@@ -4,7 +4,10 @@
       Loading snapshot...
     </div>
     <div v-else class="border-b border-base-300">
-      <dl class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      <dl
+        class="grid grid-cols-1 sm:grid-cols-2"
+        :class="stats.length > 3 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'"
+      >
         <div
           v-for="(stat, statIdx) in stats"
           :key="stat.name"

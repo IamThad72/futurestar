@@ -25,6 +25,10 @@ const dashboardLoadError = computed(() => {
 
 const sections = [
   {
+    name: "Investments",
+    text: "Compare each holding’s cost basis with its current value, including unrealized gain or loss in dollars and percent.",
+  },
+  {
     name: "Estate Management",
     text: "Track assets, debts, insurance, and net worth in one place so you can see what you own, what you owe, and how the household balance sheet changes over time.",
   },

@@ -42,6 +42,13 @@
     />
 
     <div v-else class="space-y-6">
+      <header>
+        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">
+          Current snapshot
+        </p>
+      </header>
+      <EstateStatsGrid :stats="budgetSnapshotStats" :loading="loading" />
+
       <!-- Add Budget Item modal -->
       <LazyAddBudgetItemModal
         v-if="modalsMounted.addBudget"
@@ -57,9 +64,6 @@
             <h2 class="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-2 text-lg font-semibold">
               <div class="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1">
                 <span class="shrink-0 text-error">Expenses</span>
-                <span v-if="!loading" class="text-xs font-normal text-base-content">
-                  Total: ${{ formatAmount(expenseTypeOnlyTotals.monthly) }}/mo
-                </span>
               </div>
               <button
                 type="button"
@@ -175,12 +179,6 @@
             <h2 class="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-2 text-lg font-semibold">
               <div class="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1">
                 <span class="shrink-0 text-success">Income</span>
-                <span v-if="!loading" class="text-xs font-normal text-base-content">
-                  Total Income: ${{ formatAmount(totalIncome.monthly) }}/mo
-                </span>
-                <span v-if="!loading" class="text-xs font-normal text-base-content">
-                  Net Income: ${{ formatAmount(netIncome.monthly) }}/mo
-                </span>
               </div>
               <button
                 type="button"
@@ -298,9 +296,6 @@
             <h2 class="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-2 text-lg font-semibold">
               <div class="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1">
                 <span class="shrink-0 text-accent">Investments</span>
-                <span v-if="!loading" class="text-xs font-normal text-base-content">
-                  Total: ${{ formatAmount(investmentsBudgetTotals.monthly) }}/mo
-                </span>
               </div>
               <button
                 type="button"
@@ -412,9 +407,6 @@
             <h2 class="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-2 text-lg font-semibold">
               <div class="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1">
                 <span class="shrink-0 text-info">Savings</span>
-                <span v-if="!loading" class="text-xs font-normal text-base-content">
-                  Total: ${{ formatAmount(savingsBudgetTotals.monthly) }}/mo
-                </span>
               </div>
               <button
                 type="button"
@@ -526,12 +518,6 @@
             <h2 class="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-2 text-lg font-semibold">
               <div class="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1">
                 <span class="shrink-0 text-warning">Tax</span>
-                <span v-if="!loading" class="text-xs font-normal text-base-content">
-                  Budgeted: ${{ formatAmount(totals.tax.monthly) }}/mo
-                  <span v-if="setupTaxAnnualGrandTotal != null" class="text-base-content/70">
-                    · {{ setupTaxYear }} YTD ${{ formatAmount(setupTaxAnnualGrandTotal) }}
-                  </span>
-                </span>
               </div>
               <button
                 type="button"
@@ -551,15 +537,6 @@
             <div v-if="loading" class="text-sm text-base-content/70">Loading...</div>
             <template v-else>
               <div v-if="taxGroupedByCategory.length" class="space-y-8">
-                <div
-                  v-if="setupTaxAnnualTotals.length"
-                  class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 rounded-lg border border-base-200 bg-base-200/30 p-3"
-                >
-                  <div v-for="t in setupTaxAnnualTotals" :key="t.tax_kind" class="rounded-md bg-base-100 px-2 py-1.5">
-                    <div class="text-[0.65rem] font-medium uppercase tracking-wide text-base-content/55">{{ t.label }}</div>
-                    <div class="text-sm font-semibold tabular-nums">${{ formatAmount(t.total_amount) }}</div>
-                  </div>
-                </div>
                 <div
                   v-for="group in taxGroupedByCategory"
                   :key="`tax-cat-${group.category}`"
@@ -650,9 +627,6 @@
             <h2 class="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-2 text-lg font-semibold">
               <div class="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1">
                 <span class="shrink-0">Insurance</span>
-                <span v-if="!loading" class="text-xs font-normal text-base-content">
-                  Total: ${{ formatAmount(totals.deduction.monthly) }}/mo
-                </span>
               </div>
               <button
                 type="button"
@@ -794,7 +768,7 @@
 <script setup>
 import { EllipsisVerticalIcon } from "@heroicons/vue/20/solid";
 import { formatDebtRecordLabel } from "~/utils/budgetDebt";
-import { isNetIncomeBudgetLine } from "~/utils/budgetChart";
+import { isGrossIncomeBudgetLine, isNetIncomeBudgetLine } from "~/utils/budgetChart";
 
 const auth = useAuthStore();
 const addBudgetModalRef = ref(null);
@@ -820,9 +794,6 @@ async function openEdit(item, type) {
 }
 const budgets = ref({ income: [], expenses: [] });
 const activeBudgetName = ref("");
-const setupTaxYear = ref(new Date().getFullYear());
-const setupTaxAnnualGrandTotal = ref(null);
-const setupTaxAnnualTotals = ref([]);
 const loading = ref(true);
 const loadError = ref("");
 const deleting = ref(false);
@@ -835,91 +806,6 @@ function debtLabelForBudgetItem(item) {
   const row = debtRecords.value.find((r) => String(r.dbt_id) === String(item.debt_id));
   return row ? formatDebtRecordLabel(row) : null;
 }
-
-const incomeByType = computed(() => {
-  const income = budgets.value.income ?? [];
-  return {
-    gross: income.filter((i) => (i.income_type || "gross") === "gross" && !isNetIncomeBudgetLine(i)),
-    interest: income.filter((i) => i.income_type === "interest"),
-    other: income.filter((i) => i.income_type === "other"),
-    tax: income.filter((i) => i.income_type === "tax"),
-    deduction: income.filter((i) => i.income_type === "deduction"),
-  };
-});
-
-function sumAmounts(items, field) {
-  return (items ?? []).reduce((acc, i) => acc + (Number(i[field]) || 0), 0);
-}
-
-const totals = computed(() => ({
-  gross: {
-    monthly: sumAmounts(incomeByType.value.gross, "monthly_amount"),
-    annual: sumAmounts(incomeByType.value.gross, "annual_amount"),
-  },
-  interest: {
-    monthly: sumAmounts(incomeByType.value.interest, "monthly_amount"),
-    annual: sumAmounts(incomeByType.value.interest, "annual_amount"),
-  },
-  other: {
-    monthly: sumAmounts(incomeByType.value.other, "monthly_amount"),
-    annual: sumAmounts(incomeByType.value.other, "annual_amount"),
-  },
-  tax: {
-    monthly: sumAmounts(incomeByType.value.tax, "monthly_amount"),
-    annual: sumAmounts(incomeByType.value.tax, "annual_amount"),
-  },
-  deduction: {
-    monthly: sumAmounts(incomeByType.value.deduction, "monthly_amount"),
-    annual: sumAmounts(incomeByType.value.deduction, "annual_amount"),
-  },
-}));
-
-/** Total Income = Gross Income + Interest + Other (excludes tax/deduction) */
-const totalIncome = computed(() => ({
-  monthly: totals.value.gross.monthly + totals.value.interest.monthly + totals.value.other.monthly,
-  annual: totals.value.gross.annual + totals.value.interest.annual + totals.value.other.annual,
-}));
-
-/** Match deduction by category/sub_category (case-insensitive) */
-function matchDeduction(items, patterns) {
-  const match = (text) => {
-    const t = (text || "").toLowerCase();
-    return patterns.some((p) => t.includes(p));
-  };
-  return (items ?? []).filter(
-    (i) => match(i.category) || match(i.sub_category),
-  );
-}
-
-/** Net Income = Income + Interest - Family Insurance - Supplemental Life Insurance - Savings - Taxes */
-const netIncome = computed(() => {
-  const deductions = incomeByType.value.deduction;
-  const familyInsurance = matchDeduction(deductions, ["family insurance", "family health", "health insurance"]);
-  const supplementalLife = matchDeduction(deductions, ["supplemental life", "supplemental life insurance"]);
-  const savingsItems = (budgets.value.expenses ?? []).filter((e) => e.expense_type === "savings");
-
-  const familyInsuranceMonthly = sumAmounts(familyInsurance, "monthly_amount");
-  const familyInsuranceAnnual = sumAmounts(familyInsurance, "annual_amount");
-  const supplementalLifeMonthly = sumAmounts(supplementalLife, "monthly_amount");
-  const supplementalLifeAnnual = sumAmounts(supplementalLife, "annual_amount");
-  const savingsMonthly = sumAmounts(savingsItems, "monthly_amount");
-  const savingsAnnual = sumAmounts(savingsItems, "annual_amount");
-
-  return {
-    monthly:
-      totalIncome.value.monthly -
-      familyInsuranceMonthly -
-      supplementalLifeMonthly -
-      savingsMonthly -
-      totals.value.tax.monthly,
-    annual:
-      totalIncome.value.annual -
-      familyInsuranceAnnual -
-      supplementalLifeAnnual -
-      savingsAnnual -
-      totals.value.tax.annual,
-  };
-});
 
 function groupBudgetByCategory(items) {
   const byCategory = {};
@@ -971,34 +857,43 @@ const investmentsGroupedByCategory = computed(() =>
   groupBudgetByCategory((budgets.value.expenses ?? []).filter((e) => e.expense_type === "investment")),
 );
 
-const expenseTypeOnlyTotals = computed(() => {
-  const items = (budgets.value.expenses ?? []).filter((e) => (e.expense_type || "expense") === "expense");
-  return {
-    monthly: sumAmounts(items, "monthly_amount"),
-    annual: sumAmounts(items, "annual_amount"),
-  };
-});
-
-const savingsBudgetTotals = computed(() => {
-  const items = (budgets.value.expenses ?? []).filter((e) => e.expense_type === "savings");
-  return {
-    monthly: sumAmounts(items, "monthly_amount"),
-    annual: sumAmounts(items, "annual_amount"),
-  };
-});
-
-const investmentsBudgetTotals = computed(() => {
-  const items = (budgets.value.expenses ?? []).filter((e) => e.expense_type === "investment");
-  return {
-    monthly: sumAmounts(items, "monthly_amount"),
-    annual: sumAmounts(items, "annual_amount"),
-  };
-});
-
 function formatAmount(val) {
   if (val == null || val === "" || isNaN(val)) return "0.00";
   return Number(val).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+
+function monthlyAmount(item) {
+  const n = Number(item?.monthly_amount);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Gross pay lines are gross-income budget rows, excluding Net Income. */
+function isGrossPayLine(item) {
+  if (isNetIncomeBudgetLine(item)) return false;
+  if (isGrossIncomeBudgetLine(item)) return true;
+  return String(item?.income_type || "gross").toLowerCase() === "gross";
+}
+
+const budgetSnapshotStats = computed(() => {
+  const income = budgets.value.income ?? [];
+  const expenses = budgets.value.expenses ?? [];
+  const grossPay = income.filter(isGrossPayLine).reduce((sum, item) => sum + monthlyAmount(item), 0);
+  const taxesAndExpenses =
+    income
+      .filter((item) => !isGrossPayLine(item) && !isNetIncomeBudgetLine(item))
+      .reduce((sum, item) => sum + monthlyAmount(item), 0) +
+    expenses
+      .filter((item) => !isNetIncomeBudgetLine(item))
+      .reduce((sum, item) => sum + monthlyAmount(item), 0);
+  const gainLoss = grossPay - taxesAndExpenses;
+  const money = (n) =>
+    n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return [
+    { name: "Gross Pay", value: money(grossPay) },
+    { name: "Total Taxes/Expenses", value: money(taxesAndExpenses) },
+    { name: "Gain/Loss", value: money(gainLoss) },
+  ];
+});
 
 async function loadBudgets() {
   if (!auth.user) return;
@@ -1008,16 +903,6 @@ async function loadBudgets() {
     const budgetData = await $fetch("/api/budget/list");
     budgets.value = { income: budgetData.income ?? [], expenses: budgetData.expenses ?? [] };
     activeBudgetName.value = budgetData.budget?.name || "";
-    try {
-      const taxTotals = await $fetch("/api/budget/tax-annual-totals", {
-        query: { year: setupTaxYear.value },
-      });
-      setupTaxAnnualTotals.value = taxTotals?.totals ?? [];
-      setupTaxAnnualGrandTotal.value = Number(taxTotals?.grand_total) || 0;
-    } catch {
-      setupTaxAnnualTotals.value = [];
-      setupTaxAnnualGrandTotal.value = null;
-    }
 
     const debtData = await $fetch("/api/records/debt").then((d) => d?.records ?? []).catch(() => []);
     debtRecords.value = Array.isArray(debtData) ? debtData : [];
