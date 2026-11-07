@@ -2,16 +2,16 @@
 /**
  * Refresh quoted investment prices from Alpha Vantage and rewrite Estate account values.
  * Usage: node scripts/refresh-investment-prices.mjs
- * Requires ALPHA_VANTAGE_API_KEY in .env. Pauses between symbols to stay within the free rate limit.
+ * Production runs this from the Vercel cron at /api/cron/investment-prices.
+ * Requires ALPHA_VANTAGE_API_KEY in .env. A second run within 18 hours does not call Alpha Vantage.
  */
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Client } from "pg";
-import { isQuotedSymbol, latestDailyClose } from "../utils/investmentQuotes.js";
+import { refreshInvestmentPrices } from "../utils/refreshInvestmentPrices.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const pauseMs = 13_000;
 
 function loadEnv() {
   const content = readFileSync(join(root, ".env"), "utf8");
@@ -45,21 +45,6 @@ function dbClient() {
   });
 }
 
-async function fetchClose(symbol, apiKey) {
-  const url = new URL("https://www.alphavantage.co/query");
-  url.searchParams.set("function", "TIME_SERIES_DAILY");
-  url.searchParams.set("symbol", symbol);
-  url.searchParams.set("outputsize", "compact");
-  url.searchParams.set("apikey", apiKey);
-  const response = await fetch(url, { signal: AbortSignal.timeout(20_000) });
-  if (!response.ok) return { ok: false, message: `Alpha Vantage returned ${response.status}.` };
-  return latestDailyClose(await response.json());
-}
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 async function main() {
   loadEnv();
   const apiKey = String(process.env.ALPHA_VANTAGE_API_KEY || "").trim();
@@ -71,60 +56,8 @@ async function main() {
   const client = dbClient();
   await client.connect();
   try {
-    const symbols = await client.query(
-      `SELECT DISTINCT symbol
-       FROM investment_positions
-       WHERE shares IS NOT NULL
-       ORDER BY symbol`,
-    );
-    const quoted = symbols.rows.map((row) => String(row.symbol || "").toUpperCase()).filter(isQuotedSymbol);
-    const touched = new Set();
-    let updated = 0;
-    for (let index = 0; index < quoted.length; index += 1) {
-      const symbol = quoted[index];
-      if (index > 0) await sleep(pauseMs);
-      const close = await fetchClose(symbol, apiKey);
-      if (!close.ok) {
-        console.log(`${symbol}: skipped (${close.message})`);
-        continue;
-      }
-      // A statement can be dated after the last session. Keep the statement balance when the
-      // close matches, and reprice only when the official close itself changes.
-      const result = await client.query(
-        `UPDATE investment_positions
-         SET price = $1::numeric,
-             price_as_of = $2::date,
-             market_value = CASE
-               WHEN price IS DISTINCT FROM $1::numeric THEN ROUND(shares * $1::numeric, 2)
-               ELSE market_value
-             END,
-             updated_at = NOW()
-         WHERE symbol = $3
-           AND shares IS NOT NULL
-           AND (price_as_of IS DISTINCT FROM $2::date OR price IS DISTINCT FROM $1::numeric)
-         RETURNING ci_id`,
-        [close.close, close.date, symbol],
-      );
-      for (const row of result.rows) touched.add(Number(row.ci_id));
-      updated += result.rowCount || 0;
-      console.log(`${symbol}: ${close.date} close ${close.close} (${result.rowCount || 0} positions)`);
-    }
-
-    for (const accountId of touched) {
-      await client.query(
-        `UPDATE cash_and_investments ci
-         SET value = s.total::numeric::money
-         FROM (
-           SELECT ci_id, ROUND(SUM(market_value), 2) AS total
-           FROM investment_positions
-           WHERE ci_id = $1
-           GROUP BY ci_id
-         ) s
-         WHERE ci.ci_id = s.ci_id AND s.total IS NOT NULL`,
-        [accountId],
-      );
-    }
-    console.log(`Updated ${updated} positions across ${touched.size} accounts.`);
+    const result = await refreshInvestmentPrices(client, apiKey, (line) => console.log(line));
+    if (result.ran && result.symbols > 0 && result.skipped.length === result.symbols) process.exitCode = 1;
   } finally {
     await client.end();
   }

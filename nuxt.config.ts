@@ -41,6 +41,9 @@ export default defineNuxtConfig({
     // Meal logging and expense-file categorization. GROQ_API_KEY or NUXT_GROQ_API_KEY.
     groqApiKey: process.env.GROQ_API_KEY || "",
     groqModel: process.env.GROQ_MODEL || "openai/gpt-oss-20b",
+    // Weekday close refresh. ALPHA_VANTAGE_API_KEY and CRON_SECRET on the server only.
+    alphaVantageApiKey: process.env.ALPHA_VANTAGE_API_KEY || "",
+    cronSecret: process.env.CRON_SECRET || "",
     public: {
       supabaseUrl: process.env.SUPABASE_URL,
       supabasePublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY,
@@ -102,7 +105,12 @@ export default defineNuxtConfig({
       routes: isCapacitorBuild ? ["/"] : [],
     },
     vercel: {
+      functions: {
+        maxDuration: 300,
+      },
       config: {
+        // 01:00 UTC Tuesday–Saturday is 8:00pm Eastern Monday–Friday, after the US close.
+        crons: [{ path: "/api/cron/investment-prices", schedule: "0 1 * * 2-6" }],
         routes: [
           {
             src: "/_nuxt/(.*)",

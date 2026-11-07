@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { formatInvestmentShares, truncateDescription } from "../utils/investmentFormat.js";
 import { isQuotedSymbol, latestDailyClose } from "../utils/investmentQuotes.js";
+import { cronAuthorized } from "../utils/refreshInvestmentPrices.js";
 import {
   accountValueStack,
   gainFromTotals,
@@ -243,4 +244,12 @@ test("daily close parser accepts a close and skips cash symbols", () => {
   assert.equal(isQuotedSymbol("SPAXX"), true);
   assert.equal(isQuotedSymbol("FCASH"), false);
   assert.equal(isQuotedSymbol("84679P306"), false);
+});
+
+test("price cron accepts only a long bearer secret", () => {
+  const secret = "1234567890123456";
+  assert.equal(cronAuthorized(`Bearer ${secret}`, secret), true);
+  assert.equal(cronAuthorized("Bearer wrong-secret-value", secret), false);
+  assert.equal(cronAuthorized(`Bearer ${secret}`, "short"), false);
+  assert.equal(cronAuthorized("", secret), false);
 });
