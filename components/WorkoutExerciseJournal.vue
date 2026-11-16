@@ -1,6 +1,24 @@
 <template>
   <div class="space-y-4">
     <section v-if="draft.sessionId" class="space-y-4">
+      <div class="app-sticky-action flex flex-wrap gap-2">
+        <button
+          type="button"
+          class="training-chip btn btn-primary btn-sm rounded-full"
+          :disabled="saving || !sessionNameReady"
+          @click="finishSession"
+        >
+          {{ saving ? "Saving…" : "Finish" }}
+        </button>
+        <button
+          type="button"
+          class="training-chip btn btn-ghost btn-sm rounded-full text-red-600 dark:text-red-400"
+          :disabled="saving"
+          @click="deleteSession"
+        >
+          Delete
+        </button>
+      </div>
       <div class="app-card space-y-3 px-4 py-4">
         <div class="flex flex-wrap items-start justify-between gap-3">
           <label class="min-w-0 flex-1 text-sm font-medium text-base-content">
@@ -14,24 +32,6 @@
               @input="markDirty"
             />
           </label>
-          <div class="flex flex-wrap gap-2 pt-6">
-            <button
-              type="button"
-              class="training-chip btn btn-primary btn-sm rounded-full"
-              :disabled="saving || !sessionNameReady"
-              @click="finishSession"
-            >
-              {{ saving ? "Saving…" : "Finish" }}
-            </button>
-            <button
-              type="button"
-              class="training-chip btn btn-ghost btn-sm rounded-full text-red-600 dark:text-red-400"
-              :disabled="saving"
-              @click="deleteSession"
-            >
-              Delete
-            </button>
-          </div>
         </div>
         <p class="text-sm text-base-content/60">
           {{ draft.workoutName ? `From plan: ${draft.workoutName}` : "Custom session" }}
@@ -146,6 +146,14 @@
               {{ previousText(item, setIndex) }}
             </span>
             <button
+              v-if="setIndex === 0 && progressLabel(item)"
+              type="button"
+              class="training-chip btn btn-ghost btn-xs rounded-full"
+              @click="applyProgress(item)"
+            >
+              {{ progressLabel(item) }}
+            </button>
+            <button
               type="button"
               class="training-chip btn btn-ghost btn-xs rounded-full"
               :disabled="item.sets.length <= 1"
@@ -159,6 +167,25 @@
         <button type="button" class="journal-add-set training-chip btn btn-primary btn-xs rounded-full" @click="addSet(item)">
           Add set
         </button>
+        <div v-if="item.exerciseId" class="mt-3 space-y-2">
+          <form class="flex flex-wrap items-end gap-2" @submit.prevent="loadSwaps(item)">
+            <label class="form-control min-w-0 flex-1">
+              <span class="label py-0"><span class="label-text text-xs">Swap this movement</span></span>
+              <input v-model.trim="swapNote" type="text" maxlength="120" class="input input-bordered input-sm w-full" placeholder="shoulder is sore" />
+            </label>
+            <button type="submit" class="training-chip btn btn-ghost btn-xs rounded-full" :disabled="swapLoading">
+              {{ swapLoading && swapKey === item.key ? "Looking…" : "Find a swap" }}
+            </button>
+          </form>
+          <p v-if="swapKey === item.key && swapMessage" class="text-xs text-base-content/60">{{ swapMessage }}</p>
+          <ul v-if="swapKey === item.key && swapOptions.length" class="space-y-1">
+            <li v-for="alt in swapOptions" :key="alt.exerciseId">
+              <button type="button" class="text-sm text-primary underline" @click="useSwap(item, alt)">
+                Use {{ alt.name }}
+              </button>
+            </li>
+          </ul>
+        </div>
       </article>
 
       <button type="button" class="training-chip btn btn-primary btn-sm rounded-full" @click="pickerOpen = true">
@@ -172,6 +199,24 @@
         <button type="button" class="training-chip btn btn-primary btn-sm rounded-full" :disabled="saving" @click="startEmpty">
           {{ startingId === "empty" ? "Starting…" : "Start empty" }}
         </button>
+        <form class="grid gap-2" @submit.prevent="startFromSentence">
+          <label class="form-control">
+            <span class="label py-1"><span class="label-text text-sm">Describe a session</span></span>
+            <textarea
+              v-model="sessionText"
+              rows="2"
+              maxlength="400"
+              class="textarea textarea-bordered w-full"
+              placeholder="3x8 squat at 185, then 20 minutes on the bike"
+            />
+          </label>
+          <button type="submit" class="training-chip btn btn-ghost btn-sm w-fit rounded-full" :disabled="saving || sessionText.trim().length < 2">
+            {{ startingId === "spoken" ? "Starting…" : "Draft session" }}
+          </button>
+          <p v-if="sessionUnmatched.length" class="text-sm text-warning">
+            Logged by name, not in the catalog: {{ sessionUnmatched.join(", ") }}.
+          </p>
+        </form>
         <p v-if="saveError" class="text-sm text-error">{{ saveError }}</p>
       </div>
 
@@ -683,6 +728,101 @@ function addCatalogExercise(exercise) {
     notes: "",
     sets: Array.from({ length: setCount }, () => emptySet(template)),
   });
+  markDirty();
+}
+
+const sessionText = ref("");
+const sessionUnmatched = ref([]);
+const swapKey = ref("");
+const swapNote = ref("");
+const swapOptions = ref([]);
+const swapMessage = ref("");
+const swapLoading = ref(false);
+
+function progressLabel(item) {
+  const prev = previousByExercise.value[item.exerciseId]?.sets?.[0];
+  if (!prev) return "";
+  if (item.logMode === "duration" && prev.durationSeconds) return "Add 15 seconds";
+  if (prev.reps != null && prev.reps < 12) return "Add a rep";
+  if (prev.weight != null) return "Add 5 lb";
+  return "";
+}
+
+function applyProgress(item) {
+  const prev = previousByExercise.value[item.exerciseId]?.sets?.[0];
+  const set = item.sets?.[0];
+  if (!prev || !set) return;
+  if (item.logMode === "duration" && prev.durationSeconds) {
+    set.durationSeconds = Math.min(86400, Number(prev.durationSeconds) + 15);
+  } else if (prev.reps != null && prev.reps < 12) {
+    set.reps = Math.min(999, Number(prev.reps) + 1);
+    if (prev.weight != null) set.weight = weightInLb(prev.weight, prev.weightUnit);
+  } else if (prev.weight != null) {
+    set.weight = Math.round((Number(weightInLb(prev.weight, prev.weightUnit)) + 5) * 100) / 100;
+    if (prev.reps != null) set.reps = prev.reps;
+  }
+  markDirty();
+}
+
+async function startFromSentence() {
+  const text = sessionText.value.trim();
+  if (text.length < 2 || saving.value) return;
+  saveError.value = "";
+  try {
+    const data = await $fetch("/api/physical/journal/describe", { method: "POST", body: { text } });
+    const exercises = (data?.exercises || []).map((item) => ({
+      exerciseId: item.exerciseId,
+      exerciseName: item.name,
+      equipmentKey: item.equipment,
+      logMode: item.durationSeconds ? "duration" : "reps",
+      sets: Array.from({ length: Math.max(item.sets || 1, 1) }, () => ({
+        reps: item.reps,
+        weight: item.weight,
+        weightUnit: item.weightUnit || "lb",
+        durationSeconds: item.durationSeconds,
+      })),
+    }));
+    sessionUnmatched.value = Array.isArray(data?.unmatched) ? data.unmatched : [];
+    await createSession(
+      {
+        performedAt: new Date().toISOString(),
+        name: "Workout",
+        workoutId: null,
+        exercises,
+      },
+      "spoken",
+    );
+    sessionText.value = "";
+  } catch (error) {
+    saveError.value = parseFetchError(error, "Could not read that session.");
+  }
+}
+
+async function loadSwaps(item) {
+  if (!item?.exerciseId) return;
+  swapKey.value = item.key;
+  swapOptions.value = [];
+  swapMessage.value = "";
+  swapLoading.value = true;
+  try {
+    const data = await $fetch("/api/physical/journal/swap", {
+      method: "POST",
+      body: { exerciseId: item.exerciseId, note: swapNote.value },
+    });
+    swapOptions.value = data?.alternatives || [];
+    swapMessage.value = data?.note || "";
+  } catch (error) {
+    saveError.value = parseFetchError(error, "Could not find another exercise.");
+  } finally {
+    swapLoading.value = false;
+  }
+}
+
+function useSwap(item, alt) {
+  item.exerciseId = alt.exerciseId;
+  item.exerciseName = alt.name;
+  if (alt.equipment) item.equipmentKey = alt.equipment;
+  swapOptions.value = [];
   markDirty();
 }
 

@@ -126,6 +126,22 @@ export async function upsertSpiritualReview(
   return mapReview(result.rows[0], input.review_on);
 }
 
+export async function listSpiritualReviews(
+  client: Client,
+  userId: number,
+  startOn: string,
+  endOn: string,
+): Promise<SpiritualDailyReview[]> {
+  const result = await client.query(
+    `SELECT ${COLUMNS}
+     FROM spiritual_daily_reviews
+     WHERE ${privateUserClause()} AND review_on >= $2 AND review_on <= $3
+     ORDER BY review_on`,
+    [userId, startOn, endOn],
+  );
+  return result.rows.map((row) => mapReview(row, String(row.review_on).slice(0, 10)));
+}
+
 export async function mergeSpiritualReview(
   client: Client,
   userId: number,

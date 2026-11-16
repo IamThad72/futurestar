@@ -43,6 +43,14 @@
         </NuxtLink>
       </nav>
 
+      <div v-if="auth.user" class="max-w-3xl">
+        <button type="button" class="btn btn-ghost btn-sm" :disabled="explaining || loading" @click="explainYear">
+          {{ explaining ? "Writing…" : "Why this number" }}
+        </button>
+        <p v-if="explainError" class="mt-2 text-sm text-error">{{ explainError }}</p>
+        <p v-else-if="explainText" class="mt-2 text-sm leading-6 text-base-content/80">{{ explainText }}</p>
+      </div>
+
       <p v-if="loadError" class="rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-sm text-error">
         {{ loadError }}
       </p>
@@ -556,6 +564,40 @@ async function loadTotals() {
     posttaxTotalsByKind.value = {};
   } finally {
     loading.value = false;
+  }
+}
+
+const explainText = ref("");
+const explainError = ref("");
+const explaining = ref(false);
+
+async function explainYear() {
+  if (explaining.value) return;
+  explaining.value = true;
+  explainError.value = "";
+  const rows = [
+    ...incomeRows.value,
+    ...taxRows.value,
+    ...preTaxRows.value,
+    ...postTaxRows.value,
+    ...estimateSections.value.flatMap((section) => [
+      { label: section.title, amount: section.balance },
+      ...(section.rows || []).map((row) => ({ label: `${section.title}: ${row.label}`, amount: row.amount })),
+    ]),
+  ]
+    .filter((row) => Number.isFinite(Number(row.amount)))
+    .slice(0, 24)
+    .map((row) => ({ label: row.label, amount: Math.round(Number(row.amount) * 100) / 100 }));
+  try {
+    const data = await $fetch("/api/tax/explain", {
+      method: "POST",
+      body: { year: selectedYear.value, rows },
+    });
+    explainText.value = String(data?.text || "");
+  } catch (error) {
+    explainError.value = error?.data?.statusMessage || error?.statusMessage || "Could not explain this year.";
+  } finally {
+    explaining.value = false;
   }
 }
 

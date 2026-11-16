@@ -58,6 +58,20 @@
           </div>
         </article>
       </div>
+      <div class="mt-4">
+        <button
+          type="button"
+          class="training-chip btn btn-ghost btn-sm rounded-full"
+          :disabled="questionsLoading || (!oldTestament && !newTestament)"
+          @click="askQuestions"
+        >
+          {{ questionsLoading ? "Asking…" : "Reflection questions" }}
+        </button>
+        <p v-if="questionsError" class="mt-2 text-sm text-red-600">{{ questionsError }}</p>
+        <ul v-else-if="questions.length" class="mt-3 space-y-2">
+          <li v-for="question in questions" :key="question" class="text-sm text-gray-800">{{ question }}</li>
+        </ul>
+      </div>
     </section>
   </div>
 </template>
@@ -74,6 +88,9 @@ const weekly = ref(null);
 const oldTestament = ref(null);
 const newTestament = ref(null);
 const refresh = ref(0);
+const questions = ref([]);
+const questionsLoading = ref(false);
+const questionsError = ref("");
 
 watch(reviewOn, () => {
   refresh.value = 0;
@@ -96,6 +113,8 @@ async function loadDay() {
     oldTestament.value = data?.old_testament || null;
     newTestament.value = data?.new_testament || null;
     catalogMessage.value = data?.catalog?.message || "";
+    questions.value = [];
+    questionsError.value = "";
   } catch (error) {
     loadError.value = parseFetchError(error, "Failed to load Scripture.");
   } finally {
@@ -106,5 +125,25 @@ async function loadDay() {
 function drawAnother() {
   refresh.value += 1;
   void loadDay();
+}
+
+async function askQuestions() {
+  const passages = [oldTestament.value, newTestament.value]
+    .filter((passage) => passage?.citation && passage?.text)
+    .map((passage) => ({ citation: passage.citation, text: passage.text }));
+  if (!passages.length || questionsLoading.value) return;
+  questionsLoading.value = true;
+  questionsError.value = "";
+  try {
+    const data = await $fetch("/api/spiritual/assist", {
+      method: "POST",
+      body: { action: "questions", passages },
+    });
+    questions.value = Array.isArray(data?.questions) ? data.questions : [];
+  } catch (error) {
+    questionsError.value = parseFetchError(error, "Could not write reflection questions.");
+  } finally {
+    questionsLoading.value = false;
+  }
 }
 </script>

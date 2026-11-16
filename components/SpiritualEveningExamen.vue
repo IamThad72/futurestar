@@ -28,6 +28,16 @@
             maxlength="2000"
             class="examen-textarea textarea textarea-bordered textarea-sm w-full min-w-0 max-w-full"
           />
+          <button
+            v-if="followFields.has(field.key)"
+            type="button"
+            class="training-chip btn btn-ghost btn-xs mt-2 w-fit rounded-full"
+            :disabled="followLoading === field.key || !String(form[field.key] || '').trim()"
+            @click="askFollowUp(field.key)"
+          >
+            {{ followLoading === field.key ? "Asking…" : "Ask a follow-up" }}
+          </button>
+          <p v-if="followQuestions[field.key]" class="mt-2 text-sm text-gray-800">{{ followQuestions[field.key] }}</p>
         </label>
         <p v-if="saveError" class="text-sm text-red-600 dark:text-red-400">{{ saveError }}</p>
         <p v-else-if="saveNotice" class="text-sm text-emerald-700 dark:text-emerald-400">{{ saveNotice }}</p>
@@ -52,6 +62,7 @@ import { todayIsoDate } from "~/utils/liturgicalCalendar";
 import { CLOSING_PRAYER_LINES, EXAMEN_FIELDS, emptySpiritualReview } from "~/utils/spiritualReview";
 
 const examenFields = EXAMEN_FIELDS;
+const followFields = new Set(["grateful", "troubled", "shortfall"]);
 const closingLines = CLOSING_PRAYER_LINES;
 
 const reviewOn = ref(todayIsoDate());
@@ -61,6 +72,8 @@ const loadError = ref("");
 const saving = ref(false);
 const saveError = ref("");
 const saveNotice = ref("");
+const followLoading = ref("");
+const followQuestions = ref({});
 
 watch(reviewOn, () => {
   void loadDay();
@@ -77,11 +90,30 @@ async function loadDay() {
   saveNotice.value = "";
   try {
     const data = await $fetch("/api/spiritual/review", { query: { date: reviewOn.value } });
+    followQuestions.value = {};
     form.value = { ...emptySpiritualReview(), ...(data?.review || {}) };
   } catch (error) {
     loadError.value = parseFetchError(error, "Failed to load this day’s examen.");
   } finally {
     loading.value = false;
+  }
+}
+
+async function askFollowUp(field) {
+  const answer = String(form.value[field] || "").trim();
+  if (answer.length < 2 || followLoading.value) return;
+  followLoading.value = field;
+  saveError.value = "";
+  try {
+    const data = await $fetch("/api/spiritual/assist", {
+      method: "POST",
+      body: { action: "followup", field, answer },
+    });
+    followQuestions.value = { ...followQuestions.value, [field]: String(data?.text || "").trim() };
+  } catch (error) {
+    saveError.value = parseFetchError(error, "Could not ask a follow-up.");
+  } finally {
+    followLoading.value = "";
   }
 }
 

@@ -132,9 +132,42 @@
       </div>
 
       <div v-else class="py-4 md:py-6">
+        <div class="app-sticky-action">
         <p class="mx-auto max-w-7xl mb-2 px-1 text-xs text-gray-500 sm:px-6 md:mb-3 md:text-sm lg:px-8 dark:text-gray-400">
           {{ monthNames[selectedMonth - 1] }} {{ selectedYear }} — tap a category to view or add transactions. The budget is this month’s plan; recorded amounts stay on the category you choose.
         </p>
+        <form class="mx-auto mb-4 grid max-w-7xl gap-2 px-1 sm:px-6 lg:px-8" @submit.prevent="draftTransaction">
+          <label class="form-control">
+            <span class="label py-1"><span class="label-text text-sm">Describe a transaction</span></span>
+            <input
+              v-model.trim="sentenceText"
+              type="text"
+              maxlength="240"
+              class="input input-bordered w-full"
+              placeholder="Kroger 64.18 yesterday"
+            />
+          </label>
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="submit" class="btn btn-primary btn-sm" :disabled="sentenceBusy || sentenceText.length < 2">
+              {{ sentenceBusy ? "Drafting…" : "Draft" }}
+            </button>
+            <p v-if="sentenceError" class="text-sm text-error">{{ sentenceError }}</p>
+            <p v-else-if="sentenceNotice" class="text-sm text-base-content/70">{{ sentenceNotice }}</p>
+          </div>
+          <div v-if="pendingDraft" class="flex flex-wrap items-end gap-2">
+            <label class="form-control min-w-0 flex-1">
+              <span class="label py-1"><span class="label-text text-sm">Category</span></span>
+              <select v-model="pendingKey" class="select select-bordered w-full">
+                <option value="">Pick a category</option>
+                <option v-for="cat in sentenceCategories" :key="cat.key" :value="cat.key">{{ cat.label }}</option>
+              </select>
+            </label>
+            <button type="button" class="btn btn-primary btn-sm" :disabled="!pendingKey" @click="openPendingDraft">
+              Continue
+            </button>
+          </div>
+        </form>
+        </div>
 
         <div class="space-y-4 md:space-y-6">
         <template v-for="section in budgetTrackerDisplaySections" :key="section.key">
@@ -184,6 +217,17 @@
         <div class="modal-box" :class="{ 'max-w-2xl max-h-[90vh] overflow-y-auto': isGrossIncomePaycheckMode }">
           <h3 class="font-semibold text-lg mb-4 leading-snug">{{ addTransactionModalTitle }}</h3>
           <form @submit.prevent="submitTransaction" class="space-y-4">
+            <label v-if="txForm.type === 'expense'" class="form-control w-full">
+              <span class="label-text text-sm">Budget category <span class="text-error">*</span></span>
+              <select v-model="txForm.budgetItemId" class="select select-bordered w-full" required>
+                <option value="">Select a category…</option>
+                <optgroup v-for="group in csvExpenseGroups" :key="`add-cat-${group.category}`" :label="group.category">
+                  <option v-for="item in group.items" :key="categoryOptionValue(item)" :value="categoryOptionValue(item)">
+                    {{ item.sub_category || group.category }}<template v-if="item.off_plan"> (previous)</template>
+                  </option>
+                </optgroup>
+              </select>
+            </label>
             <div v-if="txForm.type === 'income' || txForm.type === 'tax' || txForm.type === 'insurance'" class="space-y-2">
               <label class="form-control w-full">
                 <span class="label-text text-sm">From</span>
@@ -448,7 +492,10 @@
               </select>
             </label>
             <label v-if="showAppliedAccountSelector" class="form-control w-full">
-              <span class="label-text text-sm">To Account <span class="text-error">*</span></span>
+              <span class="label-text text-sm">
+                To Account
+                <span v-if="useDebtInstitutionsForAddModal" class="text-error">*</span>
+              </span>
               <template v-if="useDebtInstitutionsForAddModal">
                 <select v-model="txForm.debtId" class="select select-bordered w-full" required>
                   <option value="" disabled>Select debt institution…</option>
@@ -464,13 +511,13 @@
                 </p>
               </template>
               <template v-else>
-                <select v-model="txForm.cashInvestmentId" class="select select-bordered w-full" required>
-                  <option value="" disabled>Select account…</option>
+                <select v-model="txForm.cashInvestmentId" class="select select-bordered w-full">
+                  <option value="">None</option>
                   <option v-for="acct in cashAccounts" :key="acct.ci_id" :value="String(acct.ci_id)">
                     {{ [acct.institution, acct.acct_type].filter(Boolean).join(" — ") || `Account #${acct.ci_id}` }}
                   </option>
                 </select>
-                <span class="label-text-alt text-base-content/60">Where this amount is recorded (checking, card, investment, etc.)</span>
+                <span class="label-text-alt text-base-content/60">Leave this blank for a purchase such as groceries. Choose an account only when the money moves into that account.</span>
               </template>
             </label>
             <label class="form-control w-full">
@@ -888,11 +935,21 @@ const csvRows = ref([]);
 const csvError = ref("");
 const csvImportBanner = ref("");
 const csvPageNotice = ref("");
+const sentenceText = ref("");
+const sentenceBusy = ref(false);
+const sentenceError = ref("");
+const sentenceNotice = ref("");
+const pendingDraft = ref(null);
+const pendingKey = ref("");
+const sentenceCategories = computed(() => csvCategoryCatalog());
 const csvSaving = ref(false);
 const now = new Date();
 const currentYear = now.getFullYear();
-const selectedMonth = ref(now.getMonth() + 1);
-const selectedYear = ref(currentYear >= 2026 && currentYear <= 2032 ? currentYear : 2026);
+const route = useRoute();
+const queryMonth = Number(route.query.month);
+const queryYear = Number(route.query.year);
+const selectedMonth = ref(queryMonth >= 1 && queryMonth <= 12 ? queryMonth : now.getMonth() + 1);
+const selectedYear = ref(queryYear >= 2026 && queryYear <= 2032 ? queryYear : currentYear >= 2026 && currentYear <= 2032 ? currentYear : 2026);
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 const yearOptions = computed(() => {
@@ -2409,9 +2466,9 @@ async function submitTransaction() {
   txError.value = "";
   const id = txForm.value.budgetItemId;
   const amount = txForm.value.amount;
-  if (!id || amount == null || isNaN(amount)) {
+    if (!id || amount == null || isNaN(amount)) {
     txError.value = !id
-      ? "No budget line is set. Use Add from a row under Budget Details, or add lines in Budget Setup."
+      ? "Choose a budget category."
       : "Enter a valid amount.";
     return;
   }
@@ -2432,12 +2489,6 @@ async function submitTransaction() {
       const did = txForm.value.debtId ? parseInt(String(txForm.value.debtId), 10) : NaN;
       if (!did || isNaN(did) || did <= 0) {
         txError.value = "Select the debt institution this amount applies to.";
-        return;
-      }
-    } else {
-      const cid = txForm.value.cashInvestmentId ? parseInt(String(txForm.value.cashInvestmentId), 10) : NaN;
-      if (!cid || isNaN(cid) || cid <= 0) {
-        txError.value = "Select the account this amount is applied to.";
         return;
       }
     }
@@ -2794,6 +2845,85 @@ function addModalBudgetTypeFromItem(item, listType) {
   if (et === "savings") return "savings";
   if (et === "investment") return "investment";
   return "expense";
+}
+
+function draftTransactionSentence(draft) {
+  const parsed = parseCsvBudgetItemKey(draft.key);
+  const type = parsed?.kind === "insurance" ? "insurance" : "expense";
+  const budgetItemId = parsed?.classification ? String(draft.key) : parsed?.id ? String(parsed.id) : "";
+  showNewIncomeFromInput.value = false;
+  showNewInvestmentFromInput.value = false;
+  showNewSavingsFromInput.value = false;
+  grossAllocationAmounts.value = {};
+  txForm.value = {
+    type,
+    budgetItemId,
+    date: draft.date,
+    amount: draft.amount,
+    payee: "",
+    incomeSourceId: "",
+    incomeSourceName: "",
+    investmentSourceId: "",
+    investmentSourceName: "",
+    savingsSourceId: "",
+    savingsSourceName: "",
+    description: draft.description,
+    fromCashInvestmentId: cashAccounts.value.length === 1 ? String(cashAccounts.value[0].ci_id) : "",
+    cashInvestmentId: "",
+    debtId: "",
+  };
+  txError.value = "";
+  nextTick(() => addDialogRef.value?.showModal());
+}
+
+async function draftTransaction() {
+  const text = sentenceText.value.trim();
+  if (text.length < 2 || sentenceBusy.value) return;
+  sentenceBusy.value = true;
+  sentenceError.value = "";
+  sentenceNotice.value = "";
+  const today = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  try {
+    const data = await $fetch("/api/budget/transactions/draft", {
+      method: "POST",
+      body: {
+        text,
+        categories: csvCategoryCatalog(),
+        today: `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`,
+      },
+    });
+    const draft = data?.draft;
+    if (!draft) {
+      sentenceError.value = "Could not draft that transaction.";
+      return;
+    }
+    if (draft.skip) {
+      pendingDraft.value = null;
+      sentenceNotice.value = "That looks like a transfer, card payment, or paycheck, so it was left out of spending.";
+      return;
+    }
+    if (!draft.key) {
+      pendingDraft.value = draft;
+      pendingKey.value = "";
+      sentenceNotice.value = "Pick a category before you save.";
+      return;
+    }
+    pendingDraft.value = null;
+    sentenceNotice.value = "";
+    draftTransactionSentence(draft);
+  } catch (error) {
+    sentenceError.value = parseFetchError(error, "Could not draft that transaction.");
+  } finally {
+    sentenceBusy.value = false;
+  }
+}
+
+function openPendingDraft() {
+  if (!pendingDraft.value || !pendingKey.value) return;
+  draftTransactionSentence({ ...pendingDraft.value, key: pendingKey.value });
+  pendingDraft.value = null;
+  sentenceNotice.value = "";
 }
 
 function addTxFromSubCategory() {

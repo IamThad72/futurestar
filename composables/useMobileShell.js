@@ -26,17 +26,17 @@ function useMatchMedia(query) {
 }
 
 /**
- * Viewport helpers for Ionic shell and reliable mobile navigation.
- * Narrow viewports and native builds use Ionic header/menu/content;
- * desktop keeps the daisyUI navbar. No bottom tab bar.
+ * Viewport helpers for the app shell.
+ * Below 1024px, and on a native build, the shell is a header plus a bottom bar.
+ * Wider windows keep the top bar and a left sidebar.
  */
 export function useMobileShell() {
   const isNative = useIsNativeApp();
   const isNarrow = useMatchMedia("(max-width: 639px)");
-  /** Stacked workout layout / tap-to-add (below Tailwind `lg`). */
+  /** Phone and tablet chrome, stacked layouts, and tap-to-add (below Tailwind `lg`). */
   const isStacked = useMatchMedia("(max-width: 1023px)");
 
-  const useMobileChrome = computed(() => isNative.value || isNarrow.value);
+  const useMobileChrome = computed(() => isNative.value || isStacked.value);
   const preferTapAdd = computed(() => isNative.value || isStacked.value);
 
   return {

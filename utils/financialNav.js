@@ -17,7 +17,13 @@ export const FINANCIAL_NAV_TABS = [
     name: "Estate Management",
     href: "/estate_mgmt",
     description: "Assets, debts, insurance, and net worth.",
-    match: (path) => path.startsWith("/estate_mgmt"),
+    match: (path, ctx) => path.startsWith("/estate_mgmt") && !ctx?.docsView,
+  },
+  {
+    name: "Documents",
+    href: "/estate_mgmt?docs=1",
+    description: "Policies, titles, and statements kept next to the estate records.",
+    match: (path, ctx) => path.startsWith("/estate_mgmt") && Boolean(ctx?.docsView),
   },
   {
     name: "Garage",
@@ -73,3 +79,18 @@ export function financialTabsForPath(path, query = {}, hash = "") {
 }
 
 export const FINANCIAL_HOME_LINKS = FINANCIAL_NAV_TABS.filter((tab) => tab.href !== "/financial");
+
+/** Sidebar and home-card groups. Names match FINANCIAL_NAV_TABS. */
+export const FINANCIAL_NAV_GROUPS = [
+  { name: "Plan", names: ["Budget Tracker", "Budget Setup", "Tax"] },
+  { name: "Household", names: ["Estate Management", "Garage", "Documents"] },
+  { name: "Wealth", names: ["Investments", "Account Map"] },
+];
+
+export function financialSidebarGroups(tabs) {
+  const byName = new Map(tabs.map((tab) => [tab.name, tab]));
+  return FINANCIAL_NAV_GROUPS.map((group) => ({
+    name: group.name,
+    tabs: group.names.map((name) => byName.get(name)).filter(Boolean),
+  })).filter((group) => group.tabs.length);
+}

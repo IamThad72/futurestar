@@ -11,12 +11,18 @@
       @retry="loadDocuments"
     />
 
-    <div v-else-if="!documents.length" class="estate-docs-empty">
+    <div v-else-if="!documents.length && !searchText" class="estate-docs-empty">
       No documents yet. Upload a PDF, image, or office file to keep it with this household.
     </div>
 
-    <ion-list v-else lines="full" class="estate-docs-list">
-      <ion-item v-for="doc in documents" :key="doc.doc_id" class="estate-docs-item">
+    <div v-else class="flex flex-col gap-6">
+      <label class="form-control">
+        <span class="label py-1"><span class="label-text text-sm">Search titles and notes</span></span>
+        <input v-model.trim="searchText" type="search" class="input input-bordered input-sm w-full" placeholder="homeowners policy" />
+      </label>
+      <p v-if="!visibleDocuments.length" class="text-sm text-base-content/60">No documents match that search.</p>
+      <ion-list v-else lines="full" class="estate-docs-list">
+      <ion-item v-for="doc in visibleDocuments" :key="doc.doc_id" class="estate-docs-item">
         <ion-label>
           <h2 class="estate-docs-title">{{ displayName(doc) }}</h2>
           <p v-if="doc.title && doc.title !== doc.original_filename" class="estate-docs-line">
@@ -58,7 +64,8 @@
           </button>
         </div>
       </ion-item>
-    </ion-list>
+      </ion-list>
+    </div>
 
     <dialog ref="uploadModalRef" class="modal" @close="resetUploadForm">
       <div class="modal-box w-[calc(100%-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto overscroll-contain sm:w-full">
@@ -169,6 +176,15 @@ const acceptTypes = [
 
 const auth = useAuthStore();
 const documents = ref([]);
+const searchText = ref("");
+const visibleDocuments = computed(() => {
+  const needle = searchText.value.trim().toLowerCase();
+  if (!needle) return documents.value;
+  return documents.value.filter((doc) => {
+    const hay = [doc.title, doc.notes, doc.original_filename].filter(Boolean).join(" ").toLowerCase();
+    return hay.includes(needle);
+  });
+});
 const loading = ref(false);
 const loadError = ref("");
 const uploading = ref(false);

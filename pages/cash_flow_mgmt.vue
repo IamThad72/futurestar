@@ -24,6 +24,27 @@
       </button>
     </header>
 
+    <section v-if="auth.user && auth.ready && !loadError" class="rounded-lg border border-base-300 px-4 py-3">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h2 class="text-sm font-semibold text-base-content">Repeated spending without a line</h2>
+        <button type="button" class="btn btn-ghost btn-xs" :disabled="suggestionsLoading" @click="loadLineSuggestions">
+          {{ suggestionsLoading ? "Looking…" : "Look for lines" }}
+        </button>
+      </div>
+      <ul v-if="lineSuggestions.length" class="mt-3 space-y-2">
+        <li v-for="line in lineSuggestions" :key="`${line.category}-${line.sub_category}`" class="flex flex-wrap items-center justify-between gap-2">
+          <p class="text-sm text-base-content/80">
+            {{ line.category }} · {{ line.sub_category }}
+            <span class="text-base-content/50">· ${{ Number(line.monthly_amount).toFixed(2) }}/mo · {{ line.count }} times</span>
+          </p>
+          <button type="button" class="btn btn-ghost btn-xs" :disabled="suggestionSaving === line.sub_category" @click="acceptSuggestion(line)">
+            {{ suggestionSaving === line.sub_category ? "Adding…" : "Add line" }}
+          </button>
+        </li>
+      </ul>
+      <p v-if="suggestionError" class="mt-2 text-sm text-error">{{ suggestionError }}</p>
+    </section>
+
     <div v-if="!auth.ready" class="rounded-lg border border-base-200 bg-base-300 p-4">
       <span class="text-sm text-base-content/70">Loading session...</span>
     </div>
@@ -794,6 +815,11 @@ async function openEdit(item, type) {
 }
 const budgets = ref({ income: [], expenses: [] });
 const activeBudgetName = ref("");
+const lineSuggestions = ref([]);
+const suggestionBudgetId = ref(null);
+const suggestionSaving = ref("");
+const suggestionError = ref("");
+const suggestionsLoading = ref(false);
 const loading = ref(true);
 const loadError = ref("");
 const deleting = ref(false);
@@ -894,6 +920,45 @@ const budgetSnapshotStats = computed(() => {
     { name: "Gain/Loss", value: money(gainLoss) },
   ];
 });
+
+async function loadLineSuggestions() {
+  suggestionError.value = "";
+  suggestionsLoading.value = true;
+  try {
+    const data = await $fetch("/api/budget/line-suggestions");
+    suggestionBudgetId.value = data?.budget_id ?? null;
+    lineSuggestions.value = Array.isArray(data?.suggestions) ? data.suggestions : [];
+  } catch (error) {
+    lineSuggestions.value = [];
+    suggestionError.value = error?.data?.statusMessage || error?.statusMessage || "Could not look for missing budget lines.";
+  } finally {
+    suggestionsLoading.value = false;
+  }
+}
+
+async function acceptSuggestion(line) {
+  suggestionSaving.value = line.sub_category;
+  suggestionError.value = "";
+  try {
+    await $fetch("/api/budget/submit", {
+      method: "POST",
+      body: {
+        type: "expense",
+        expense_type: "expense",
+        category: line.category,
+        sub_category: line.sub_category,
+        monthly_amount: line.monthly_amount,
+        budget_id: suggestionBudgetId.value,
+      },
+    });
+    lineSuggestions.value = lineSuggestions.value.filter((item) => item.sub_category !== line.sub_category);
+    await loadBudgets();
+  } catch (error) {
+    suggestionError.value = error?.data?.statusMessage || error?.statusMessage || "Could not add that line.";
+  } finally {
+    suggestionSaving.value = "";
+  }
+}
 
 async function loadBudgets() {
   if (!auth.user) return;

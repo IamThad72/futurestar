@@ -3,68 +3,16 @@
     class="mobile-ionic-shell"
     :class="{ 'mobile-ionic-shell--editing': textFieldFocused }"
   >
-    <ion-menu
-      menu-id="app-nav"
-      content-id="main-content"
-      type="overlay"
-    >
-      <ion-header>
-        <ion-toolbar>
-          <ion-title>Future Star</ion-title>
-        </ion-toolbar>
-      </ion-header>
-      <ion-content>
-        <ion-list>
-          <ion-item
-            v-for="link in links"
-            :key="`menu-${link.name}`"
-            button
-            :detail="false"
-            :class="{ 'app-menu-item--current': link.current }"
-            @click="goAndClose(link.path)"
-          >
-            <ion-label>{{ link.name }}</ion-label>
-          </ion-item>
-        </ion-list>
-        <template v-if="sectionTabs.length">
-          <ion-list>
-            <ion-list-header>{{ sectionLabel }}</ion-list-header>
-            <ion-item
-              v-for="tab in sectionTabs"
-              :key="tab.href"
-              button
-              :detail="false"
-              :class="{ 'app-menu-item--current': tab.current }"
-              @click="goAndClose(tab.href)"
-            >
-              <ion-label>{{ tab.name }}</ion-label>
-            </ion-item>
-          </ion-list>
-        </template>
-      </ion-content>
-    </ion-menu>
-
     <div id="main-content" class="ion-page">
       <ion-header>
         <ion-toolbar>
           <ion-buttons slot="start">
             <button
-              v-if="links.length"
-              type="button"
-              class="mobile-menu-btn"
-              aria-label="Open main menu"
-              @click="toggleMenu"
-            >
-              <ion-icon :icon="menuOutline" aria-hidden="true" />
-            </button>
-          </ion-buttons>
-          <ion-title>
-            <button
               type="button"
               class="mobile-brand"
+              aria-label="Home"
               @click="go('/')"
             >
-              <span>Future Star</span>
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
@@ -81,7 +29,8 @@
                 />
               </svg>
             </button>
-          </ion-title>
+          </ion-buttons>
+          <ion-title>{{ screenTitle }}</ion-title>
           <ion-buttons slot="end">
             <button
               v-if="!auth.user"
@@ -117,16 +66,6 @@
             </button>
           </ion-buttons>
         </ion-toolbar>
-        <ion-toolbar
-          v-if="auth.user && (isFinancialSection || isPhysicalSection || isSpiritualSection)"
-          class="mobile-section-toolbar"
-        >
-          <div class="mobile-section-toolbar__inner">
-            <FinancialSectionNav v-if="isFinancialSection" embedded />
-            <PhysicalSectionNav v-if="isPhysicalSection" embedded />
-            <SpiritualSectionNav v-if="isSpiritualSection" embedded />
-          </div>
-        </ion-toolbar>
       </ion-header>
 
       <ion-content ref="contentRef" class="mobile-ionic-content">
@@ -139,12 +78,22 @@
       </ion-content>
 
       <ion-footer
+        v-if="auth.user"
         v-show="!textFieldFocused"
-        class="mobile-ionic-footer"
+        class="mobile-area-bar"
       >
-        <p class="mobile-ionic-footer__copy">
-          &copy; 2026 Marcelli Enterprises LLC. All rights reserved.
-        </p>
+        <nav class="mobile-area-bar__nav" aria-label="Areas of life">
+          <button
+            v-for="link in links"
+            :key="link.path"
+            type="button"
+            class="mobile-area-bar__item"
+            :aria-current="link.current ? 'page' : undefined"
+            @click="go(link.path)"
+          >
+            {{ link.name }}
+          </button>
+        </nav>
       </ion-footer>
     </div>
 
@@ -194,37 +143,24 @@ import {
   IonContent,
   IonFooter,
   IonHeader,
-  IonIcon,
-  IonItem,
-  IonLabel,
-  IonList,
-  IonListHeader,
-  IonMenu,
   IonTitle,
   IonToolbar,
 } from "@ionic/vue";
-import { menuOutline } from "ionicons/icons";
 
 const emit = defineEmits(["open-account", "open-linked"]);
 
 const {
   auth,
   route,
-  isFinancialSection,
-  isPhysicalSection,
-  isSpiritualSection,
   isSpiritualHome,
   links,
-  sectionTabs,
-  sectionLabel,
+  screenTitle,
 } = useAppNav();
 const { go } = useAppNavigate();
 const contentRef = ref(null);
 const userMenuOpen = ref(false);
 const textFieldFocused = ref(false);
 let blurHideTimer = 0;
-
-const MENU_ID = "app-nav";
 
 const NON_TEXT_INPUT_TYPES = new Set([
   "button",
@@ -279,41 +215,6 @@ function onFocusOut() {
   }, 50);
 }
 
-function menuEl() {
-  return document.querySelector(`ion-menu[menu-id="${MENU_ID}"]`);
-}
-
-async function closeMenu() {
-  try {
-    const menu = menuEl();
-    if (menu && (await menu.isOpen())) {
-      await menu.close();
-    }
-  } catch {
-    // Menu may not be registered yet (first paint / HMR).
-  }
-}
-
-async function toggleMenu() {
-  try {
-    const menu = menuEl();
-    if (!menu) return;
-    if (await menu.isOpen()) {
-      await menu.close();
-    } else {
-      await menu.open();
-    }
-  } catch {
-    // Menu may not be registered yet (first paint / HMR).
-  }
-}
-
-async function goAndClose(path) {
-  userMenuOpen.value = false;
-  await closeMenu();
-  await go(path);
-}
-
 function onOpenAccount() {
   userMenuOpen.value = false;
   emit("open-account");
@@ -326,17 +227,15 @@ function onOpenLinked() {
 
 async function logout() {
   userMenuOpen.value = false;
-  await closeMenu();
   const { signOut } = useSignOut();
   await signOut();
 }
 
 watch(
   () => route.fullPath,
-  async () => {
+  () => {
     userMenuOpen.value = false;
     textFieldFocused.value = false;
-    await closeMenu();
     const el = contentRef.value?.$el;
     if (el && typeof el.scrollToTop === "function") {
       el.scrollToTop(0);
@@ -353,6 +252,5 @@ onBeforeUnmount(() => {
   document.removeEventListener("focusin", onFocusIn, true);
   document.removeEventListener("focusout", onFocusOut, true);
   window.clearTimeout(blurHideTimer);
-  void closeMenu();
 });
 </script>

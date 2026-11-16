@@ -80,13 +80,21 @@
             </div>
             <p v-if="describeError" class="text-sm text-red-600 dark:text-red-400">{{ describeError }}</p>
             <p v-else-if="describeMessage" class="text-sm text-gray-600 dark:text-gray-300">{{ describeMessage }}</p>
-            <div>
+            <div class="flex flex-wrap gap-2">
               <button
                 type="submit"
                 class="training-chip btn btn-primary btn-sm rounded-full"
                 :disabled="describing || !describeText.trim()"
               >
                 {{ describing ? "Reading…" : "Review foods" }}
+              </button>
+              <button
+                type="button"
+                class="training-chip btn btn-ghost btn-sm rounded-full"
+                :disabled="describing"
+                @click="suggestRemaining"
+              >
+                {{ describing ? "Reading…" : "What's left today" }}
               </button>
             </div>
           </form>
@@ -408,6 +416,27 @@
                 <input v-model.trim="row.portionLabel" type="text" maxlength="160" class="input input-bordered input-sm w-full" />
               </label>
             </div>
+            <div v-if="row.unmatched" class="mt-2 grid gap-2 sm:grid-cols-4">
+              <label class="form-control">
+                <span class="label py-0"><span class="label-text text-xs">Calories</span></span>
+                <input v-model="row.kcal" type="number" min="0" step="1" class="input input-bordered input-sm w-full" />
+              </label>
+              <label class="form-control">
+                <span class="label py-0"><span class="label-text text-xs">Protein (g)</span></span>
+                <input v-model="row.protein" type="number" min="0" step="0.1" class="input input-bordered input-sm w-full" />
+              </label>
+              <label class="form-control">
+                <span class="label py-0"><span class="label-text text-xs">Fat (g)</span></span>
+                <input v-model="row.fat" type="number" min="0" step="0.1" class="input input-bordered input-sm w-full" />
+              </label>
+              <label class="form-control">
+                <span class="label py-0"><span class="label-text text-xs">Carbs (g)</span></span>
+                <input v-model="row.carb" type="number" min="0" step="0.1" class="input input-bordered input-sm w-full" />
+              </label>
+              <p class="sm:col-span-4 text-xs text-gray-500 dark:text-gray-400">
+                Per serving. These are saved on the food before it is logged.
+              </p>
+            </div>
             <p class="mt-2 text-xs tabular-nums text-gray-600 dark:text-gray-300">
               <template v-if="proposalPreview(row)">
                 {{ formatMacro(proposalPreview(row).kcal, 0) }} kcal ·
@@ -416,6 +445,7 @@
                 C {{ formatMacro(proposalPreview(row).carb_g, 1) }} g
                 <span v-if="proposalTotalWeight(row)"> · {{ proposalTotalWeight(row) }}</span>
               </template>
+              <template v-else-if="row.unmatched">Enter the macros for one serving.</template>
               <template v-else>Enter a serving count and a size.</template>
             </p>
           </div>
@@ -1175,6 +1205,22 @@ function proposalGrams(row) {
 }
 
 function proposalPreview(row) {
+  if (row?.unmatched) {
+    const quantity = Number(row.quantity);
+    const kcal = Number(row.kcal);
+    const protein = Number(row.protein);
+    const fat = Number(row.fat);
+    const carb = Number(row.carb);
+    if (![quantity, kcal, protein, fat, carb].every((value) => Number.isFinite(value) && value >= 0) || !(quantity > 0)) {
+      return null;
+    }
+    return {
+      kcal: kcal * quantity,
+      protein_g: protein * quantity,
+      fat_g: fat * quantity,
+      carb_g: carb * quantity,
+    };
+  }
   const grams = proposalGrams(row);
   if (grams == null) return null;
   return {
@@ -1207,7 +1253,49 @@ function proposalFromItem(item) {
     protein_g_per_100g: item?.protein_g_per_100g ?? null,
     fat_g_per_100g: item?.fat_g_per_100g ?? null,
     carb_g_per_100g: item?.carb_g_per_100g ?? null,
+    unmatched: false,
+    kcal: "",
+    protein: "",
+    fat: "",
+    carb: "",
   };
+}
+
+function proposalFromUnmatched(name) {
+  describeKey += 1;
+  return {
+    key: describeKey,
+    name: String(name || ""),
+    quantity: "1",
+    servingOz: "",
+    portionLabel: "1 serving",
+    requestedServing: "",
+    fdc_id: null,
+    user_food_id: null,
+    portion_id: null,
+    kcal_per_100g: null,
+    protein_g_per_100g: null,
+    fat_g_per_100g: null,
+    carb_g_per_100g: null,
+    unmatched: true,
+    kcal: "",
+    protein: "",
+    fat: "",
+    carb: "",
+  };
+}
+
+function openDescribed(result) {
+  const items = Array.isArray(result?.items) ? result.items : [];
+  const unmatched = Array.isArray(result?.unmatched) ? result.unmatched.filter(Boolean) : [];
+  describeUnmatched.value = unmatched;
+  describeProposals.value = [...items.map(proposalFromItem), ...unmatched.map(proposalFromUnmatched)];
+  describeReviewError.value = "";
+  if (!describeProposals.value.length) {
+    describeError.value = "Could not match those foods. Add them as saved foods, or try a simpler name.";
+    return;
+  }
+  nextTick(() => describeModalEl.value?.showModal());
 }
 
 function removeProposal(index) {
@@ -1237,17 +1325,27 @@ async function logFromDescription() {
         meal: logForm.value.meal,
       },
     });
-    const items = Array.isArray(result?.items) ? result.items : [];
-    describeUnmatched.value = Array.isArray(result?.unmatched) ? result.unmatched.filter(Boolean) : [];
-    describeProposals.value = items.map(proposalFromItem);
-    describeReviewError.value = "";
-    if (!describeProposals.value.length) {
-      describeError.value = "Could not match those foods. Add them as saved foods, or try a simpler name.";
-      return;
-    }
-    nextTick(() => describeModalEl.value?.showModal());
+    openDescribed(result);
   } catch (error) {
     describeError.value = parseFetchError(error, "Failed to read that meal.");
+  } finally {
+    describing.value = false;
+  }
+}
+
+async function suggestRemaining() {
+  if (describing.value) return;
+  describing.value = true;
+  describeError.value = "";
+  describeMessage.value = "";
+  try {
+    const result = await $fetch("/api/physical/nutrition/intake/suggest", {
+      method: "POST",
+      body: { date: eatenOn.value },
+    });
+    openDescribed(result);
+  } catch (error) {
+    describeError.value = parseFetchError(error, "Could not suggest foods for what is left.");
   } finally {
     describing.value = false;
   }
@@ -1257,7 +1355,7 @@ async function confirmDescribedFoods() {
   if (describeSaving.value || !describeProposals.value.length) return;
   const rows = describeProposals.value;
   for (const row of rows) {
-    if (!String(row.name || "").trim() || !proposalPreview(row)) {
+    if (!String(row.name || "").trim() || !proposalPreview(row) || proposalGrams(row) == null) {
       describeReviewError.value = "Each food needs a name, a serving count, and a size.";
       return;
     }
@@ -1269,23 +1367,48 @@ async function confirmDescribedFoods() {
     const eatenAt = eatenAtIso(eatenOn.value, logForm.value.time);
     for (const row of rows) {
       const grams = proposalGrams(row);
+      let userFoodId = row.user_food_id;
+      let kcalPer100 = row.kcal_per_100g;
+      let proteinPer100 = row.protein_g_per_100g;
+      let fatPer100 = row.fat_g_per_100g;
+      let carbPer100 = row.carb_g_per_100g;
+      if (row.unmatched) {
+        const servingG = ouncesToGrams(Number(row.servingOz));
+        const created = await $fetch("/api/physical/nutrition/user-foods", {
+          method: "POST",
+          body: {
+            name: row.name.trim(),
+            serving_label: row.portionLabel || "1 serving",
+            serving_g: servingG,
+            kcal: Number(row.kcal),
+            protein_g: Number(row.protein),
+            fat_g: Number(row.fat),
+            carb_g: Number(row.carb),
+          },
+        });
+        userFoodId = created?.food?.user_food_id ?? null;
+        kcalPer100 = created?.food?.kcal_per_100g ?? null;
+        proteinPer100 = created?.food?.protein_g_per_100g ?? null;
+        fatPer100 = created?.food?.fat_g_per_100g ?? null;
+        carbPer100 = created?.food?.carb_g_per_100g ?? null;
+      }
       await $fetch("/api/physical/nutrition/intake", {
         method: "POST",
         body: {
           eaten_on: eatenOn.value,
           eaten_at: eatenAt,
           meal_type: logForm.value.meal,
-          fdc_id: row.fdc_id,
-          user_food_id: row.user_food_id,
-          portion_id: row.portion_id,
+          fdc_id: row.unmatched ? null : row.fdc_id,
+          user_food_id: userFoodId,
+          portion_id: row.unmatched ? null : row.portion_id,
           quantity: Number(row.quantity),
           gram_weight: grams,
           food_name: row.name.trim(),
           portion_label: row.portionLabel || "1 serving",
-          kcal_per_100g: row.kcal_per_100g,
-          protein_g_per_100g: row.protein_g_per_100g,
-          fat_g_per_100g: row.fat_g_per_100g,
-          carb_g_per_100g: row.carb_g_per_100g,
+          kcal_per_100g: kcalPer100,
+          protein_g_per_100g: proteinPer100,
+          fat_g_per_100g: fatPer100,
+          carb_g_per_100g: carbPer100,
         },
       });
       savedNames.push(row.name.trim());

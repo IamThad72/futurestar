@@ -1,6 +1,6 @@
 import { createError, getRequestHeader } from "h3";
 import { createDbClient } from "../../utils/db";
-import { cronAuthorized, refreshInvestmentPrices } from "../../../utils/refreshInvestmentPrices.js";
+import { cronAuthorized, refreshInvestmentPrices } from "~/utils/refreshInvestmentPrices.js";
 
 /** Weekday 8:00pm Eastern is 01:00 UTC. Hobby may start the call any time during that hour. */
 export default defineEventHandler(async (event) => {

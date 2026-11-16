@@ -9,6 +9,13 @@
           A daily review: be still, remember, hear Scripture, and close the day with examen.
           Anything you write stays private to your account.
         </p>
+        <div v-if="auth.user" class="mt-4">
+          <button type="button" class="training-chip btn btn-ghost btn-sm rounded-full" :disabled="mirrorLoading" @click="loadMirror">
+            {{ mirrorLoading ? "Reading…" : "This week" }}
+          </button>
+          <p v-if="mirrorError" class="mt-2 text-sm text-red-600">{{ mirrorError }}</p>
+          <p v-else-if="mirrorText" class="mt-2 max-w-xl text-sm leading-6 text-base-content/80">{{ mirrorText }}</p>
+        </div>
       </header>
 
       <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -48,6 +55,23 @@ useHead({ title: "Spiritual" });
 
 const auth = useAuthStore();
 const homeLinks = SPIRITUAL_HOME_LINKS;
+const mirrorText = ref("");
+const mirrorError = ref("");
+const mirrorLoading = ref(false);
+
+async function loadMirror() {
+  if (mirrorLoading.value) return;
+  mirrorLoading.value = true;
+  mirrorError.value = "";
+  try {
+    const data = await $fetch("/api/spiritual/mirror");
+    mirrorText.value = String(data?.text || "");
+  } catch (error) {
+    mirrorError.value = error?.data?.statusMessage || error?.statusMessage || "Could not read this week.";
+  } finally {
+    mirrorLoading.value = false;
+  }
+}
 
 onMounted(() => {
   if (!auth.ready) {

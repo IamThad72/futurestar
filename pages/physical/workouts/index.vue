@@ -14,6 +14,7 @@
     <WorkoutBuilderPanel v-if="editing" @back="editing = false" />
 
     <div v-else class="space-y-4">
+      <WorkoutPlanAssistant @saved="loadList" />
       <button type="button" class="training-chip btn btn-primary btn-sm rounded-full" @click="onNew">
         New workout
       </button>
@@ -49,6 +50,7 @@ const {
   listLoading,
   saveError,
   dirty,
+  loadList,
   startNew,
   ensureList,
   openWorkout,

@@ -1,6 +1,6 @@
 <template>
   <section v-if="section" class="app-page">
-    <header class="mb-6">
+    <header class="app-sticky-action mb-6">
       <div class="flex flex-wrap items-center gap-3">
         <h1 class="text-lg font-semibold text-base-content sm:text-xl">{{ section.name }}</h1>
         <button

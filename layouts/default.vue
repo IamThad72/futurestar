@@ -1,7 +1,7 @@
 <template>
   <div
     class="app-layout-root"
-    :class="useMobileChrome ? 'mobile-shell' : 'app-drawer drawer'"
+    :class="useMobileChrome ? 'mobile-shell' : 'app-drawer'"
   >
     <MobileIonicShell
       v-if="useMobileChrome"
@@ -12,29 +12,12 @@
     </MobileIonicShell>
 
     <template v-else>
-      <input
-        id="app-nav-drawer"
-        v-model="drawerOpen"
-        type="checkbox"
-        class="drawer-toggle"
-      />
-
       <div class="drawer-content">
         <nav class="app-navbar navbar sticky top-0 z-40 min-h-16 bg-base-200/90 px-2 pt-safe text-base-content sm:px-6 lg:px-8">
           <div class="navbar-start gap-1 sm:gap-4">
-            <label
-              v-if="links.length"
-              for="app-nav-drawer"
-              class="btn btn-ghost btn-square btn-sm stroke-gray-900 text-gray-900 hover:bg-gray-200/50 sm:hidden"
-              aria-label="Open main menu"
-            >
-              <Bars3Icon class="size-6" aria-hidden="true" />
-            </label>
-
             <NuxtLink
               to="/"
               class="flex shrink-0 items-center gap-2 font-semibold text-gray-900 no-underline hover:text-gray-700"
-              @click="closeDrawer"
             >
               <span class="text-lg sm:text-base">Future Star</span>
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block size-6 shrink-0 text-primary">
@@ -42,7 +25,7 @@
               </svg>
             </NuxtLink>
 
-            <div v-if="auth.user" class="hidden items-center gap-1 sm:flex">
+            <div v-if="auth.user" class="flex items-center gap-1">
               <NuxtLink
                 v-for="link in links"
                 :key="link.name"
@@ -138,16 +121,20 @@
           </div>
         </nav>
 
-        <div class="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden bg-base-200">
-          <FinancialSectionNav v-if="auth.user && isFinancialSection" />
-          <PhysicalSectionNav v-if="auth.user && isPhysicalSection" />
-          <SpiritualSectionNav v-if="auth.user && isSpiritualSection" />
-          <main
-            class="layout-main flex-1"
-            :class="{ 'layout-main--flush-end': isSpiritualHome }"
-          >
-            <slot />
-          </main>
+        <div class="app-shell-body">
+          <AppSidebar
+            v-if="sidebarGroups.length"
+            :label="sectionLabel"
+            :groups="sidebarGroups"
+          />
+          <div class="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden bg-base-200">
+            <main
+              class="layout-main flex-1"
+              :class="{ 'layout-main--flush-end': isSpiritualHome }"
+            >
+              <slot />
+            </main>
+          </div>
         </div>
 
         <footer class="border-t border-gray-200 bg-base-200 pb-safe">
@@ -158,43 +145,6 @@
           </div>
         </footer>
       </div>
-
-      <div class="drawer-side sm:hidden">
-        <label for="app-nav-drawer" aria-label="Close menu" class="drawer-overlay"></label>
-        <aside class="flex min-h-full w-72 flex-col bg-base-200 text-gray-700">
-          <div class="border-b border-gray-200 px-4 py-4 text-gray-900">
-            <p class="font-semibold">Future Star</p>
-            <p class="text-xs text-gray-500">Areas of life</p>
-          </div>
-          <ul class="menu w-full p-2">
-            <li v-for="link in links" :key="`drawer-${link.name}`">
-              <AppLink
-                :to="link.path"
-                class="text-base tracking-tight"
-                :class="link.current ? 'menu-active bg-gray-100 font-semibold text-gray-900' : ''"
-                @click="closeDrawer"
-              >
-                {{ link.name }}
-              </AppLink>
-            </li>
-          </ul>
-          <template v-if="sectionTabs.length">
-            <div class="divider my-0 px-4 text-xs text-gray-400">{{ sectionLabel }}</div>
-            <ul class="menu w-full p-2">
-              <li v-for="tab in sectionTabs" :key="tab.href">
-                <AppLink
-                  :to="tab.href"
-                  class="text-sm"
-                  :class="tab.current ? 'menu-active bg-gray-100 font-semibold text-gray-900' : ''"
-                  @click="closeDrawer"
-                >
-                  {{ tab.name }}
-                </AppLink>
-              </li>
-            </ul>
-          </template>
-        </aside>
-      </div>
     </template>
 
     <LazyAccountManagementModal v-if="showAccountManagement" v-model="showAccountManagement" />
@@ -203,44 +153,19 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from 'vue'
-
-import { Bars3Icon } from '@heroicons/vue/24/outline'
+import { onMounted, ref } from 'vue'
 
 const {
   auth,
   route,
-  isFinancialSection,
-  isPhysicalSection,
-  isSpiritualSection,
   isSpiritualHome,
   links,
-  sectionTabs,
+  sidebarGroups,
   sectionLabel,
 } = useAppNav();
-const { isNarrow, useMobileChrome } = useMobileShell();
-const drawerOpen = ref(false);
+const { useMobileChrome } = useMobileShell();
 const showAccountManagement = ref(false);
 const showLinkedAccounts = ref(false);
-
-function closeDrawer() {
-  drawerOpen.value = false;
-}
-
-watch(
-  () => route.fullPath,
-  () => {
-    closeDrawer();
-  },
-);
-
-watch(isNarrow, (narrow) => {
-  if (!narrow) closeDrawer();
-});
-
-watch(useMobileChrome, (mobile) => {
-  if (mobile) closeDrawer();
-});
 
 async function logoutFromMenu(close) {
   close?.();

@@ -39,6 +39,18 @@
 
     <section class="app-card min-w-0 max-w-full overflow-hidden px-4 py-4">
       <h2 class="text-sm font-semibold text-gray-900">Morning Intention</h2>
+      <div v-if="carriedIntention" class="mt-3 rounded-md bg-gray-50 px-3 py-3">
+        <p class="text-sm text-gray-800">Last night you intended {{ carriedIntention }}</p>
+        <div class="mt-2 flex flex-wrap gap-2">
+          <button type="button" class="training-chip btn btn-ghost btn-xs rounded-full" @click="useCarriedIntention">
+            Use
+          </button>
+          <button type="button" class="training-chip btn btn-ghost btn-xs rounded-full" :disabled="shortening" @click="shortenCarriedIntention">
+            {{ shortening ? "Shortening…" : "Shorten" }}
+          </button>
+        </div>
+        <p v-if="shortenedIntention" class="mt-2 text-sm text-gray-800">{{ shortenedIntention }}</p>
+      </div>
       <form class="mt-4 grid min-w-0 gap-3" @submit.prevent="saveIntention">
         <label class="form-control min-w-0">
           <span class="label h-auto min-h-0 items-start py-1">
@@ -60,6 +72,25 @@
             </optgroup>
           </select>
         </label>
+        <div>
+          <button
+            type="button"
+            class="training-chip btn btn-ghost btn-xs w-fit rounded-full"
+            :disabled="!form.virtue || practicing"
+            @click="offerPractice"
+          >
+            {{ practicing ? "Writing…" : "Offer a practice" }}
+          </button>
+          <p v-if="practiceText" class="mt-2 text-sm text-gray-800">{{ practiceText }}</p>
+          <button
+            v-if="practiceText"
+            type="button"
+            class="training-chip btn btn-ghost btn-xs mt-2 w-fit rounded-full"
+            @click="form.faithful_act = practiceText"
+          >
+            Use in the faithful act
+          </button>
+        </div>
         <label v-for="field in intentionFields" :key="field.key" class="form-control min-w-0">
           <span class="label h-auto min-h-0 items-start py-1">
             <span class="label-text text-sm whitespace-normal break-words">{{ field.label }}</span>
@@ -78,7 +109,7 @@
 
 <script setup>
 import { parseFetchError } from "~/utils/parseFetchError";
-import { todayIsoDate } from "~/utils/liturgicalCalendar";
+import { addDaysIso, todayIsoDate } from "~/utils/liturgicalCalendar";
 import {
   BE_STILL_LINES,
   BE_STILL_PROMPTS,
@@ -111,6 +142,11 @@ const prayerLoading = ref(false);
 const prayerError = ref("");
 const catalogMessage = ref("");
 const form = ref(emptySpiritualReview());
+const carriedIntention = ref("");
+const shortenedIntention = ref("");
+const shortening = ref(false);
+const practiceText = ref("");
+const practicing = ref(false);
 const saving = ref(false);
 const saveError = ref("");
 const saveNotice = ref("");
@@ -130,18 +166,60 @@ async function loadDay() {
   saveError.value = "";
   saveNotice.value = "";
   try {
-    const [verseData, reviewData] = await Promise.all([
+    const [verseData, reviewData, previousData] = await Promise.all([
       $fetch("/api/spiritual/verses/prayers", { query: { date: reviewOn.value } }),
       $fetch("/api/spiritual/review", { query: { date: reviewOn.value } }),
+      $fetch("/api/spiritual/review", { query: { date: addDaysIso(reviewOn.value, -1) } }),
     ]);
     prayers.value = verseData?.prayers || [];
     catalogMessage.value = verseData?.catalog?.message || "";
     form.value = { ...emptySpiritualReview(), ...(reviewData?.review || {}) };
     form.value.virtue = matchListedVirtue(form.value.virtue) || form.value.virtue || "";
+    carriedIntention.value = String(previousData?.review?.tomorrow || "").trim();
+    shortenedIntention.value = "";
+    practiceText.value = "";
   } catch (error) {
     prayerError.value = parseFetchError(error, "Failed to load morning prayer.");
   } finally {
     prayerLoading.value = false;
+  }
+}
+
+async function useCarriedIntention() {
+  form.value.faithful_act = shortenedIntention.value || carriedIntention.value;
+}
+
+async function shortenCarriedIntention() {
+  const text = carriedIntention.value;
+  if (!text || shortening.value) return;
+  shortening.value = true;
+  try {
+    const data = await $fetch("/api/spiritual/assist", {
+      method: "POST",
+      body: { action: "shorten", answer: text },
+    });
+    shortenedIntention.value = String(data?.text || "").trim();
+  } catch (error) {
+    saveError.value = parseFetchError(error, "Could not shorten that intention.");
+  } finally {
+    shortening.value = false;
+  }
+}
+
+async function offerPractice() {
+  if (!form.value.virtue || practicing.value) return;
+  practicing.value = true;
+  saveError.value = "";
+  try {
+    const data = await $fetch("/api/spiritual/assist", {
+      method: "POST",
+      body: { action: "virtue", virtue: form.value.virtue },
+    });
+    practiceText.value = String(data?.text || "").trim();
+  } catch (error) {
+    saveError.value = parseFetchError(error, "Could not offer a practice.");
+  } finally {
+    practicing.value = false;
   }
 }
 

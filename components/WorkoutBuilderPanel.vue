@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-4">
     <div class="flex flex-wrap items-center gap-2">
-      <button type="button" class="training-chip btn btn-ghost btn-sm rounded-full" @click="onBack">Back</button>
+      <button type="button" class="training-chip btn btn-ghost btn-sm rounded-full" @click="onBack">Workout Manager</button>
       <button
         type="button"
         class="training-chip btn btn-primary btn-sm rounded-full"

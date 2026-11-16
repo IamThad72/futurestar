@@ -8,49 +8,51 @@
         Train and track the body across strength, cardio, mobility, and composition.
         Exercise catalogs are shared; any logs or nutrition you record stay private to you.
       </p>
+      <div v-if="todayText || todayError" class="mt-4 max-w-xl">
+        <p v-if="todayError" class="text-sm text-error">{{ todayError }}</p>
+        <p v-else class="text-sm leading-6 text-base-content/80">{{ todayText }}</p>
+        <p v-if="todayDetail" class="mt-1 text-xs text-base-content/60">{{ todayDetail }}</p>
+      </div>
     </header>
 
-    <div>
-      <details class="physical-learn-more group">
-        <summary class="training-chip btn btn-primary btn-sm rounded-full w-fit cursor-pointer">
-          Learn more
-        </summary>
-        <div class="mt-5 space-y-5">
-          <section v-for="item in sections" :key="item.name">
-            <h2 class="!text-xs font-semibold text-gray-900">{{ item.name }}</h2>
-            <p class="mt-1 text-xs leading-5 text-gray-600">{{ item.text }}</p>
-          </section>
-        </div>
-      </details>
-    </div>
+    <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <li v-for="item in homeLinks" :key="item.href">
+        <AppLink :to="item.href" class="app-card-link">
+          <h2 class="text-sm font-semibold text-base-content">{{ item.name }}</h2>
+          <p class="mt-2 flex-1 text-sm leading-6 text-base-content/80">{{ item.description }}</p>
+        </AppLink>
+      </li>
+    </ul>
   </section>
 </template>
 
 <script setup>
+import { PHYSICAL_HOME_LINKS } from "~/utils/physicalNav";
+
 useHead({ title: "Physical Health" });
 
-const sections = [
-  {
-    name: "Nutrition Journal",
-    text: "Set a daily calorie and macro plan, add the foods you eat, then log servings. Each day is compared to your targets so you can see protein, fat, carbohydrate, and calories as you eat.",
-  },
-  {
-    name: "Exercise Journal",
-    text: "Start a saved plan or an empty session, then log the sets you did. Past sessions stay on this page. A log copies a plan and leaves the saved plan as you wrote it.",
-  },
-  {
-    name: "Workout Manager",
-    text: "Save the plans you repeat. Open a plan to name it, add exercises, and set one target each. Start that plan later from the Exercise Journal.",
-  },
-];
+const homeLinks = PHYSICAL_HOME_LINKS;
+
+const todayText = ref("");
+const todayDetail = ref("");
+const todayError = ref("");
+
+onMounted(async () => {
+  try {
+    const data = await $fetch("/api/physical/today");
+    todayText.value = String(data?.text || "");
+    const bits = [];
+    if (data?.kcalConsumed != null && data?.kcalRemaining != null) {
+      bits.push(`${data.kcalConsumed} kcal eaten, ${data.kcalRemaining} kcal left`);
+    }
+    if (data?.proteinConsumed != null && data?.proteinRemaining != null) {
+      bits.push(`${data.proteinConsumed} g protein eaten, ${data.proteinRemaining} g left`);
+    }
+    todayDetail.value = bits.join(" · ");
+  } catch (error) {
+    const status = error?.statusCode || error?.status;
+    if (status === 401) return;
+    todayError.value = error?.data?.statusMessage || error?.statusMessage || "Could not load today.";
+  }
+});
 </script>
-
-<style scoped>
-.physical-learn-more > summary {
-  list-style: none;
-}
-
-.physical-learn-more > summary::-webkit-details-marker {
-  display: none;
-}
-</style>

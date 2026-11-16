@@ -7,7 +7,7 @@ type ChatResponse = {
   choices?: Array<{
     message?: { content?: string | null; reasoning?: string | null };
   }>;
-  error?: { message?: string; type?: string };
+  error?: { message?: string; type?: string; code?: string };
 };
 
 function runtimeValue(key: "groqApiKey" | "groqModel"): string {
@@ -48,6 +48,26 @@ export function parseModelJson(text: string): unknown {
   throw createError({ statusCode: 502, statusMessage: "The model did not return usable JSON." });
 }
 
+function safeGroqDetail(payload: ChatResponse): string {
+  return String(payload.error?.message || payload.error?.code || payload.error?.type || "")
+    .replace(/gsk_[A-Za-z0-9]+/g, "[key]")
+    .slice(0, 240);
+}
+
+async function postChat(body: Record<string, unknown>, key: string): Promise<{ response: Response; payload: ChatResponse }> {
+  const response = await fetch(GROQ_CHAT_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${key}`,
+    },
+    signal: AbortSignal.timeout(25_000),
+    body: JSON.stringify(body),
+  });
+  const payload = (await response.json().catch(() => ({}))) as ChatResponse;
+  return { response, payload };
+}
+
 /** One JSON completion through Groq. The key stays on the server. */
 export async function generateJson(instruction: string, payload: unknown): Promise<unknown> {
   const key = apiKey();
@@ -73,17 +93,16 @@ export async function generateJson(instruction: string, payload: unknown): Promi
   };
   if (model.includes("gpt-oss")) body.reasoning_effort = "low";
 
-  let response: Response;
+  let result: { response: Response; payload: ChatResponse };
   try {
-    response = await fetch(GROQ_CHAT_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${key}`,
-      },
-      signal: AbortSignal.timeout(25_000),
-      body: JSON.stringify(body),
-    });
+    result = await postChat(body, key);
+    const detail = safeGroqDetail(result.payload);
+    if (!result.response.ok && result.response.status === 400) {
+      console.error("groq request failed", result.response.status, detail);
+      const relaxed = { ...body };
+      delete relaxed.response_format;
+      result = await postChat(relaxed, key);
+    }
   } catch (error) {
     const name = error && typeof error === "object" && "name" in error ? String(error.name) : "";
     if (name === "TimeoutError" || name === "AbortError") {
@@ -92,18 +111,22 @@ export async function generateJson(instruction: string, payload: unknown): Promi
     throw createError({ statusCode: 502, statusMessage: "Could not reach Groq. Try again shortly." });
   }
 
-  const payloadBody = (await response.json().catch(() => ({}))) as ChatResponse;
-  if (!response.ok) {
-    const status = response.status === 429 ? 503 : 502;
-    const message =
-      response.status === 429
-        ? "Groq is busy. Try again shortly."
-        : "The Groq request failed. Check GROQ_API_KEY and try again.";
-    console.error("groq request failed", response.status, payloadBody.error?.type || "");
-    throw createError({ statusCode: status, statusMessage: message });
+  if (!result.response.ok) {
+    const detail = safeGroqDetail(result.payload);
+    console.error("groq request failed", result.response.status, detail);
+    const aboutKey = result.response.status === 401 || /api key/i.test(detail);
+    throw createError({
+      statusCode: result.response.status === 429 ? 503 : 502,
+      statusMessage:
+        result.response.status === 429
+          ? "Groq is busy. Try again shortly."
+          : aboutKey
+            ? "The Groq request failed. Check GROQ_API_KEY and try again."
+            : "Groq could not draft that plan. Try again.",
+    });
   }
 
-  const message = payloadBody.choices?.[0]?.message;
+  const message = result.payload.choices?.[0]?.message;
   const text = String(message?.content || message?.reasoning || "");
   return parseModelJson(text);
 }

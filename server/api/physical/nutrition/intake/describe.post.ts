@@ -315,10 +315,10 @@ export default defineEventHandler(async (event) => {
     await client.end().catch(() => undefined);
   }
 
-  if (!items.length) {
+  if (!items.length && !unmatched.length) {
     throw createError({
       statusCode: 422,
-      statusMessage: "Could not match those foods. Add them as saved foods, or try a simpler name.",
+      statusMessage: "Could not find foods in that description.",
     });
   }
 

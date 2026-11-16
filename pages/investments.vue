@@ -24,6 +24,9 @@
       <p class="mt-1 max-w-3xl text-xs leading-5 text-base-content/60">
         Based on current holdings and cost basis. Excludes realized gains/losses and cash distributions not reflected in the supplied values.
       </p>
+      <p v-for="line in holdingNotes" :key="line" class="mt-2 max-w-3xl text-sm leading-6 text-base-content/80">
+        {{ line }}
+      </p>
     </header>
 
     <div
@@ -265,6 +268,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
+import { describeHoldings } from "~/utils/holdingsNote";
 import { formatInvestmentCurrency, formatInvestmentPercent, formatInvestmentShares, truncateDescription } from "~/utils/investmentFormat";
 import {
   accountValueStack,
@@ -295,6 +299,18 @@ const accounts = ref([]);
 const totals = computed(() => portfolioMetrics(holdings.value));
 const portfolioValue = computed(() => sumCurrentValue(holdings.value));
 const portfolioGain = computed(() => gainFromTotals(totals.value.costBasis, portfolioValue.value));
+const holdingNotes = computed(() =>
+  describeHoldings(
+    holdings.value.map((holding) => {
+      const metrics = holdingMetrics(holding);
+      return {
+        name: holding.name || "Holding",
+        currentValue: metrics.currentValue,
+        gainDollars: metrics.gainDollars,
+      };
+    }),
+  ),
+);
 const sortedHoldings = computed(() => {
   if (sortKey.value !== "share") {
     return sortHoldings(holdings.value, sortKey.value, sortDirection.value);

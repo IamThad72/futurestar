@@ -43,6 +43,13 @@
         <section>
           <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Known services</h2>
           <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Service records you have entered for this vehicle.</p>
+          <ul v-if="dueItems.length" class="mt-4 space-y-2">
+            <li v-for="item in dueItems" :key="item.service_name" class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-500/30 dark:bg-amber-500/10">
+              <p class="text-sm font-medium text-gray-900 dark:text-white">{{ item.service_name }}</p>
+              <p class="mt-0.5 text-xs text-gray-600 dark:text-gray-300">{{ item.reason }}</p>
+              <button type="button" class="btn btn-ghost btn-xs mt-2" @click="openDueService(item)">Add this service</button>
+            </li>
+          </ul>
 
           <ul v-if="knownServices.length" class="mt-4 divide-y divide-gray-100 border-t border-gray-100 dark:divide-white/10 dark:border-white/10">
             <li v-for="svc in knownServices" :key="svc.vsr_id" class="py-3">
@@ -186,6 +193,8 @@
 </template>
 
 <script setup>
+import { dueServices } from "~/utils/serviceDue";
+
 useHead({ title: "Vehicle Details" });
 
 const auth = useAuthStore();
@@ -218,6 +227,27 @@ const vehicleTitle = computed(() => {
   if (!v) return "Vehicle";
   return [v.year, v.make, v.model].filter(Boolean).join(" ") || "Vehicle";
 });
+
+const dueItems = computed(() => {
+  const miles = knownServices.value.reduce((max, row) => {
+    const n = Number(row.mileage);
+    return Number.isFinite(n) ? Math.max(max, n) : max;
+  }, -1);
+  return dueServices({
+    today: new Date().toISOString().slice(0, 10),
+    currentMileage: miles >= 0 ? miles : null,
+    recommended: recommendedServices.value,
+    known: knownServices.value,
+  });
+});
+
+function openDueService(item) {
+  editingService.value = null;
+  resetForm();
+  form.service_name = item.service_name;
+  if (item.mileage != null) form.mileage = String(item.mileage);
+  serviceModalRef.value?.showModal();
+}
 
 function formatMoney(val) {
   if (val == null || val === "") return "—";

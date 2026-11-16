@@ -1,8 +1,9 @@
-import { financialTabsForPath, isFinancialPath } from "~/utils/financialNav";
+import { financialSidebarGroups, financialTabsForPath, isFinancialPath } from "~/utils/financialNav";
 import { isPhysicalPath, physicalTabsForPath } from "~/utils/physicalNav";
 import { isSpiritualHomePath, isSpiritualPath, spiritualTabsForPath } from "~/utils/spiritualNav";
+import { screenTitleForRoute } from "~/utils/screenTitle";
 
-/** Life-area links and in-section tabs for the desktop drawer and Ionic menu. */
+/** Life-area links, the current screen name, and desktop sidebar groups. */
 export function useAppNav() {
   const auth = useAuthStore();
   const route = useRoute();
@@ -41,17 +42,20 @@ export function useAppNav() {
     ];
   });
 
-  const sectionTabs = computed(() => {
+  const screenTitle = computed(() => screenTitleForRoute(route.path, route.query, route.hash));
+
+  const sidebarGroups = computed(() => {
+    if (!auth.user) return [];
     if (isFinancialSection.value) {
-      return financialTabsForPath(route.path, route.query, route.hash).filter(
-        (tab) => !tab.hideOnMobile,
-      );
-    }
-    if (isPhysicalSection.value) {
-      return physicalTabsForPath(route.path);
+      return financialSidebarGroups(financialTabsForPath(route.path, route.query, route.hash));
     }
     if (isSpiritualSection.value) {
-      return spiritualTabsForPath(route.path);
+      const tabs = spiritualTabsForPath(route.path).filter((tab) => tab.href !== "/spiritual");
+      return tabs.length ? [{ name: "Today", tabs }] : [];
+    }
+    if (isPhysicalSection.value) {
+      const tabs = physicalTabsForPath(route.path).filter((tab) => tab.href !== "/physical");
+      return tabs.length ? [{ name: "Training", tabs }] : [];
     }
     return [];
   });
@@ -60,7 +64,7 @@ export function useAppNav() {
     if (isFinancialSection.value) return "Financial";
     if (isPhysicalSection.value) return "Physical";
     if (isSpiritualSection.value) return "Spiritual";
-    return "";
+    return "Future Star";
   });
 
   return {
@@ -71,7 +75,8 @@ export function useAppNav() {
     isSpiritualSection,
     isSpiritualHome,
     links,
-    sectionTabs,
+    screenTitle,
+    sidebarGroups,
     sectionLabel,
   };
 }

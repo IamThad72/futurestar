@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { financialSidebarGroups, financialTabsForPath } from "~/utils/financialNav";
+
 const auth = useAuthStore();
 
 useHead({ title: "Financial Health" });
@@ -23,49 +25,42 @@ const dashboardLoadError = computed(() => {
   return parts.join(" ");
 });
 
-const sections = [
-  {
-    name: "Investments",
-    text: "Compare each holding’s cost basis with its current value, including unrealized gain or loss in dollars and percent.",
-  },
-  {
-    name: "Estate Management",
-    text: "Track assets, debts, insurance, and net worth in one place so you can see what you own, what you owe, and how the household balance sheet changes over time.",
-  },
-  {
-    name: "Documents",
-    text: "Upload household files and keep them next to estate records, so policies, titles, and statements are easy to find when you need them.",
-  },
-  {
-    name: "Garage",
-    text: "Log vehicles and maintenance so service history, costs, and upcoming work stay with each car instead of in a pile of receipts.",
-  },
-  {
-    name: "Account Map",
-    text: "See how income, accounts, and budgets connect. The map is a desktop view of cash flow paths between sources, accounts, and spending.",
-  },
-  {
-    name: "Budget Setup",
-    text: "Create and edit budget lines for income, expenses, savings, and more so each month has a plan before you start recording transactions.",
-  },
-  {
-    name: "Budget Tracker",
-    text: "Record and review monthly transactions against those budget lines, including imports and recategorizations as the month unfolds.",
-  },
-  {
-    name: "Tax",
-    text: "Roll up annual totals and estimated taxes owed so you can see the year in one place instead of reconstructing it from monthly budgets.",
-  },
-];
+const monthCloseText = ref("");
+const monthCloseError = ref("");
+
+async function loadMonthClose() {
+  monthCloseError.value = "";
+  try {
+    const data = await $fetch("/api/budget/month-close", {
+      query: { year: expenseYear.value, month: expenseMonth.value },
+    });
+    monthCloseText.value = String(data?.text || "");
+  } catch (error) {
+    monthCloseText.value = "";
+    monthCloseError.value = error?.data?.statusMessage || error?.statusMessage || "Could not summarize this month.";
+  }
+}
 
 const { isStacked } = useMobileShell();
-const visibleSections = computed(() =>
-  isStacked.value ? sections.filter((item) => item.name !== "Account Map") : sections,
+const homeGroups = computed(() =>
+  financialSidebarGroups(financialTabsForPath("/financial"))
+    .map((group) => ({
+      name: group.name,
+      links: group.tabs
+        .filter((tab) => (isStacked.value ? !tab.hideOnMobile : true))
+        .map((tab) => ({
+          name: tab.name,
+          href: tab.href,
+          description: tab.description,
+        })),
+    }))
+    .filter((group) => group.links.length),
 );
 
 function loadDashboard() {
   void loadSummary();
   void loadBudgetChartData();
+  void loadMonthClose();
 }
 
 onMounted(() => {
@@ -83,6 +78,10 @@ watch(
     if (user) loadDashboard();
   },
 );
+
+watch([expenseMonth, expenseYear], () => {
+  if (auth.user) void loadMonthClose();
+});
 </script>
 
 <template>
@@ -103,29 +102,25 @@ watch(
         Financial Health
       </h1>
       <p class="mt-1 text-xs leading-5 text-base-content/60">
-        Steward cash, accounts, and tax in one place. Use the tabs above to open a tool;
-        the snapshot below is your current picture of net worth and budgets.
+        Steward cash, accounts, and tax in one place. The snapshot is the current picture.
+        Open a tool under it.
       </p>
     </header>
-
-    <div class="mb-8">
-      <details class="financial-learn-more group">
-        <summary class="training-chip btn btn-primary btn-sm rounded-full w-fit cursor-pointer">
-          Learn more
-        </summary>
-        <div class="mt-5 space-y-5">
-          <section v-for="item in visibleSections" :key="item.name">
-            <h2 class="!text-xs font-semibold text-gray-900">{{ item.name }}</h2>
-            <p class="mt-1 text-xs leading-5 text-gray-600">{{ item.text }}</p>
-          </section>
-        </div>
-      </details>
-    </div>
 
     <header class="mb-4 sm:mb-6">
       <p class="text-sm font-medium text-gray-500 dark:text-gray-400">
         Current snapshot
       </p>
+      <p v-if="monthCloseText" class="mt-2 max-w-3xl text-sm leading-6 text-base-content/80">
+        {{ monthCloseText }}
+        <NuxtLink
+          class="ml-1 underline"
+          :to="`/cash_flow_tracker?year=${expenseYear}&month=${expenseMonth}`"
+        >
+          Open the tracker
+        </NuxtLink>
+      </p>
+      <p v-else-if="monthCloseError" class="mt-2 text-sm text-error">{{ monthCloseError }}</p>
     </header>
 
     <LoadErrorPanel
@@ -150,15 +145,19 @@ watch(
         :year-options="yearOptions"
       />
     </ClientOnly>
+
+    <div class="mt-8 space-y-6">
+      <section v-for="group in homeGroups" :key="group.name">
+        <h2 class="text-xs font-semibold uppercase tracking-wide text-base-content/50">{{ group.name }}</h2>
+        <ul class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <li v-for="item in group.links" :key="item.href">
+            <AppLink :to="item.href" class="app-card-link">
+              <h3 class="text-sm font-semibold text-base-content">{{ item.name }}</h3>
+              <p class="mt-2 flex-1 text-sm leading-6 text-base-content/80">{{ item.description }}</p>
+            </AppLink>
+          </li>
+        </ul>
+      </section>
+    </div>
   </section>
 </template>
-
-<style scoped>
-.financial-learn-more > summary {
-  list-style: none;
-}
-
-.financial-learn-more > summary::-webkit-details-marker {
-  display: none;
-}
-</style>
