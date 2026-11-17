@@ -1,4 +1,5 @@
 import { financialSidebarGroups, financialTabsForPath, isFinancialPath } from "~/utils/financialNav";
+import { primaryNavForPath } from "~/utils/primaryNav";
 import { isPhysicalPath, physicalTabsForPath } from "~/utils/physicalNav";
 import { isSpiritualHomePath, isSpiritualPath, spiritualTabsForPath } from "~/utils/spiritualNav";
 import { screenTitleForRoute } from "~/utils/screenTitle";
@@ -14,29 +15,13 @@ export function useAppNav() {
   const isSpiritualHome = computed(() => isSpiritualHomePath(route.path));
 
   const links = computed(() => {
-    if (auth.user) {
-      return [
-        {
-          name: "Financial",
-          path: "/financial",
-          current: isFinancialPath(route.path),
-        },
-        {
-          name: "Spiritual",
-          path: "/spiritual",
-          current: isSpiritualPath(route.path),
-        },
-        {
-          name: "Physical",
-          path: "/physical",
-          current: route.path.startsWith("/physical"),
-        },
-      ];
-    }
+    if (auth.user) return primaryNavForPath(route.path);
     return [
       {
         name: "Login",
         path: "/login",
+        icon: "",
+        pillar: "",
         current: route.path.startsWith("/login"),
       },
     ];

@@ -1,7 +1,7 @@
 <template>
-  <div class="mx-auto w-full max-w-md rounded-lg bg-base-300 p-6 shadow">
-    <h1 class="text-2xl font-semibold text-primary-content">Signing Out</h1>
-    <p class="mt-2 text-sm text-primary-content/80">
+  <div class="app-card mx-auto w-full max-w-md p-6">
+    <h1 class="text-ink">Signing Out</h1>
+    <p class="mt-2 text-base text-muted">
       Please wait while we log you out.
     </p>
   </div>

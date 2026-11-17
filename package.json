@@ -32,7 +32,7 @@
     "cap:run:android:live": "node scripts/warn-skip-sync.mjs && cross-env CAPACITOR_DEV=true npx cap run android --no-sync",
     "cap:run:ios": "npm run cap:sync:dev && cross-env CAPACITOR_DEV=true npx cap run ios",
     "assets:generate": "node scripts/generate-app-assets.mjs",
-    "cap:assets": "npm run assets:generate && npx @capacitor/assets generate --assetPath resources --iconBackgroundColor '#06b6d4' --splashBackgroundColor '#fafafa'"
+    "cap:assets": "npm run assets:generate && npx @capacitor/assets generate --assetPath resources --iconBackgroundColor '#1F3A5F' --splashBackgroundColor '#FBF8F3'"
   },
   "dependencies": {
     "@azure/cosmos": "^4.9.0",
@@ -58,6 +58,7 @@
     "@vue-flow/core": "^1.48.2",
     "@vue-flow/minimap": "^1.5.4",
     "ionicons": "^8.0.13",
+    "lucide-vue-next": "^1.0.0",
     "mongodb": "^7.0.0",
     "nuxt": "^4.5.2",
     "nuxt-headlessui": "^1.2.2",

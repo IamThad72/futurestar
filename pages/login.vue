@@ -192,7 +192,7 @@ const submit = async () => {
     const user = await auth.login(form.email, form.password);
     success.value = `Welcome back${user?.display_name ? `, ${user.display_name}` : ""}!`;
     form.password = "";
-    await go("/");
+    await go("/today");
   } catch (err) {
     error.value = err?.data?.statusMessage || err?.message || "Login failed.";
   }

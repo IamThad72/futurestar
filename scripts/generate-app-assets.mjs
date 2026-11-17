@@ -8,8 +8,10 @@ import sharp from "sharp";
 
 const root = join(import.meta.dirname, "..");
 const resourcesDir = join(root, "resources");
-const primary = "#06b6d4";
-const accent = "#ffffff";
+const primary = "#1F3A5F";
+const accent = "#C9A24A";
+const splashBg = "#FBF8F3";
+const splashInk = "#1C2430";
 
 const starPath =
   "M512 168 L578 378 L798 378 L622 512 L688 722 L512 588 L336 722 L402 512 L226 378 L446 378 Z";
@@ -22,9 +24,9 @@ const iconSvg = `
 
 const splashSvg = `
 <svg xmlns="http://www.w3.org/2000/svg" width="2732" height="2732" viewBox="0 0 2732 2732">
-  <rect width="2732" height="2732" fill="${primary}"/>
+  <rect width="2732" height="2732" fill="${splashBg}"/>
   <path d="${starPath}" transform="translate(854 854) scale(2)" fill="${accent}"/>
-  <text x="1366" y="1980" text-anchor="middle" font-family="system-ui, Segoe UI, sans-serif" font-size="120" font-weight="700" fill="#ffffff">Future Star</text>
+  <text x="1366" y="1980" text-anchor="middle" font-family="Georgia, serif" font-size="120" font-weight="700" fill="${splashInk}">Future Star</text>
 </svg>`;
 
 await mkdir(resourcesDir, { recursive: true });

@@ -104,12 +104,12 @@ onBeforeUnmount(() => {
 
 .training-accordion__header--open .training-accordion__title,
 .training-accordion :deep(ion-accordion.accordion-expanded) .training-accordion__title {
-  color: var(--color-primary, #06b6d4);
+  color: var(--color-pillar, var(--color-primary, #1F3A5F));
 }
 
 .training-accordion__chevron {
   flex-shrink: 0;
-  color: var(--color-primary, #06b6d4);
+  color: var(--color-pillar, var(--color-primary, #1F3A5F));
   transition: transform 0.2s ease;
 }
 

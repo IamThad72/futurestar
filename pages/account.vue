@@ -1,7 +1,7 @@
 <template>
-  <div class="mx-auto max-w-lg px-1 py-6 pb-safe-content">
-    <h1 class="text-xl font-bold text-base-content">Account</h1>
-    <p v-if="auth.user?.email" class="mt-1 text-sm text-base-content/70">{{ auth.user.email }}</p>
+  <div class="app-page mx-auto max-w-lg pb-safe-content">
+    <h1 class="text-ink">You</h1>
+    <p v-if="auth.user?.email" class="mt-2 text-base text-muted">{{ auth.user.email }}</p>
 
     <div class="mt-6 flex flex-col gap-2">
       <button type="button" class="btn btn-primary justify-start" @click="showAccountManagement = true">

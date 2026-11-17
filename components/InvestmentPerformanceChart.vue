@@ -117,9 +117,9 @@ function labelTick(tick) {
 }
 
 function barColor(_row, seriesIndex) {
-  if (seriesIndex === 0) return "#9ca3af";
-  if (seriesIndex === 2) return "#dc2626";
-  return "#059669";
+  if (seriesIndex === 0) return "#8F877A";
+  if (seriesIndex === 2) return "#B3261E";
+  return "#1F6F5C";
 }
 
 function escapeHtml(value) {

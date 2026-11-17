@@ -3009,7 +3009,7 @@ watch([selectedYear, selectedMonth], () => {
 
 <style scoped>
 .budget-tracker-budgeted {
-  color: var(--color-primary, #06b6d4);
+  color: var(--color-pillar, var(--color-primary, #1F3A5F));
 }
 
 .budget-tx-list {
@@ -3065,7 +3065,7 @@ watch([selectedYear, selectedMonth], () => {
 }
 
 .budget-tx-list__amount--income {
-  color: var(--color-primary, #06b6d4);
+  color: var(--color-pillar, var(--color-primary, #1F3A5F));
 }
 
 .budget-tx-list__amount--expense {

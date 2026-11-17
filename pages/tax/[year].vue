@@ -17,7 +17,7 @@
 
     <div
       v-else-if="!auth.user"
-      class="rounded-lg border border-warning/30 bg-warning/10 p-4 text-sm text-warning-content"
+      class="rounded-lg border border-warning/30 bg-warning/10 p-4 text-sm text-base-content"
     >
       You must be logged in to use this page.
     </div>
