@@ -1866,8 +1866,8 @@ watch(
 }
 
 .account-map-edge-kind--active {
-  border-color: var(--color-primary, #06b6d4);
-  background: color-mix(in srgb, var(--color-primary, #06b6d4) 12%, var(--color-base-100, #ffffff));
-  color: var(--color-primary, #06b6d4);
+  border-color: var(--color-pillar, var(--color-primary, #1F3A5F));
+  background: color-mix(in srgb, var(--color-pillar, var(--color-primary, #1F3A5F)) 12%, var(--color-base-100, #ffffff));
+  color: var(--color-pillar, var(--color-primary, #1F3A5F));
 }
 </style>

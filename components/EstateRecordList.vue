@@ -152,9 +152,9 @@ function onRowClick(item) {
 }
 
 .estate-record-list__sort-btn--active {
-  border-color: var(--color-primary, #06b6d4);
-  background: color-mix(in srgb, var(--color-primary, #06b6d4) 10%, var(--color-base-100, #ffffff));
-  color: var(--color-primary, #06b6d4);
+  border-color: var(--color-pillar, var(--color-primary, #1F3A5F));
+  background: color-mix(in srgb, var(--color-pillar, var(--color-primary, #1F3A5F)) 10%, var(--color-base-100, #ffffff));
+  color: var(--color-pillar, var(--color-primary, #1F3A5F));
 }
 
 .estate-record-list__sort-dir {
@@ -228,27 +228,27 @@ function onRowClick(item) {
 }
 
 .estate-record-list__badge--expense {
-  --background: #f87171;
+  --background: #b3261e;
   --color: #ffffff;
 }
 
 .estate-record-list__badge--income {
-  --background: #059669;
+  --background: #1f6f5c;
   --color: #ffffff;
 }
 
 .estate-record-list__badge--investment {
-  --background: #7c3aed;
+  --background: #5b3f8c;
   --color: #ffffff;
 }
 
 .estate-record-list__badge--savings {
-  --background: #0284c7;
+  --background: #2563a6;
   --color: #ffffff;
 }
 
 .estate-record-list__badge--tax {
-  --background: #d97706;
+  --background: #9a5b00;
   --color: #ffffff;
 }
 
@@ -277,7 +277,7 @@ function onRowClick(item) {
 }
 
 .estate-record-list__line-value--budgeted {
-  color: var(--color-primary, #06b6d4);
+  color: var(--color-pillar, var(--color-primary, #1F3A5F));
   font-weight: 600;
 }
 
@@ -336,8 +336,8 @@ function onRowClick(item) {
 }
 
 .estate-record-list__edit-btn:hover {
-  border-color: var(--color-primary, #06b6d4);
-  color: var(--color-primary, #06b6d4);
+  border-color: var(--color-pillar, var(--color-primary, #1F3A5F));
+  color: var(--color-pillar, var(--color-primary, #1F3A5F));
 }
 
 .estate-record-list__note--over {

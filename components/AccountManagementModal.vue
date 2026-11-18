@@ -15,7 +15,7 @@
 
       <div v-if="!auth.ready" class="mt-3 text-xs text-base-content/70">Loading...</div>
 
-      <div v-else-if="!auth.user" class="mt-3 rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning-content">
+      <div v-else-if="!auth.user" class="mt-3 rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-base-content">
         You must be logged in.
       </div>
 

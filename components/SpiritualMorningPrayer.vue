@@ -14,7 +14,7 @@
 
     <section class="app-card px-4 py-4">
       <h2 class="text-sm font-semibold text-gray-900">Be Still</h2>
-      <p v-for="line in beStillLines" :key="line" class="mt-2 text-sm leading-6 text-gray-900">
+      <p v-for="line in beStillLines" :key="line" class="sl-scripture mt-3">
         {{ line }}
       </p>
       <p v-for="prompt in beStillPrompts" :key="prompt" class="mt-3 text-sm text-gray-800">

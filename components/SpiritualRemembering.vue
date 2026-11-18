@@ -8,7 +8,7 @@
       <li
         v-for="truth in truths"
         :key="truth"
-        class="rounded-md bg-gray-50 px-3 py-2 text-sm leading-6 text-gray-900"
+        class="sl-scripture rounded-xl bg-sunken px-3 py-3"
       >
         {{ truth }}
       </li>

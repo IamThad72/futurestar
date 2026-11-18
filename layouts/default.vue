@@ -16,26 +16,12 @@
         <nav class="app-navbar navbar sticky top-0 z-40 min-h-16 bg-base-200/90 px-2 pt-safe text-base-content sm:px-6 lg:px-8">
           <div class="navbar-start gap-1 sm:gap-4">
             <NuxtLink
-              to="/"
-              class="flex shrink-0 items-center gap-2 font-semibold text-gray-900 no-underline hover:text-gray-700"
+              :to="homePath"
+              class="brand-lockup flex shrink-0 items-center gap-2 font-serif text-lg font-semibold text-ink no-underline"
             >
-              <span class="text-lg sm:text-base">Future Star</span>
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block size-6 shrink-0 text-primary">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
-              </svg>
+              <span>Future Star</span>
+              <AppIcon name="star" :size="24" :stroke-width="1.75" class="brand-star" />
             </NuxtLink>
-
-            <div v-if="auth.user" class="flex items-center gap-1">
-              <NuxtLink
-                v-for="link in links"
-                :key="link.name"
-                :to="link.path"
-                :class="getNavLinkClass(link.current)"
-                :aria-current="link.current ? 'page' : undefined"
-              >
-                {{ link.name }}
-              </NuxtLink>
-            </div>
           </div>
 
           <div class="navbar-end">
@@ -122,11 +108,15 @@
         </nav>
 
         <div class="app-shell-body">
-          <AppSidebar
-            v-if="sidebarGroups.length"
-            :label="sectionLabel"
-            :groups="sidebarGroups"
-          />
+          <aside v-if="auth.user" class="app-nav-column" aria-label="Primary">
+            <AppPrimaryNav :links="links" />
+            <AppSidebar
+              v-if="sidebarGroups.length"
+              embedded
+              :label="sectionLabel"
+              :groups="sidebarGroups"
+            />
+          </aside>
           <div class="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden bg-base-200">
             <main
               class="layout-main flex-1"
@@ -139,7 +129,7 @@
 
         <footer class="border-t border-gray-200 bg-base-200 pb-safe">
           <div class="mx-auto max-w-7xl px-1 py-1 sm:px-6 lg:px-8">
-            <p class="text-center text-[11px] font-medium text-gray-500 sm:text-xs">
+            <p class="text-center text-xs font-medium text-muted">
               &copy; 2026 Marcelli Enterprises LLC. All rights reserved.
             </p>
           </div>
@@ -154,6 +144,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
+import { homePathForUser } from '~/utils/primaryNav'
 
 const {
   auth,
@@ -163,6 +154,7 @@ const {
   sidebarGroups,
   sectionLabel,
 } = useAppNav();
+const homePath = computed(() => homePathForUser(auth.user));
 const { useMobileChrome } = useMobileShell();
 const showAccountManagement = ref(false);
 const showLinkedAccounts = ref(false);

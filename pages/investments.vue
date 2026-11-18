@@ -5,7 +5,7 @@
 
   <div
     v-else-if="!auth.user"
-    class="app-page rounded-lg border border-warning/30 bg-warning/10 text-sm text-warning-content"
+    class="app-page rounded-lg border border-warning/30 bg-warning/10 text-sm text-base-content"
   >
     You must be logged in to use Investments.
   </div>
@@ -603,7 +603,7 @@ watch(
 }
 
 .investment-edit-btn:hover {
-  border-color: var(--color-primary, #06b6d4);
-  color: var(--color-primary, #06b6d4);
+  border-color: var(--color-pillar, var(--color-primary, #1F3A5F));
+  color: var(--color-pillar, var(--color-primary, #1F3A5F));
 }
 </style>

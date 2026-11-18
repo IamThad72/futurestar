@@ -1,6 +1,6 @@
 <template>
   <blockquote class="space-y-2">
-    <p class="whitespace-pre-line text-sm leading-6 text-gray-900">
+    <p class="sl-scripture whitespace-pre-line">
       “{{ passage.text }}”
     </p>
     <footer class="text-xs text-gray-700">

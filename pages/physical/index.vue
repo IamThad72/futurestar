@@ -1,16 +1,16 @@
 <template>
   <section class="app-page overflow-x-hidden">
     <header class="mb-6 sm:mb-8">
-      <h1 class="text-lg font-semibold text-base-content sm:text-xl">
+      <h1 class="text-ink">
         Physical Health
       </h1>
-      <p class="mt-1 text-xs leading-5 text-base-content/60">
+      <p class="mt-2 text-base leading-6 text-muted">
         Train and track the body across strength, cardio, mobility, and composition.
         Exercise catalogs are shared; any logs or nutrition you record stay private to you.
       </p>
       <div v-if="todayText || todayError" class="mt-4 max-w-xl">
         <p v-if="todayError" class="text-sm text-error">{{ todayError }}</p>
-        <p v-else class="text-sm leading-6 text-base-content/80">{{ todayText }}</p>
+        <p v-else class="text-base leading-6 text-ink">{{ todayText }}</p>
         <p v-if="todayDetail" class="mt-1 text-xs text-base-content/60">{{ todayDetail }}</p>
       </div>
     </header>
@@ -18,8 +18,8 @@
     <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <li v-for="item in homeLinks" :key="item.href">
         <AppLink :to="item.href" class="app-card-link">
-          <h2 class="text-sm font-semibold text-base-content">{{ item.name }}</h2>
-          <p class="mt-2 flex-1 text-sm leading-6 text-base-content/80">{{ item.description }}</p>
+          <h2 class="text-ink">{{ item.name }}</h2>
+          <p class="mt-2 flex-1 text-base leading-6 text-muted">{{ item.description }}</p>
         </AppLink>
       </li>
     </ul>

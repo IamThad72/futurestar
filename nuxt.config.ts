@@ -17,13 +17,21 @@ export default defineNuxtConfig({
   app: {
     head: {
       viewport: "width=device-width, initial-scale=1, viewport-fit=cover",
-      meta: [{ name: "theme-color", content: "#fafafa" }],
+      meta: [{ name: "theme-color", content: "#FBF8F3" }],
       link: [
         { rel: "preconnect", href: "https://fonts.googleapis.com" },
         { rel: "preconnect", href: "https://fonts.gstatic.com", crossorigin: "" },
         {
           rel: "stylesheet",
-          href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
+          href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap",
+        },
+      ],
+      script: [
+        {
+          key: "sacred-ledger-theme",
+          innerHTML:
+            "(function(){try{var d=window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.setAttribute('data-theme',d?'sacredledger-dark':'sacredledger');}catch(e){}})();",
+          tagPriority: "critical",
         },
       ],
     },

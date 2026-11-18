@@ -129,8 +129,8 @@ const props = withDefaults(
   {
     emptyMessage: "No budget lines in this group for the selected month.",
     height: 300,
-    barColor: "#a5f3fc",
-    lineColor: "#06b6d4",
+    barColor: "#8FB8AA",
+    lineColor: "#1F6F5C",
   },
 );
 

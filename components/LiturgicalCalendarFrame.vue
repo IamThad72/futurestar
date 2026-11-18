@@ -283,14 +283,14 @@ const monthWeeks = computed(() => {
 
 function weekRowTone(week) {
   if (week.sunday === selectedWeekStart.value) {
-    return "bg-primary/10 ring-1 ring-primary/25";
+    return "bg-violet-tint ring-1 ring-violet/30";
   }
   return "hover:bg-gray-50 dark:hover:bg-white/5";
 }
 
 function cellTone(cell) {
   if (cell.iso === today) {
-    return "bg-primary text-primary-content";
+    return "liturgical-today";
   }
   if (weekDateSet.value.has(cell.iso)) {
     return "text-gray-900 dark:text-white";

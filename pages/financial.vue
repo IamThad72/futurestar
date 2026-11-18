@@ -91,17 +91,17 @@ watch([expenseMonth, expenseYear], () => {
 
   <div
     v-else-if="!auth.user"
-    class="app-page rounded-lg border border-warning/30 bg-warning/10 text-sm text-warning-content"
+    class="app-page rounded-lg border border-warning/30 bg-warning/10 text-base text-base-content"
   >
     You must be logged in to use Financial Home.
   </div>
 
   <section v-else class="app-page overflow-x-hidden">
     <header class="mb-6 sm:mb-8">
-      <h1 class="text-lg font-semibold text-base-content sm:text-xl">
+      <h1 class="text-ink">
         Financial Health
       </h1>
-      <p class="mt-1 text-xs leading-5 text-base-content/60">
+      <p class="mt-2 text-base leading-6 text-muted">
         Steward cash, accounts, and tax in one place. The snapshot is the current picture.
         Open a tool under it.
       </p>
@@ -152,8 +152,8 @@ watch([expenseMonth, expenseYear], () => {
         <ul class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <li v-for="item in group.links" :key="item.href">
             <AppLink :to="item.href" class="app-card-link">
-              <h3 class="text-sm font-semibold text-base-content">{{ item.name }}</h3>
-              <p class="mt-2 flex-1 text-sm leading-6 text-base-content/80">{{ item.description }}</p>
+              <h3 class="text-ink">{{ item.name }}</h3>
+              <p class="mt-2 flex-1 text-base leading-6 text-muted">{{ item.description }}</p>
             </AppLink>
           </li>
         </ul>

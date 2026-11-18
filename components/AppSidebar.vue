@@ -1,5 +1,5 @@
 <template>
-  <aside class="app-sidebar" :aria-label="label">
+  <component :is="embedded ? 'div' : 'aside'" class="app-sidebar" :class="{ 'app-sidebar--embedded': embedded }" :aria-label="label">
     <nav v-for="group in groups" :key="group.name" class="app-sidebar__group" :aria-label="group.name">
       <p class="app-sidebar__label">{{ group.name }}</p>
       <ul>
@@ -10,12 +10,13 @@
         </li>
       </ul>
     </nav>
-  </aside>
+  </component>
 </template>
 
 <script setup>
 defineProps({
   label: { type: String, required: true },
   groups: { type: Array, required: true },
+  embedded: { type: Boolean, default: false },
 });
 </script>

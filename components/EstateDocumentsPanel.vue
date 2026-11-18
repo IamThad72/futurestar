@@ -447,7 +447,7 @@ defineExpose({ openUpload, loadDocuments });
   background: transparent;
   box-shadow: none;
   outline: none;
-  color: var(--color-primary, #06b6d4);
+  color: var(--color-pillar, var(--color-primary, #1F3A5F));
 }
 
 .estate-docs-action-btn--danger:hover,

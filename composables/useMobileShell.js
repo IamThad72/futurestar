@@ -27,21 +27,24 @@ function useMatchMedia(query) {
 
 /**
  * Viewport helpers for the app shell.
- * Below 1024px, and on a native build, the shell is a header plus a bottom bar.
- * Wider windows keep the top bar and a left sidebar.
+ * Phones (and every native build) use a header plus a bottom tab bar.
+ * Tablet and desktop widths use a left sidebar for the same five destinations.
  */
 export function useMobileShell() {
   const isNative = useIsNativeApp();
   const isNarrow = useMatchMedia("(max-width: 639px)");
-  /** Phone and tablet chrome, stacked layouts, and tap-to-add (below Tailwind `lg`). */
+  /** Phone widths. Native builds always use the tab bar, including tablets. */
+  const isPhone = useMatchMedia("(max-width: 767px)");
+  /** Stacked content layouts and tap-to-add (below Tailwind `lg`). */
   const isStacked = useMatchMedia("(max-width: 1023px)");
 
-  const useMobileChrome = computed(() => isNative.value || isStacked.value);
+  const useMobileChrome = computed(() => isNative.value || isPhone.value);
   const preferTapAdd = computed(() => isNative.value || isStacked.value);
 
   return {
     isNative,
     isNarrow,
+    isPhone,
     isStacked,
     preferTapAdd,
     useMobileChrome,

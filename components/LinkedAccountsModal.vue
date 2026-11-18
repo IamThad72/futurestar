@@ -24,7 +24,7 @@
 
       <div
         v-else-if="!auth.user"
-        class="mt-4 rounded-lg border border-warning/30 bg-warning/10 p-4 text-sm text-warning-content"
+        class="mt-4 rounded-lg border border-warning/30 bg-warning/10 p-4 text-sm text-base-content"
       >
         You must be logged in to manage linked accounts.
       </div>

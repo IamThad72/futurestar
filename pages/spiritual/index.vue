@@ -2,10 +2,10 @@
   <section class="spiritual-page">
     <div class="spiritual-page__intro">
       <header class="mb-4 sm:mb-6">
-        <h1 class="text-lg font-semibold text-base-content sm:text-xl">
+        <h1 class="text-ink">
           Spiritual Health
         </h1>
-        <p class="mt-1 text-sm text-base-content/80">
+        <p class="mt-2 text-base leading-6 text-muted">
           A daily review: be still, remember, hear Scripture, and close the day with examen.
           Anything you write stays private to your account.
         </p>
@@ -21,8 +21,8 @@
       <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <li v-for="item in homeLinks" :key="item.href">
           <AppLink :to="item.href" class="app-card-link">
-            <h2 class="text-sm font-semibold text-base-content">{{ item.name }}</h2>
-            <p class="mt-2 flex-1 text-sm leading-6 text-base-content/80">
+            <h2 class="text-ink">{{ item.name }}</h2>
+            <p class="mt-2 flex-1 text-base leading-6 text-muted">
               {{ item.description }}
             </p>
           </AppLink>
