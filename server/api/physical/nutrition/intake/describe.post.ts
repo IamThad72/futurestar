@@ -21,6 +21,11 @@ type ParsedItem = {
   quantity: number;
   unit: string;
   meal: NutritionMealType | null;
+  serving_g: number | null;
+  kcal: number | null;
+  protein_g: number | null;
+  fat_g: number | null;
+  carb_g: number | null;
 };
 
 type FoodProposal = {
@@ -41,6 +46,41 @@ type FoodProposal = {
 function per100FromServing(amount: number, servingG: number): number | null {
   if (!(servingG > 0) || !Number.isFinite(amount)) return null;
   return (amount * 100) / servingG;
+}
+
+function optionalNumber(value: unknown, max: number): number | null {
+  if (value == null || value === "") return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0 || n > max) return null;
+  return n;
+}
+
+function proposalFromEstimate(item: ParsedItem): FoodProposal | null {
+  const fromWeight = item.unit === "g"
+    ? item.quantity
+    : item.unit === "oz"
+      ? item.quantity * OZ_IN_GRAMS
+      : null;
+  const servingG = fromWeight ?? item.serving_g;
+  if (!(servingG > 0) || item.kcal == null || item.kcal > servingG * 9.5 + 5) return null;
+  const protein = item.protein_g ?? 0;
+  const fat = item.fat_g ?? 0;
+  const carb = item.carb_g ?? 0;
+  if (protein + fat + carb > servingG * 1.25 + 2) return null;
+  return {
+    name: item.brand ? `${item.brand} ${item.name}` : item.name,
+    quantity: 1,
+    portion_label: item.serving || `${Math.round(servingG)} g`,
+    serving_g: servingG,
+    requested_serving: item.serving,
+    fdc_id: null,
+    user_food_id: null,
+    portion_id: null,
+    kcal_per_100g: per100FromServing(item.kcal, servingG),
+    protein_g_per_100g: per100FromServing(protein, servingG),
+    fat_g_per_100g: per100FromServing(fat, servingG),
+    carb_g_per_100g: per100FromServing(carb, servingG),
+  };
 }
 
 const SERVING_UNITS: Record<string, string> = {
@@ -182,7 +222,19 @@ function parseItems(raw: unknown, fallbackMeal: NutritionMealType | null): Parse
     let meal: NutritionMealType | null = fallbackMeal;
     const mealRaw = String(row.meal || "").trim().toLowerCase();
     if (NUTRITION_MEAL_TYPES.includes(mealRaw as NutritionMealType)) meal = mealRaw as NutritionMealType;
-    items.push({ name, brand, serving, quantity, unit, meal });
+    items.push({
+      name,
+      brand,
+      serving,
+      quantity,
+      unit,
+      meal,
+      serving_g: optionalNumber(row.serving_g, 5000),
+      kcal: optionalNumber(row.kcal, 5000),
+      protein_g: optionalNumber(row.protein_g, 500),
+      fat_g: optionalNumber(row.fat_g, 500),
+      carb_g: optionalNumber(row.carb_g, 500),
+    });
     if (items.length >= MAX_ITEMS) break;
   }
   return items;
@@ -200,14 +252,16 @@ export default defineEventHandler(async (event) => {
   const parsed = parseItems(
     await generateJson(
       [
-        "Split a meal description into foods. Read the brand and serving size when the person typed them.",
-        'Return {"items":[{"name":"greek yogurt","brand":"Chobani","quantity":1,"unit":"oz","serving":"5.3 oz","meal":"breakfast"}]}.',
+        "Split a meal description into foods and estimate nutrition for each one.",
+        'Return {"items":[{"name":"greek yogurt","brand":"Chobani","quantity":1,"unit":"oz","serving":"5.3 oz","meal":"breakfast","serving_g":150,"kcal":90,"protein_g":15,"fat_g":0,"carb_g":6}]}.',
         "name is the food only. Do not put the brand in name.",
         "brand is the brand written in the text, or null when none is written. Never invent a brand.",
         "serving is the serving size written in the text, such as \"1 cup\", \"2 tbsp\", \"5.3 oz\", \"1 container\", or \"1 bar\". Use null when no serving size is written.",
         "When serving contains a number and a unit, quantity and unit must match that serving size.",
         "quantity is a number from 0 to 50.",
         "unit is one of: piece, serving, g, oz, cup, tbsp, tsp.",
+        "serving_g is the weight in grams of the whole amount of that item.",
+        "kcal, protein_g, fat_g, and carb_g are the nutrition for that whole amount, using typical values for the named food.",
         "meal is breakfast, lunch, dinner, snack, other, or null when the text does not name a meal.",
         "Include only foods, brands, and serving sizes that are in the text.",
       ].join(" "),
@@ -227,6 +281,11 @@ export default defineEventHandler(async (event) => {
     const foods = await listUserFoods(client, userId, "", 200);
     for (const item of parsed) {
       try {
+        const estimated = proposalFromEstimate(item);
+        if (estimated) {
+          items.push(estimated);
+          continue;
+        }
         const custom = matchUserFood(foods, item.name, item.brand);
         const countAsServings = item.unit === "piece" || item.unit === "serving";
         if (custom && custom.serving_g > 0 && (countAsServings || item.unit === "g" || item.unit === "oz")) {

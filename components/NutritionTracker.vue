@@ -53,7 +53,7 @@
             {{ editingEntryId ? "Edit log entry" : "Log food" }}
           </h2>
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Describe what you ate, including the brand and serving size. You'll review each food and its size before it is logged.
+            Describe what you ate, including the brand and serving size. Nutrition is estimated from the description first. You'll review each food before it is logged.
           </p>
           <form v-if="!editingEntryId" class="mt-3 grid gap-3" @submit.prevent="logFromDescription">
             <label class="form-control">
@@ -286,6 +286,51 @@
           </ul>
         </details>
         <form class="mt-4 grid gap-3" novalidate @submit.prevent="saveFood">
+          <div v-if="!editingFoodId" class="grid gap-2 rounded-md bg-gray-50 p-3 dark:bg-white/5">
+            <div class="flex flex-wrap items-end gap-2">
+              <button
+                type="button"
+                class="training-chip btn btn-sm rounded-full"
+                :class="barcodeScanning ? 'btn-ghost' : 'btn-outline'"
+                :disabled="barcodeBusy"
+                @click="barcodeScanning ? stopBarcodeScan() : startBarcodeScan()"
+              >
+                {{ barcodeScanning ? "Stop camera" : "Scan barcode" }}
+              </button>
+              <label class="form-control min-w-40 flex-1">
+                <span class="label py-0"><span class="label-text text-xs">Barcode</span></span>
+                <input
+                  v-model="barcodeText"
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="14"
+                  class="input input-bordered input-sm w-full"
+                  placeholder="Type the digits"
+                  autocomplete="off"
+                />
+              </label>
+              <button
+                type="button"
+                class="training-chip btn btn-primary btn-sm rounded-full"
+                :disabled="barcodeBusy"
+                @click="lookupBarcode(barcodeText)"
+              >
+                {{ barcodeBusy ? "Looking up…" : "Look up" }}
+              </button>
+            </div>
+            <video
+              v-show="barcodeScanning"
+              ref="barcodeVideo"
+              class="max-h-48 w-full rounded-md bg-black object-cover"
+              muted
+              playsinline
+              autoplay
+            />
+            <p v-if="barcodeError" class="text-sm text-red-600 dark:text-red-400">{{ barcodeError }}</p>
+            <p v-else class="text-xs text-gray-500 dark:text-gray-400">
+              Scan the package or type the digits. Check the serving before you save.
+            </p>
+          </div>
           <label class="form-control">
             <span class="label py-1"><span class="label-text text-sm">Name</span></span>
             <input
@@ -771,9 +816,16 @@ const foodNotice = ref("");
 const editingFoodId = ref(null);
 const foodModalEl = ref(null);
 const foodsListEl = ref(null);
+const barcodeVideo = ref(null);
+const barcodeText = ref("");
+const barcodeScanning = ref(false);
+const barcodeBusy = ref(false);
+const barcodeError = ref("");
+let barcodeControls = null;
 const logCardEl = ref(null);
 const deletingId = ref(null);
 const { isNarrow } = useMobileShell();
+onBeforeUnmount(() => stopBarcodeScan());
 const chartRangeDays = ref(7);
 const historyDays = ref([]);
 const historyLoading = ref(false);
@@ -1103,11 +1155,90 @@ function startEditFood(food) {
   });
 }
 
+function stopBarcodeScan() {
+  barcodeScanning.value = false;
+  try {
+    barcodeControls?.stop();
+  } catch {
+    /* the camera may already be stopped */
+  }
+  barcodeControls = null;
+  const video = barcodeVideo.value;
+  const stream = video?.srcObject;
+  if (stream && typeof stream.getTracks === "function") {
+    for (const track of stream.getTracks()) track.stop();
+  }
+  if (video) video.srcObject = null;
+}
+
+async function startBarcodeScan() {
+  barcodeError.value = "";
+  barcodeScanning.value = true;
+  await nextTick();
+  const video = barcodeVideo.value;
+  if (!video) {
+    barcodeScanning.value = false;
+    barcodeError.value = "The camera could not start. Type the barcode instead.";
+    return;
+  }
+  try {
+    const { BrowserMultiFormatReader } = await import("@zxing/browser");
+    const reader = new BrowserMultiFormatReader();
+    barcodeControls = await reader.decodeFromVideoDevice(undefined, video, (result) => {
+      if (!result) return;
+      const text = result.getText();
+      stopBarcodeScan();
+      barcodeText.value = text;
+      lookupBarcode(text);
+    });
+  } catch {
+    stopBarcodeScan();
+    barcodeError.value = "The camera could not start. Type the barcode instead.";
+  }
+}
+
+async function lookupBarcode(code) {
+  const digits = String(code || "").replace(/\D/g, "");
+  barcodeText.value = digits;
+  if (digits.length < 8 || digits.length > 14) {
+    barcodeError.value = "Enter the 8 to 14 digits under the barcode.";
+    return;
+  }
+  barcodeBusy.value = true;
+  barcodeError.value = "";
+  try {
+    const data = await $fetch("/api/physical/nutrition/barcode", { query: { code: digits } });
+    const food = data?.food;
+    if (!food) {
+      barcodeError.value = "No nutrition was found for that barcode. Enter the food by hand.";
+      return;
+    }
+    foodForm.value = {
+      name: food.name || "",
+      serving: food.serving || "1 serving",
+      serving_oz: food.serving_oz != null ? String(food.serving_oz) : "",
+      kcal: food.kcal != null ? String(food.kcal) : "",
+      protein_g: food.protein_g != null ? String(food.protein_g) : "",
+      fat_g: food.fat_g != null ? String(food.fat_g) : "",
+      carb_g: food.carb_g != null ? String(food.carb_g) : "",
+    };
+    foodNotice.value = "Filled from the package. Check the serving, then save.";
+    foodError.value = "";
+  } catch (error) {
+    barcodeError.value = parseFetchError(error, "No nutrition was found for that barcode. Enter the food by hand.");
+  } finally {
+    barcodeBusy.value = false;
+  }
+}
+
 function cancelEditFood() {
+  stopBarcodeScan();
   editingFoodId.value = null;
   foodForm.value = emptyFoodForm();
   foodError.value = "";
   foodNotice.value = "";
+  barcodeText.value = "";
+  barcodeError.value = "";
 }
 
 async function saveFood() {

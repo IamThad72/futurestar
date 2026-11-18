@@ -114,15 +114,18 @@ export async function generateJson(instruction: string, payload: unknown): Promi
   if (!result.response.ok) {
     const detail = safeGroqDetail(result.payload);
     console.error("groq request failed", result.response.status, detail);
+    const networkDenied = result.response.status === 403 && /network settings/i.test(detail);
     const aboutKey = result.response.status === 401 || /api key/i.test(detail);
     throw createError({
       statusCode: result.response.status === 429 ? 503 : 502,
       statusMessage:
         result.response.status === 429
           ? "Groq is busy. Try again shortly."
-          : aboutKey
-            ? "The Groq request failed. Check GROQ_API_KEY and try again."
-            : "Groq could not draft that plan. Try again.",
+          : networkDenied
+            ? "Groq refused this network. In ExpressVPN, set Node.js to Bypass VPN, then reconnect."
+            : aboutKey
+              ? "The Groq request failed. Check GROQ_API_KEY and try again."
+              : "Groq could not complete that request. Try again.",
     });
   }
 
