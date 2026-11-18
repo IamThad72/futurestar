@@ -1,0 +1,143 @@
+{
+  "year": 2026,
+  "sources": [
+    "https://taxfoundation.org/data/all/state/state-income-tax-rates-2026/",
+    "https://codes.ohio.gov/ohio-revised-code/section-5747.02",
+    "https://codes.ohio.gov/ohio-revised-code/section-5747.025"
+  ],
+  "noIncomeTax": ["AK", "FL", "NV", "NH", "SD", "TN", "TX", "WA", "WY"],
+  "flat": [
+    {
+      "code": "AZ",
+      "name": "Arizona",
+      "rate": 0.025,
+      "standardDeduction": { "single": 8350, "couple": 16700 },
+      "dependentCredit": 100,
+      "note": "2.5% after the $8,350 / $16,700 standard deduction in the 2026 Tax Foundation table (static conformity to the pre-TCJA federal amount until the state adopts a later Internal Revenue Code date)."
+    },
+    {
+      "code": "CO",
+      "name": "Colorado",
+      "rate": 0.044,
+      "standardDeduction": { "single": 16100, "couple": 32200 },
+      "note": "4.4% after the federal standard deduction Colorado uses for 2026."
+    },
+    {
+      "code": "GA",
+      "name": "Georgia",
+      "rate": 0.0519,
+      "standardDeduction": { "single": 12000, "couple": 24000 },
+      "dependentExemption": 4000,
+      "note": "5.19% after the standard deduction. $4,000 exemption per dependent."
+    },
+    {
+      "code": "ID",
+      "name": "Idaho",
+      "rate": 0.053,
+      "standardDeduction": { "single": 16100, "couple": 32200 },
+      "zeroRateBand": { "single": 4811, "couple": 9622 },
+      "note": "5.3% after the standard deduction, on income above the zero-rate band."
+    },
+    {
+      "code": "IL",
+      "name": "Illinois",
+      "rate": 0.0495,
+      "personalExemption": { "single": 2925, "couple": 5850 },
+      "dependentExemption": 2925,
+      "note": "4.95% after the personal exemption. No standard deduction."
+    },
+    {
+      "code": "IN",
+      "name": "Indiana",
+      "rate": 0.0295,
+      "personalExemption": { "single": 1000, "couple": 2000 },
+      "dependentExemption": 1000,
+      "note": "2.95% after the personal exemption. County tax is not included; enter it as a local rate if you want it in the estimate."
+    },
+    {
+      "code": "IA",
+      "name": "Iowa",
+      "rate": 0.038,
+      "standardDeduction": { "single": 16100, "couple": 32200 },
+      "personalCredit": { "single": 40, "couple": 80 },
+      "dependentCredit": 40,
+      "note": "3.8% after the federal standard deduction, minus the personal exemption credit."
+    },
+    {
+      "code": "KY",
+      "name": "Kentucky",
+      "rate": 0.035,
+      "standardDeduction": { "single": 3360, "couple": 3360 },
+      "note": "3.5% after the 2026 standard deduction."
+    },
+    {
+      "code": "LA",
+      "name": "Louisiana",
+      "rate": 0.03,
+      "standardDeduction": { "single": 12875, "couple": 25750 },
+      "note": "3% after the inflation-adjusted standard deduction."
+    },
+    {
+      "code": "MI",
+      "name": "Michigan",
+      "rate": 0.0425,
+      "personalExemption": { "single": 5900, "couple": 11800 },
+      "dependentExemption": 5900,
+      "note": "4.25% after the personal exemption. City income tax is not included."
+    },
+    {
+      "code": "MS",
+      "name": "Mississippi",
+      "rate": 0.04,
+      "standardDeduction": { "single": 2300, "couple": 4600 },
+      "personalExemption": { "single": 6000, "couple": 12000 },
+      "dependentExemption": 1500,
+      "zeroRateBand": { "single": 10000, "couple": 10000 },
+      "note": "4% above $10,000 after the standard deduction and personal exemption."
+    },
+    {
+      "code": "NC",
+      "name": "North Carolina",
+      "rate": 0.0399,
+      "standardDeduction": { "single": 12750, "couple": 25500 },
+      "note": "3.99% after the standard deduction."
+    },
+    {
+      "code": "PA",
+      "name": "Pennsylvania",
+      "rate": 0.0307,
+      "note": "3.07% of AGI. Pennsylvania does not allow a standard deduction or personal exemption. Local earned-income tax is not included."
+    },
+    {
+      "code": "UT",
+      "name": "Utah",
+      "rate": 0.045,
+      "personalCredit": { "single": 966, "couple": 1932 },
+      "note": "4.5% of AGI, minus the flat taxpayer credit. The credit's income phaseout is not modeled."
+    }
+  ],
+  "ohio": {
+    "name": "Ohio",
+    "brackets": [
+      { "upTo": 26050, "base": 0, "rate": 0, "threshold": 0 },
+      { "upTo": null, "base": 332, "rate": 0.0275, "threshold": 26050 }
+    ],
+    "exemptionMagiCap": 500000,
+    "exemptionTiers": [
+      { "maxMagi": 40000, "amount": 2350 },
+      { "maxMagi": 80000, "amount": 2100 },
+      { "maxMagi": null, "amount": 1850 }
+    ],
+    "personalExemptionCreditPer": 20,
+    "personalExemptionCreditIncomeMax": 30000,
+    "jointFilingCreditMax": 650,
+    "jointFilingCreditMagiCap": 500000,
+    "jointFilingCreditTiers": [
+      { "maxIncome": 25000, "rate": 0.2 },
+      { "maxIncome": 50000, "rate": 0.15 },
+      { "maxIncome": 75000, "rate": 0.1 },
+      { "maxIncome": null, "rate": 0.05 }
+    ],
+    "note": "ORC 5747.02 and 5747.025 as used for 2026 (H.B. 96): $332 plus 2.75% over $26,050. Joint filing credit assumes each spouse has at least $500 of qualifying income."
+  }
+}
