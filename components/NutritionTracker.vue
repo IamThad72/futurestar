@@ -1,109 +1,50 @@
 <template>
   <div class="space-y-6">
-    <div class="flex flex-wrap items-center gap-3">
+    <div class="app-sticky-action flex flex-wrap items-center gap-3">
       <label class="form-control w-full max-w-[11rem]">
         <input v-model="eatenOn" type="date" class="input input-bordered w-full" aria-label="Day" />
       </label>
       <button type="button" class="training-chip btn btn-primary btn-sm rounded-full" @click="eatenOn = todayIso()">Today</button>
+      <p v-if="kcalLeftLabel" class="text-sm font-semibold tabular-nums text-gray-900 sm:ml-auto dark:text-white">
+        {{ kcalLeftLabel }}
+      </p>
     </div>
 
-    <div class="grid gap-6 lg:grid-cols-2">
-      <NutritionDailyChart
-        v-if="!isNarrow"
-        class="min-w-0 lg:h-0 lg:min-h-full"
-        v-model:days="chartRangeDays"
-        :data="historyDays"
-        :plan-kcal="currentPlan?.kcal ?? null"
-        :loading="historyLoading"
-        :error="historyError"
-      />
-
-      <section class="app-card min-w-0 px-4 py-4">
-        <h2 class="text-sm font-semibold text-gray-900 dark:text-white">{{ eatenOnLabel }} vs plan</h2>
-        <p v-if="!comparison?.targets" class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Save a daily plan to compare what you eat against targets.
-        </p>
-        <ul class="mt-3 space-y-3">
-          <li v-for="row in macroRows" :key="row.key">
-            <div class="flex items-baseline justify-between gap-2 text-sm">
-              <span class="font-medium text-gray-800 dark:text-gray-100">{{ row.label }}</span>
-              <span class="tabular-nums text-gray-600 dark:text-gray-300">
-                {{ row.consumedLabel }}
-                <span v-if="row.targetLabel"> / {{ row.targetLabel }}</span>
-              </span>
-            </div>
-            <progress
-              class="progress mt-1 w-full"
-              :class="row.over ? 'progress-error' : 'progress-primary'"
-              :value="row.percent"
-              max="100"
-            />
-            <p v-if="row.remainingLabel" class="mt-0.5 text-xs" :class="row.over ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'">
-              {{ row.remainingLabel }}
-            </p>
-          </li>
-        </ul>
-      </section>
-    </div>
-
-    <div class="grid gap-6 lg:grid-cols-2">
-      <section class="space-y-4">
-        <div ref="logCardEl" class="app-card px-4 py-4">
+    <div class="grid gap-6 lg:grid-cols-2 lg:items-start">
+      <section ref="logCardEl" class="app-card px-4 py-4 lg:col-start-1 lg:row-start-1">
+        <div class="flex flex-wrap items-center justify-between gap-2">
           <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
             {{ editingEntryId ? "Edit log entry" : "Log food" }}
           </h2>
-          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Describe what you ate, including the brand and serving size. Nutrition is estimated from the description first. You'll review each food before it is logged.
+          <button
+            v-if="!editingEntryId"
+            type="button"
+            class="training-chip btn btn-outline btn-sm rounded-full"
+            @click="openAddFoodModal"
+          >
+            Add food
+          </button>
+        </div>
+        <p v-if="!editingEntryId" class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          Describe a meal, or choose a saved food. You'll review a description before it is logged.
+        </p>
+        <form class="mt-3 grid gap-3" @submit.prevent="submitComposer">
+          <label v-if="!editingEntryId" class="form-control">
+            <span class="label py-1"><span class="label-text text-sm">Describe a meal</span></span>
+            <textarea
+              v-model="describeText"
+              rows="2"
+              class="textarea textarea-bordered w-full"
+              placeholder="1 container Chobani greek yogurt, 5.3 oz"
+              maxlength="800"
+            />
+          </label>
+          <p v-if="foodsError" class="text-sm text-red-600 dark:text-red-400">{{ foodsError }}</p>
+          <p v-else-if="loadingFoods" class="text-sm text-gray-500 dark:text-gray-400">Loading foods…</p>
+          <p v-else-if="!foods.length && !editingEntryId" class="text-sm text-gray-500 dark:text-gray-400">
+            No saved foods yet. Add food keeps one you can log again.
           </p>
-          <form v-if="!editingEntryId" class="mt-3 grid gap-3" @submit.prevent="logFromDescription">
-            <label class="form-control">
-              <span class="label py-1"><span class="label-text text-sm">Describe a meal</span></span>
-              <textarea
-                v-model="describeText"
-                rows="2"
-                class="textarea textarea-bordered w-full"
-                placeholder="1 container Chobani greek yogurt, 5.3 oz"
-                maxlength="800"
-              />
-            </label>
-            <div class="grid gap-3 sm:grid-cols-2">
-              <label class="form-control">
-                <span class="label py-1"><span class="label-text text-sm">Meal</span></span>
-                <select v-model="logForm.meal" class="select select-bordered w-full">
-                  <option v-for="meal in mealOptions" :key="`describe-${meal.value}`" :value="meal.value">{{ meal.label }}</option>
-                </select>
-              </label>
-              <label class="form-control">
-                <span class="label py-1"><span class="label-text text-sm">Time</span></span>
-                <input v-model="logForm.time" type="time" class="input input-bordered w-full" required />
-              </label>
-            </div>
-            <p v-if="describeError" class="text-sm text-red-600 dark:text-red-400">{{ describeError }}</p>
-            <p v-else-if="describeMessage" class="text-sm text-gray-600 dark:text-gray-300">{{ describeMessage }}</p>
-            <div class="flex flex-wrap gap-2">
-              <button
-                type="submit"
-                class="training-chip btn btn-primary btn-sm rounded-full"
-                :disabled="describing || !describeText.trim()"
-              >
-                {{ describing ? "Reading…" : "Review foods" }}
-              </button>
-              <button
-                type="button"
-                class="training-chip btn btn-ghost btn-sm rounded-full"
-                :disabled="describing"
-                @click="suggestRemaining"
-              >
-                {{ describing ? "Reading…" : "What's left today" }}
-              </button>
-            </div>
-          </form>
-          <p v-if="foodsError" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ foodsError }}</p>
-          <p v-else-if="loadingFoods" class="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading foods…</p>
-          <p v-else-if="!foods.length" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            No foods yet. Use Add food to save one, then pick it here.
-          </p>
-          <form v-else class="mt-3 grid gap-3" @submit.prevent="logFood">
+          <template v-else>
             <div class="form-control">
               <span class="label py-1"><span id="log-food-label" class="label-text text-sm">Food</span></span>
               <Combobox v-model="logForm.foodId" nullable>
@@ -114,7 +55,6 @@
                     autocomplete="off"
                     aria-labelledby="log-food-label"
                     :display-value="foodDisplayValue"
-                    required
                     @change="foodSearchQuery = $event.target.value"
                   />
                   <ComboboxButton class="absolute inset-y-0 right-0 flex items-center px-3 text-base-content/60">
@@ -149,188 +89,276 @@
             </div>
             <label class="form-control">
               <span class="label py-1"><span class="label-text text-sm">Servings</span></span>
-              <input v-model="logForm.servings" type="number" min="0.01" step="0.01" class="input input-bordered w-full" required />
+              <input v-model="logForm.servings" type="number" min="0.01" step="0.01" class="input input-bordered w-full" />
             </label>
-            <div class="grid gap-3 sm:grid-cols-2">
-              <label class="form-control">
-                <span class="label py-1"><span class="label-text text-sm">Meal</span></span>
-                <select v-model="logForm.meal" class="select select-bordered w-full">
-                  <option v-for="meal in mealOptions" :key="meal.value" :value="meal.value">{{ meal.label }}</option>
-                </select>
-              </label>
-              <label class="form-control">
-                <span class="label py-1"><span class="label-text text-sm">Time</span></span>
-                <input v-model="logForm.time" type="time" class="input input-bordered w-full" required />
-              </label>
-            </div>
             <p v-if="selectedFood" class="text-xs text-gray-500 dark:text-gray-400">
               {{ foodMeta(selectedFood) }}
             </p>
+            <button
+              v-if="selectedFood && !editingEntryId"
+              type="button"
+              class="training-chip btn btn-ghost btn-xs justify-self-start rounded-full"
+              @click="startEditFood(selectedFood)"
+            >
+              Edit food
+            </button>
             <p v-if="logPreview" class="text-sm tabular-nums text-gray-700 dark:text-gray-200">
               {{ formatMacro(logPreview.kcal, 0) }} kcal ·
               P {{ formatMacro(logPreview.protein_g, 1) }} g ·
               F {{ formatMacro(logPreview.fat_g, 1) }} g ·
               C {{ formatMacro(logPreview.carb_g, 1) }} g
             </p>
-            <p v-if="logError" class="text-sm text-red-600 dark:text-red-400">{{ logError }}</p>
-            <div class="flex flex-wrap gap-2">
-              <button type="submit" class="training-chip btn btn-primary btn-sm rounded-full" :disabled="logging || !selectedFood">
-                {{ logging ? "Saving…" : editingEntryId ? "Save log entry" : "Add to log" }}
-              </button>
-              <button
-                v-if="editingEntryId"
-                type="button"
-                class="training-chip btn btn-ghost btn-sm rounded-full"
-                :disabled="logging"
-                @click="cancelEditEntry"
+          </template>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <label class="form-control">
+              <span class="label py-1"><span class="label-text text-sm">Meal</span></span>
+              <select v-model="logForm.meal" class="select select-bordered w-full">
+                <option v-for="meal in mealOptions" :key="meal.value" :value="meal.value">{{ meal.label }}</option>
+              </select>
+            </label>
+            <label class="form-control">
+              <span class="label py-1"><span class="label-text text-sm">Time</span></span>
+              <input v-model="logForm.time" type="time" class="input input-bordered w-full" required />
+            </label>
+          </div>
+          <p v-if="describeError && describeIntent === 'meal'" class="text-sm text-red-600 dark:text-red-400">{{ describeError }}</p>
+          <p v-else-if="describeMessage" class="text-sm text-gray-600 dark:text-gray-300">{{ describeMessage }}</p>
+          <p v-if="logError" class="text-sm text-red-600 dark:text-red-400">{{ logError }}</p>
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-if="!editingEntryId"
+              type="submit"
+              class="training-chip btn btn-primary btn-sm rounded-full"
+              :disabled="describing || !describeText.trim()"
+            >
+              {{ describing && describeIntent === "meal" ? "Reading…" : "Review foods" }}
+            </button>
+            <button
+              v-if="!editingEntryId"
+              type="button"
+              class="training-chip btn btn-outline btn-sm rounded-full"
+              :disabled="logging || !selectedFood"
+              @click="logFood"
+            >
+              {{ logging ? "Saving…" : "Add to log" }}
+            </button>
+            <button
+              v-if="editingEntryId"
+              type="submit"
+              class="training-chip btn btn-primary btn-sm rounded-full"
+              :disabled="logging || !selectedFood"
+            >
+              {{ logging ? "Saving…" : "Save log entry" }}
+            </button>
+            <button
+              v-if="editingEntryId"
+              type="button"
+              class="training-chip btn btn-ghost btn-sm rounded-full"
+              :disabled="logging"
+              @click="cancelEditEntry"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="app-card px-4 py-4 lg:col-start-2 lg:row-start-1">
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Food log</h2>
+        <p v-if="loadError" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ loadError }}</p>
+        <p v-else-if="loading" class="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading log…</p>
+        <p v-else-if="!entries.length" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          Nothing logged for this day yet.
+        </p>
+        <div v-else class="mt-3 space-y-4">
+          <section v-for="group in groupedEntries" :key="group.meal">
+            <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              {{ group.label }}
+            </h3>
+            <ul class="mt-2 space-y-2">
+              <li
+                v-for="entry in group.entries"
+                :key="entry.entry_id"
+                class="flex items-start justify-between gap-3 rounded-md bg-gray-50 px-3 py-2 dark:bg-white/5"
+                :class="editingEntryId === entry.entry_id ? 'ring-1 ring-primary/40' : ''"
               >
-                Cancel
-              </button>
-            </div>
-          </form>
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-gray-900 dark:text-white">{{ entry.food_description }}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">
+                    {{ entryServingLine(entry) }}
+                  </p>
+                  <p class="text-xs tabular-nums text-gray-600 dark:text-gray-300">
+                    {{ formatMacro(entry.kcal, 0) }} kcal ·
+                    P {{ formatMacro(entry.protein_g, 1) }} g ·
+                    F {{ formatMacro(entry.fat_g, 1) }} g ·
+                    C {{ formatMacro(entry.carb_g, 1) }} g
+                  </p>
+                </div>
+                <div class="flex shrink-0 gap-1">
+                  <button
+                    type="button"
+                    class="training-chip btn btn-ghost btn-xs rounded-full"
+                    @click="startEditEntry(entry)"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    class="training-chip btn btn-ghost btn-xs rounded-full text-red-600 dark:text-red-400"
+                    :disabled="deletingId === entry.entry_id"
+                    @click="deleteEntry(entry.entry_id)"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </li>
+            </ul>
+          </section>
         </div>
       </section>
 
-      <section class="app-card flex min-h-0 flex-col overflow-hidden px-4 py-4 max-lg:max-h-96 lg:h-0 lg:min-h-full">
-          <h2 class="shrink-0 text-sm font-semibold text-gray-900 dark:text-white">Food log</h2>
-          <p v-if="loadError" class="mt-2 shrink-0 text-sm text-red-600 dark:text-red-400">{{ loadError }}</p>
-          <p v-else-if="loading" class="mt-2 shrink-0 text-sm text-gray-500 dark:text-gray-400">Loading log…</p>
-          <p v-else-if="!entries.length" class="mt-2 shrink-0 text-sm text-gray-500 dark:text-gray-400">
-            Nothing logged for this day yet.
+      <section class="app-card min-w-0 px-4 py-4 lg:col-start-2 lg:row-start-2">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">{{ eatenOnLabel }} vs plan</h2>
+          <button type="button" class="training-chip btn btn-outline btn-sm rounded-full" @click="openPlanModal">
+            Edit plan
+          </button>
+        </div>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          {{ currentPlan?.name || "No daily plan" }}
+        </p>
+        <div class="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            class="training-chip btn btn-ghost btn-sm rounded-full"
+            :disabled="describing"
+            @click="suggestRemaining"
+          >
+            {{ describing && describeIntent === "remaining" ? "Reading…" : "What's left today" }}
+          </button>
+          <p v-if="describeError && describeIntent === 'remaining'" class="text-sm text-red-600 dark:text-red-400">
+            {{ describeError }}
           </p>
-          <div v-else class="mt-3 min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pr-0.5">
-            <section v-for="group in groupedEntries" :key="group.meal">
-              <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                {{ group.label }}
-              </h3>
-              <ul class="mt-2 space-y-2">
-                <li
-                  v-for="entry in group.entries"
-                  :key="entry.entry_id"
-                  class="flex items-start justify-between gap-3 rounded-md bg-gray-50 px-3 py-2 dark:bg-white/5"
-                  :class="editingEntryId === entry.entry_id ? 'ring-1 ring-primary/40' : ''"
-                >
-                  <div class="min-w-0">
-                    <p class="text-sm font-medium text-gray-900 dark:text-white">{{ entry.food_description }}</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">
-                      {{ entryServingLine(entry) }}
-                    </p>
-                    <p class="text-xs tabular-nums text-gray-600 dark:text-gray-300">
-                      {{ formatMacro(entry.kcal, 0) }} kcal ·
-                      P {{ formatWeightOzGrams(entry.protein_g) }} ·
-                      F {{ formatWeightOzGrams(entry.fat_g) }} ·
-                      C {{ formatWeightOzGrams(entry.carb_g) }}
-                    </p>
-                  </div>
-                  <div class="flex shrink-0 flex-col items-end gap-1">
-                    <button
-                      type="button"
-                      class="training-chip btn btn-ghost btn-xs rounded-full"
-                      @click="startEditEntry(entry)"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      class="training-chip btn btn-ghost btn-xs rounded-full text-red-600 dark:text-red-400"
-                      :disabled="deletingId === entry.entry_id"
-                      @click="deleteEntry(entry.entry_id)"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </li>
-              </ul>
-            </section>
-          </div>
+        </div>
+        <p v-if="!comparison?.targets" class="mt-3 text-sm text-gray-500 dark:text-gray-400">
+          Save a daily plan to compare what you eat against targets.
+        </p>
+        <ul class="mt-3 space-y-3">
+          <li v-for="row in macroRows" :key="row.key">
+            <div class="flex items-baseline justify-between gap-2 text-sm">
+              <span class="font-medium text-gray-800 dark:text-gray-100">{{ row.label }}</span>
+              <span class="tabular-nums text-gray-600 dark:text-gray-300">
+                {{ row.consumedLabel }}
+                <span v-if="row.targetLabel"> / {{ row.targetLabel }}</span>
+              </span>
+            </div>
+            <progress
+              class="progress mt-1 w-full"
+              :class="row.over ? 'progress-error' : 'progress-primary'"
+              :value="row.percent"
+              max="100"
+            />
+            <p v-if="row.remainingLabel" class="mt-0.5 text-xs" :class="row.over ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'">
+              {{ row.remainingLabel }}
+            </p>
+            <p v-if="row.ounceNote" class="text-xs text-gray-500 dark:text-gray-400">{{ row.ounceNote }}</p>
+          </li>
+        </ul>
       </section>
+
+      <NutritionDailyChart
+        v-if="!isNarrow"
+        class="min-w-0 lg:col-start-1 lg:row-start-2"
+        v-model:days="chartRangeDays"
+        :data="historyDays"
+        :plan-kcal="currentPlan?.kcal ?? null"
+        :loading="historyLoading"
+        :error="historyError"
+      />
     </div>
 
     <dialog ref="foodModalEl" class="modal" @close="onFoodModalClose">
       <div class="modal-box flex max-h-[90vh] max-w-lg flex-col overflow-y-auto overscroll-contain">
-        <h3 class="text-lg font-semibold">{{ editingFoodId ? "Edit food" : "Add food" }}</h3>
+        <h3 class="text-lg font-semibold">{{ editingFoodId && !addingFood ? "Edit food" : "Add food" }}</h3>
         <p class="mt-1 text-sm text-base-content/60">
           {{
-            editingFoodId
+            editingFoodId && !addingFood
               ? "Update this food. New log entries will use the new serving values; existing log entries stay as logged."
-              : "Save a food with nutrition for one serving. You can log it afterward."
+              : foodFromPackage
+                ? "Check the serving, then save."
+                : foodEntryMode === "manual"
+                  ? "Enter one serving."
+                  : "Scan a package or enter one serving."
           }}
         </p>
-        <details ref="foodsListEl" class="mt-4">
-          <summary class="cursor-pointer text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Your foods
-            <span class="font-normal normal-case tracking-normal">({{ foods.length }})</span>
-          </summary>
-          <p v-if="!foods.length" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            None yet. Use the form below to add one.
-          </p>
-          <ul v-else class="mt-2 max-h-40 space-y-2 overflow-y-auto overscroll-contain pr-0.5">
-            <li
-              v-for="food in foods"
-              :key="food.user_food_id"
-              class="flex items-start justify-between gap-3 rounded-md bg-gray-50 px-3 py-2 dark:bg-white/5"
-              :class="editingFoodId === food.user_food_id ? 'ring-1 ring-primary/40' : ''"
+        <p v-if="!showFoodFields && !showScanner && foodNotice" class="mt-3 text-sm text-emerald-700 dark:text-emerald-400">
+          {{ foodNotice }}
+        </p>
+        <div v-if="!editingFoodId && !foodEntryMode" class="mt-4 grid gap-2">
+          <button type="button" class="training-chip btn btn-primary btn-sm rounded-full" @click="chooseScan">
+            Scan a package
+          </button>
+          <button type="button" class="training-chip btn btn-outline btn-sm rounded-full" @click="chooseManual">
+            Enter it yourself
+          </button>
+        </div>
+        <div v-if="showScanner" class="mt-4 grid gap-2 rounded-md bg-gray-50 p-3 dark:bg-white/5">
+          <div class="flex flex-wrap items-end gap-2">
+            <button
+              type="button"
+              class="training-chip btn btn-sm rounded-full"
+              :class="barcodeScanning ? 'btn-ghost' : 'btn-outline'"
+              :disabled="barcodeBusy"
+              @click="barcodeScanning ? stopBarcodeScan() : startBarcodeScan()"
             >
-              <div class="min-w-0">
-                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ foodLabel(food) }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">{{ foodMeta(food) }}</p>
-              </div>
-              <button
-                type="button"
-                class="training-chip btn btn-ghost btn-xs rounded-full"
-                @click="startEditFood(food)"
-              >
-                {{ editingFoodId === food.user_food_id ? "Editing" : "Edit" }}
-              </button>
-            </li>
-          </ul>
-        </details>
-        <form class="mt-4 grid gap-3" novalidate @submit.prevent="saveFood">
-          <div v-if="!editingFoodId" class="grid gap-2 rounded-md bg-gray-50 p-3 dark:bg-white/5">
-            <div class="flex flex-wrap items-end gap-2">
-              <button
-                type="button"
-                class="training-chip btn btn-sm rounded-full"
-                :class="barcodeScanning ? 'btn-ghost' : 'btn-outline'"
-                :disabled="barcodeBusy"
-                @click="barcodeScanning ? stopBarcodeScan() : startBarcodeScan()"
-              >
-                {{ barcodeScanning ? "Stop camera" : "Scan barcode" }}
-              </button>
-              <label class="form-control min-w-40 flex-1">
-                <span class="label py-0"><span class="label-text text-xs">Barcode</span></span>
-                <input
-                  v-model="barcodeText"
-                  type="text"
-                  inputmode="numeric"
-                  maxlength="14"
-                  class="input input-bordered input-sm w-full"
-                  placeholder="Type the digits"
-                  autocomplete="off"
-                />
-              </label>
-              <button
-                type="button"
-                class="training-chip btn btn-primary btn-sm rounded-full"
-                :disabled="barcodeBusy"
-                @click="lookupBarcode(barcodeText)"
-              >
-                {{ barcodeBusy ? "Looking up…" : "Look up" }}
-              </button>
-            </div>
-            <video
-              v-show="barcodeScanning"
-              ref="barcodeVideo"
-              class="max-h-48 w-full rounded-md bg-black object-cover"
-              muted
-              playsinline
-              autoplay
-            />
-            <p v-if="barcodeError" class="text-sm text-red-600 dark:text-red-400">{{ barcodeError }}</p>
-            <p v-else class="text-xs text-gray-500 dark:text-gray-400">
-              Scan the package or type the digits. Check the serving before you save.
-            </p>
+              {{ barcodeScanning ? "Stop camera" : "Scan barcode" }}
+            </button>
+            <label class="form-control min-w-40 flex-1">
+              <span class="label py-0"><span class="label-text text-xs">Barcode</span></span>
+              <input
+                v-model="barcodeText"
+                type="text"
+                inputmode="numeric"
+                maxlength="14"
+                class="input input-bordered input-sm w-full"
+                placeholder="Type the digits"
+                autocomplete="off"
+              />
+            </label>
+            <button
+              type="button"
+              class="training-chip btn btn-primary btn-sm rounded-full"
+              :disabled="barcodeBusy"
+              @click="lookupBarcode(barcodeText)"
+            >
+              {{ barcodeBusy ? "Looking up…" : "Look up" }}
+            </button>
           </div>
+          <video
+            v-show="barcodeScanning"
+            ref="barcodeVideo"
+            class="max-h-48 w-full rounded-md bg-black object-cover"
+            muted
+            playsinline
+            autoplay
+          />
+          <p v-if="barcodeError" class="text-sm text-red-600 dark:text-red-400">{{ barcodeError }}</p>
+          <p v-else class="text-xs text-gray-500 dark:text-gray-400">
+            Scan the package or type the digits.
+          </p>
+          <button type="button" class="training-chip btn btn-ghost btn-sm justify-self-start rounded-full" @click="chooseManual">
+            Enter it yourself
+          </button>
+        </div>
+        <form v-if="showFoodFields" class="mt-4 grid gap-3" novalidate @submit.prevent="saveFood(false)">
+          <button
+            v-if="foodFromPackage"
+            type="button"
+            class="training-chip btn btn-ghost btn-sm justify-self-start rounded-full"
+            @click="scanAgain"
+          >
+            Scan again
+          </button>
           <label class="form-control">
             <span class="label py-1"><span class="label-text text-sm">Name</span></span>
             <input
@@ -342,6 +370,9 @@
               required
             />
           </label>
+          <p v-if="foodFromPackage && foodNotice" class="text-sm text-emerald-700 dark:text-emerald-400">
+            {{ foodNotice }}
+          </p>
           <div class="grid gap-3 sm:grid-cols-2">
             <label class="form-control">
               <span class="label py-1"><span class="label-text text-sm">Serving</span></span>
@@ -356,42 +387,42 @@
             </label>
             <label class="form-control">
               <span class="label py-1">
-                <span class="label-text text-sm">Serving size (oz)</span>
-                <span v-if="foodServingGramsPreview" class="label-text-alt text-xs text-gray-500">
-                  ≈ {{ foodServingGramsPreview }} g
+                <span class="label-text text-sm">Weight (g)</span>
+                <span v-if="foodServingOuncesPreview" class="label-text-alt text-xs text-gray-500">
+                  ≈ {{ foodServingOuncesPreview }} oz
                 </span>
               </span>
               <input
-                v-model="foodForm.serving_oz"
+                v-model="foodForm.serving_g"
                 type="number"
-                min="0.01"
-                step="0.01"
+                min="0.1"
+                step="0.1"
                 class="input input-bordered w-full"
                 required
               />
             </label>
           </div>
-          <div class="grid gap-3 sm:grid-cols-2">
+          <label class="form-control">
+            <span class="label py-1"><span class="label-text text-sm">Calories</span></span>
+            <input v-model="foodForm.kcal" type="number" min="0" step="1" class="input input-bordered w-full" required />
+          </label>
+          <div class="grid grid-cols-3 gap-3">
             <label class="form-control">
-              <span class="label py-1"><span class="label-text text-sm">Calories</span></span>
-              <input v-model="foodForm.kcal" type="number" min="0" step="1" class="input input-bordered w-full" required />
+              <span class="label py-1"><span class="label-text text-sm">Protein (g)</span></span>
+              <input v-model="foodForm.protein_g" type="number" min="0" step="0.1" class="input input-bordered w-full" required />
             </label>
             <label class="form-control">
               <span class="label py-1"><span class="label-text text-sm">Fat (g)</span></span>
               <input v-model="foodForm.fat_g" type="number" min="0" step="0.1" class="input input-bordered w-full" required />
             </label>
             <label class="form-control">
-              <span class="label py-1"><span class="label-text text-sm">Protein (g)</span></span>
-              <input v-model="foodForm.protein_g" type="number" min="0" step="0.1" class="input input-bordered w-full" required />
-            </label>
-            <label class="form-control">
-              <span class="label py-1"><span class="label-text text-sm">Carbohydrate (g)</span></span>
+              <span class="label py-1"><span class="label-text text-sm">Carbs (g)</span></span>
               <input v-model="foodForm.carb_g" type="number" min="0" step="0.1" class="input input-bordered w-full" required />
             </label>
           </div>
           <p v-if="foodError" class="text-sm text-red-600 dark:text-red-400">{{ foodError }}</p>
-          <p v-else-if="foodNotice" class="text-sm text-emerald-700 dark:text-emerald-400">{{ foodNotice }}</p>
-          <div class="modal-action sticky bottom-0 mt-4 bg-base-100 pb-1">
+          <p v-else-if="foodNotice && !foodFromPackage" class="text-sm text-emerald-700 dark:text-emerald-400">{{ foodNotice }}</p>
+          <div class="modal-action sticky bottom-0 mt-2 bg-base-100 pb-1">
             <button
               type="button"
               class="training-chip btn btn-ghost btn-sm rounded-full"
@@ -400,11 +431,25 @@
             >
               Cancel
             </button>
+            <button
+              v-if="addingFood"
+              type="button"
+              class="training-chip btn btn-outline btn-sm rounded-full"
+              :disabled="savingFood"
+              @click="saveFood(true)"
+            >
+              {{ savingFood ? "Saving…" : "Save and log" }}
+            </button>
             <button type="submit" class="training-chip btn btn-primary btn-sm rounded-full" :disabled="savingFood">
-              {{ savingFood ? "Saving…" : editingFoodId ? "Save food" : "Add food" }}
+              {{ savingFood ? "Saving…" : editingFoodId && !addingFood ? "Save food" : "Save" }}
             </button>
           </div>
         </form>
+        <div v-else class="modal-action">
+          <button type="button" class="training-chip btn btn-ghost btn-sm rounded-full" @click="closeFoodModal">
+            Cancel
+          </button>
+        </div>
       </div>
       <form method="dialog" class="modal-backdrop">
         <button type="submit">close</button>
@@ -742,11 +787,15 @@ function remainingTextKcal(remaining) {
   return `${formatMacro(Math.abs(n), 0)} kcal over`;
 }
 
+function gramAmount(grams) {
+  return `${formatPortionGrams(grams) || "0"} g`;
+}
+
 function remainingMassText(remainingGrams) {
   if (remainingGrams == null) return "";
   const n = Number(remainingGrams);
   if (!Number.isFinite(n)) return "";
-  const label = formatWeightOzGrams(Math.abs(n)) || "0 oz";
+  const label = gramAmount(Math.abs(n));
   if (n >= 0) return `${label} left`;
   return `${label} over`;
 }
@@ -771,7 +820,7 @@ function emptyFoodForm() {
   return {
     name: "",
     serving: "1 serving",
-    serving_oz: "",
+    serving_g: "",
     kcal: "",
     protein_g: "",
     fat_g: "",
@@ -801,6 +850,7 @@ const logError = ref("");
 const describeText = ref("");
 const describing = ref(false);
 const describeError = ref("");
+const describeIntent = ref("meal");
 const describeMessage = ref("");
 const describeModalEl = ref(null);
 const describeProposals = ref([]);
@@ -814,8 +864,10 @@ const savingFood = ref(false);
 const foodError = ref("");
 const foodNotice = ref("");
 const editingFoodId = ref(null);
+const addingFood = ref(false);
+const foodEntryMode = ref("");
+const foodFromPackage = ref(false);
 const foodModalEl = ref(null);
-const foodsListEl = ref(null);
 const barcodeVideo = ref(null);
 const barcodeText = ref("");
 const barcodeScanning = ref(false);
@@ -832,7 +884,19 @@ const historyLoading = ref(false);
 const historyError = ref("");
 
 const eatenOnLabel = computed(() => (eatenOn.value === todayIso() ? "Today" : eatenOn.value));
-const foodServingGramsPreview = computed(() => formatPlanGrams(foodForm.value.serving_oz));
+const kcalLeftLabel = computed(() => {
+  const text = remainingTextKcal(comparison.value?.remaining?.kcal);
+  if (text) return text;
+  if (!comparison.value) return "";
+  return `${formatMacro(comparison.value?.consumed?.kcal, 0)} kcal logged`;
+});
+const foodServingOuncesPreview = computed(() => {
+  const grams = Number(foodForm.value.serving_g);
+  if (!(grams > 0)) return "";
+  return formatPortionOunces(grams);
+});
+const showFoodFields = computed(() => Boolean(editingFoodId.value) || foodEntryMode.value === "manual" || foodFromPackage.value);
+const showScanner = computed(() => !editingFoodId.value && foodEntryMode.value === "scan" && !foodFromPackage.value);
 const selectedFood = computed(() => {
   const id = logForm.value.foodId;
   if (id == null || id === "") return null;
@@ -894,8 +958,8 @@ const macroRows = computed(() => {
       consumed: consumed.protein_g,
       target: targets?.protein_g,
       remainingLabel: remainingMassText(remaining?.protein_g),
-      consumedLabel: formatWeightOzGrams(consumed.protein_g) || "0 oz",
-      targetLabel: targets?.protein_g != null ? formatWeightOzGrams(targets.protein_g) : "",
+      consumedLabel: gramAmount(consumed.protein_g),
+      targetLabel: targets?.protein_g != null ? gramAmount(targets.protein_g) : "",
     },
     {
       key: "fat_g",
@@ -903,8 +967,8 @@ const macroRows = computed(() => {
       consumed: consumed.fat_g,
       target: targets?.fat_g,
       remainingLabel: remainingMassText(remaining?.fat_g),
-      consumedLabel: formatWeightOzGrams(consumed.fat_g) || "0 oz",
-      targetLabel: targets?.fat_g != null ? formatWeightOzGrams(targets.fat_g) : "",
+      consumedLabel: gramAmount(consumed.fat_g),
+      targetLabel: targets?.fat_g != null ? gramAmount(targets.fat_g) : "",
     },
     {
       key: "carb_g",
@@ -912,8 +976,8 @@ const macroRows = computed(() => {
       consumed: consumed.carb_g,
       target: targets?.carb_g,
       remainingLabel: remainingMassText(remaining?.carb_g),
-      consumedLabel: formatWeightOzGrams(consumed.carb_g) || "0 oz",
-      targetLabel: targets?.carb_g != null ? formatWeightOzGrams(targets.carb_g) : "",
+      consumedLabel: gramAmount(consumed.carb_g),
+      targetLabel: targets?.carb_g != null ? gramAmount(targets.carb_g) : "",
     },
   ];
   return rows.map((row) => {
@@ -924,6 +988,7 @@ const macroRows = computed(() => {
       ...row,
       percent,
       over: target != null && value > target,
+      ounceNote: row.key === "kcal" || target == null ? "" : `≈ ${formatPortionOunces(target) || "0"} oz`,
     };
   });
 });
@@ -1111,7 +1176,7 @@ function foodPayload() {
   return {
     name: foodForm.value.name,
     serving_label: foodForm.value.serving,
-    serving_g: ouncesToGrams(foodForm.value.serving_oz),
+    serving_g: Number(foodForm.value.serving_g),
     kcal: Number(foodForm.value.kcal),
     protein_g: Number(foodForm.value.protein_g),
     fat_g: Number(foodForm.value.fat_g),
@@ -1123,8 +1188,31 @@ function applyFoodToList(food) {
   foods.value = [food, ...foods.value.filter((item) => Number(item.user_food_id) !== Number(food.user_food_id))];
 }
 
+function chooseScan() {
+  foodEntryMode.value = "scan";
+  foodFromPackage.value = false;
+  foodNotice.value = "";
+  barcodeError.value = "";
+  stopBarcodeScan();
+}
+
+function chooseManual() {
+  foodEntryMode.value = "manual";
+  foodFromPackage.value = false;
+  foodNotice.value = "";
+  stopBarcodeScan();
+}
+
+function scanAgain() {
+  foodFromPackage.value = false;
+  foodNotice.value = "";
+  barcodeError.value = "";
+  stopBarcodeScan();
+}
+
 function openAddFoodModal() {
   cancelEditFood();
+  addingFood.value = true;
   nextTick(() => foodModalEl.value?.showModal());
 }
 
@@ -1136,23 +1224,27 @@ function onFoodModalClose() {
   cancelEditFood();
 }
 
-function startEditFood(food) {
-  editingFoodId.value = food.user_food_id;
-  foodError.value = "";
-  foodNotice.value = "";
+function fillFoodForm(food) {
   foodForm.value = {
     name: foodLabel(food),
-    serving: food.serving_label || "1 serving",
-    serving_oz: formatPortionOunces(food.serving_g) || "",
+    serving: food.serving_label || food.serving || "1 serving",
+    serving_g: formatPortionGrams(food.serving_g) || "",
     kcal: food.kcal != null ? String(food.kcal) : "",
     protein_g: food.protein_g != null ? String(food.protein_g) : "",
     fat_g: food.fat_g != null ? String(food.fat_g) : "",
     carb_g: food.carb_g != null ? String(food.carb_g) : "",
   };
-  nextTick(() => {
-    if (foodsListEl.value) foodsListEl.value.open = true;
-    foodModalEl.value?.showModal();
-  });
+}
+
+function startEditFood(food) {
+  addingFood.value = false;
+  editingFoodId.value = food.user_food_id;
+  foodEntryMode.value = "manual";
+  foodFromPackage.value = false;
+  foodError.value = "";
+  foodNotice.value = "";
+  fillFoodForm(food);
+  nextTick(() => foodModalEl.value?.showModal());
 }
 
 function stopBarcodeScan() {
@@ -1213,15 +1305,18 @@ async function lookupBarcode(code) {
       barcodeError.value = "No nutrition was found for that barcode. Enter the food by hand.";
       return;
     }
+    const grams = food.serving_g != null ? Number(food.serving_g) : ouncesToGrams(food.serving_oz);
     foodForm.value = {
       name: food.name || "",
       serving: food.serving || "1 serving",
-      serving_oz: food.serving_oz != null ? String(food.serving_oz) : "",
+      serving_g: grams != null ? formatPortionGrams(grams) || "" : "",
       kcal: food.kcal != null ? String(food.kcal) : "",
       protein_g: food.protein_g != null ? String(food.protein_g) : "",
       fat_g: food.fat_g != null ? String(food.fat_g) : "",
       carb_g: food.carb_g != null ? String(food.carb_g) : "",
     };
+    foodFromPackage.value = true;
+    stopBarcodeScan();
     foodNotice.value = "Filled from the package. Check the serving, then save.";
     foodError.value = "";
   } catch (error) {
@@ -1234,6 +1329,9 @@ async function lookupBarcode(code) {
 function cancelEditFood() {
   stopBarcodeScan();
   editingFoodId.value = null;
+  addingFood.value = false;
+  foodEntryMode.value = "";
+  foodFromPackage.value = false;
   foodForm.value = emptyFoodForm();
   foodError.value = "";
   foodNotice.value = "";
@@ -1241,11 +1339,34 @@ function cancelEditFood() {
   barcodeError.value = "";
 }
 
-async function saveFood() {
+async function logSavedFood(food) {
+  const per = perServingMacros(food);
+  await $fetch("/api/physical/nutrition/intake", {
+    method: "POST",
+    body: {
+      eaten_on: eatenOn.value,
+      eaten_at: eatenAtIso(eatenOn.value, logForm.value.time),
+      meal_type: logForm.value.meal,
+      user_food_id: food.user_food_id,
+      portion_id: food.user_food_id,
+      quantity: 1,
+      gram_weight: Number(food.serving_g),
+      food_name: foodLabel(food),
+      portion_label: food.serving_label || "1 serving",
+      kcal: per.kcal,
+      protein_g: per.protein_g,
+      fat_g: per.fat_g,
+      carb_g: per.carb_g,
+    },
+  });
+  await loadDay();
+}
+
+async function saveFood(andLog) {
   const payload = foodPayload();
   const macros = [payload.kcal, payload.protein_g, payload.fat_g, payload.carb_g];
   if (!payload.name || !(payload.serving_g > 0)) {
-    foodError.value = "Enter a name and serving size in ounces.";
+    foodError.value = "Enter a name and a serving weight in grams.";
     return;
   }
   if (macros.some((n) => !Number.isFinite(n) || n < 0) || foodForm.value.kcal === "") {
@@ -1267,23 +1388,31 @@ async function saveFood() {
       logForm.value.foodId = String(food.user_food_id);
       logForm.value.servings = logForm.value.servings || "1";
     }
-    if (foodsListEl.value) foodsListEl.value.open = true;
+    if (andLog) {
+      try {
+        await logSavedFood(food);
+        closeFoodModal();
+        return;
+      } catch (error) {
+        editingFoodId.value = food.user_food_id;
+        fillFoodForm(food);
+        foodError.value = parseFetchError(error, "Saved, but it was not added to today's log.");
+        return;
+      }
+    }
     if (foodId) {
       editingFoodId.value = food.user_food_id;
-      foodForm.value = {
-        name: foodLabel(food),
-        serving: food.serving_label || "1 serving",
-        serving_oz: formatPortionOunces(food.serving_g) || "",
-        kcal: food.kcal != null ? String(food.kcal) : "",
-        protein_g: food.protein_g != null ? String(food.protein_g) : "",
-        fat_g: food.fat_g != null ? String(food.fat_g) : "",
-        carb_g: food.carb_g != null ? String(food.carb_g) : "",
-      };
-      foodNotice.value = "Food updated. Existing log entries stay as logged.";
+      fillFoodForm(food);
+      foodNotice.value = addingFood.value
+        ? "Saved."
+        : "Food updated. Existing log entries stay as logged.";
     } else {
-      foodForm.value = emptyFoodForm();
       editingFoodId.value = null;
-      foodNotice.value = "Food saved. You can add another or close this window.";
+      foodEntryMode.value = "";
+      foodFromPackage.value = false;
+      foodForm.value = emptyFoodForm();
+      barcodeText.value = "";
+      foodNotice.value = "Saved. Add another, or close this window.";
     }
   } catch (error) {
     foodError.value = parseFetchError(error, foodId ? "Failed to update food." : "Failed to save food.");
@@ -1442,9 +1571,18 @@ function onDescribeModalClose() {
   describeReviewError.value = "";
 }
 
+function submitComposer() {
+  if (editingEntryId.value || (selectedFood.value && !describeText.value.trim())) {
+    void logFood();
+    return;
+  }
+  void logFromDescription();
+}
+
 async function logFromDescription() {
   const text = describeText.value.trim();
   if (text.length < 2 || describing.value) return;
+  describeIntent.value = "meal";
   describing.value = true;
   describeError.value = "";
   describeMessage.value = "";
@@ -1466,6 +1604,7 @@ async function logFromDescription() {
 
 async function suggestRemaining() {
   if (describing.value) return;
+  describeIntent.value = "remaining";
   describing.value = true;
   describeError.value = "";
   describeMessage.value = "";

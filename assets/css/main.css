@@ -235,7 +235,6 @@ ion-app summary.training-chip {
   line-height: 1.25rem !important;
 }
 
-.training-chip.btn.nutrition-add-inventory-btn,
 .training-chip.btn.journal-history-btn {
   display: inline-flex !important;
   align-items: center !important;
@@ -246,13 +245,8 @@ ion-app summary.training-chip {
   padding-right: calc(1.125rem * 0.4) !important;
 }
 
-.training-chip.btn.nutrition-add-inventory-btn span,
 .training-chip.btn.journal-history-btn span {
   font-size: 90%;
-}
-
-button.training-chip.btn.nutrition-plan-edit-btn {
-  padding: calc(0.375rem * 0.4) 1.125rem !important;
 }
 
 ion-app summary.training-chip.btn-primary {

@@ -76,14 +76,6 @@
             :bar-max-width="barMaxWidth"
           />
           <VisLine
-            :x="xAccessor"
-            :y="(d) => d.kcal"
-            :color="lineColor"
-            :line-width="2.5"
-            :point-size="6"
-            :point-color="lineColor"
-          />
-          <VisLine
             v-if="planKcal != null"
             :x="xAccessor"
             :y="() => Number(planKcal) || 0"
@@ -152,7 +144,6 @@ const FAT_KCAL_PER_G = 9;
 const PROTEIN_COLOR = "#7c3aed";
 const FAT_COLOR = "#ea580c";
 const CARB_COLOR = "#0d9488";
-const lineColor = "#B4532A";
 const planLineColor = "#64748b";
 const STACK_COLORS = [PROTEIN_COLOR, FAT_COLOR, CARB_COLOR];
 const rangeOptions = [7, 14] as const;
@@ -180,7 +171,6 @@ const legendItems = computed(() => {
     { key: "protein", kind: "bar" as const, color: PROTEIN_COLOR, label: "Protein kcal", dashed: false },
     { key: "fat", kind: "bar" as const, color: FAT_COLOR, label: "Fat kcal", dashed: false },
     { key: "carb", kind: "bar" as const, color: CARB_COLOR, label: "Carb kcal", dashed: false },
-    { key: "logged", kind: "line" as const, color: lineColor, label: "Logged calories", dashed: false },
   ];
   if (props.planKcal != null) {
     items.push({
@@ -276,7 +266,7 @@ const chartRows = computed<ChartRow[]>(() =>
 const hasIntake = computed(() =>
   chartRows.value.some((row) => row.kcal > 0 || row.macroKcal > 0),
 );
-const showChart = computed(() => hasIntake.value || props.planKcal != null);
+const showChart = computed(() => hasIntake.value);
 
 const xAccessor = (_d: ChartRow, i: number) => i;
 const yAccessors = [

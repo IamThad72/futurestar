@@ -42,16 +42,16 @@
                 </div>
               </div>
               <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <input
-                  ref="photoInputRef"
-                  type="file"
-                  accept="image/*"
-                  class="hidden"
-                  @change="onPhotoSelect"
-                />
-                <button type="button" class="link link-primary text-sm" @click="photoInputRef?.click()">
+                <label class="relative inline-flex min-h-8 cursor-pointer items-center text-sm text-primary">
+                  <input
+                    ref="photoInputRef"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif,image/*"
+                    class="absolute inset-0 z-10 cursor-pointer opacity-0"
+                    @change="onPhotoSelect"
+                  />
                   {{ photoPreview ? 'Change Photo' : 'Add Photo' }}
-                </button>
+                </label>
                 <button
                   v-if="photoPreview"
                   type="button"
@@ -108,6 +108,8 @@
               </div>
             </div>
           </div>
+          <p v-if="profileError" class="text-xs text-error">{{ profileError }}</p>
+          <p v-if="profileSuccess" class="text-xs text-success">{{ profileSuccess }}</p>
         </div>
 
         <!-- Change Email -->
@@ -248,12 +250,36 @@ watch(() => props.modelValue, (open) => {
   }
 });
 
+const MAX_PICK_BYTES = 15 * 1024 * 1024;
+const MAX_SAVED_DATA_LENGTH = 90000;
+
 function onPhotoSelect(e) {
+  profileError.value = '';
+  profileSuccess.value = '';
   const file = e.target?.files?.[0];
-  if (!file || !file.type.startsWith('image/')) return;
+  e.target.value = '';
+  if (!file) return;
+  const type = String(file.type || '').toLowerCase();
+  const name = String(file.name || '').toLowerCase();
+  const namedImage = /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/.test(name);
+  if (type && !type.startsWith('image/') && !namedImage) {
+    profileError.value = 'Choose a photo. That file is not an image.';
+    return;
+  }
+  if (file.size > MAX_PICK_BYTES) {
+    profileError.value = 'That photo is too large. Choose one under 15 MB.';
+    return;
+  }
   const reader = new FileReader();
+  reader.onerror = () => {
+    profileError.value = 'That photo could not be read.';
+  };
   reader.onload = (ev) => {
     const dataUrl = ev.target?.result;
+    if (typeof dataUrl !== 'string') {
+      profileError.value = 'That photo could not be read.';
+      return;
+    }
     const img = new Image();
     img.onload = () => {
       sourceImage.value = img;
@@ -262,10 +288,12 @@ function onPhotoSelect(e) {
       cropOffset.value = { x: 0, y: 0 };
       nextTick(() => drawCropPreview());
     };
+    img.onerror = () => {
+      profileError.value = 'This photo format could not be read. Choose a JPEG or PNG.';
+    };
     img.src = dataUrl;
   };
   reader.readAsDataURL(file);
-  e.target.value = '';
 }
 
 function getCropParams() {
@@ -340,22 +368,43 @@ function onCropTouchMove(e) {
   drawCropPreview();
 }
 
-function exportCroppedPhoto() {
+function jpegUnderLimit(sourceCanvas, size) {
   const canvas = document.createElement('canvas');
-  canvas.width = cropSize;
-  canvas.height = cropSize;
+  canvas.width = size;
+  canvas.height = size;
   const ctx = canvas.getContext('2d');
-  const img = sourceImage.value;
-  if (!img || !ctx) return null;
+  if (!ctx) return null;
+  ctx.drawImage(sourceCanvas, 0, 0, size, size);
+  let quality = 0.85;
+  let dataUrl = canvas.toDataURL('image/jpeg', quality);
+  while (dataUrl.length > MAX_SAVED_DATA_LENGTH && quality > 0.45) {
+    quality = Math.round((quality - 0.1) * 100) / 100;
+    dataUrl = canvas.toDataURL('image/jpeg', quality);
+  }
+  return dataUrl;
+}
 
+function exportCroppedPhoto() {
+  const img = sourceImage.value;
+  if (!img) return null;
   const p = getCropParams();
   if (!p) return null;
 
-  ctx.beginPath();
-  ctx.arc(cropSize / 2, cropSize / 2, cropSize / 2, 0, Math.PI * 2);
-  ctx.clip();
+  const cropped = document.createElement('canvas');
+  cropped.width = cropSize;
+  cropped.height = cropSize;
+  const ctx = cropped.getContext('2d');
+  if (!ctx) return null;
   ctx.drawImage(img, p.sx, p.sy, p.drawSize, p.drawSize, 0, 0, cropSize, cropSize);
-  return canvas.toDataURL('image/jpeg', 0.85);
+
+  let size = cropSize;
+  let dataUrl = jpegUnderLimit(cropped, size);
+  while (dataUrl && dataUrl.length > MAX_SAVED_DATA_LENGTH && size > 96) {
+    size = Math.round(size * 0.85);
+    dataUrl = jpegUnderLimit(cropped, size);
+  }
+  if (!dataUrl || dataUrl.length > MAX_SAVED_DATA_LENGTH) return null;
+  return dataUrl;
 }
 
 watch(cropScale, () => drawCropPreview());
@@ -451,9 +500,15 @@ async function removeProfilePhoto() {
 async function saveProfilePhoto() {
   profileError.value = '';
   profileSuccess.value = '';
-  const dataUrl = exportCroppedPhoto();
+  let dataUrl = null;
+  try {
+    dataUrl = exportCroppedPhoto();
+  } catch {
+    profileError.value = 'That photo could not be prepared. Choose a JPEG or PNG.';
+    return;
+  }
   if (!dataUrl) {
-    profileError.value = 'No photo to save.';
+    profileError.value = 'That photo is too large to save. Choose a smaller picture.';
     return;
   }
   profileLoading.value = true;

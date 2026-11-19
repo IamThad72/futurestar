@@ -2,8 +2,7 @@ import { createError, readBody } from "h3";
 import { createDbClient } from "../../utils/db";
 import { getSessionUserId } from "../../utils/auth";
 
-const MAX_PHOTO_SIZE = 240;
-const MAX_DATA_LENGTH = 100000; // ~100KB for base64 240x240 jpeg
+const MAX_DATA_LENGTH = 100000;
 
 export default defineEventHandler(async (event) => {
   const userId = await getSessionUserId(event);
@@ -22,7 +21,7 @@ export default defineEventHandler(async (event) => {
     if (photoStr && photoStr.length > MAX_DATA_LENGTH) {
       throw createError({
         statusCode: 400,
-        statusMessage: `Profile photo must be no larger than ${MAX_PHOTO_SIZE}x${MAX_PHOTO_SIZE} pixels.`,
+        statusMessage: "That photo is too large to save. Choose a smaller picture.",
       });
     }
 

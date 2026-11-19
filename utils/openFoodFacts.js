@@ -45,6 +45,7 @@ export function foodFromOpenFoodFacts(payload) {
   return {
     name: titled.slice(0, 160),
     serving: serving.slice(0, 80),
+    serving_g: Math.round(grams * 10) / 10,
     serving_oz: Math.round((grams / OZ_IN_GRAMS) * 100) / 100,
     kcal: Math.round(kcal),
     protein_g: round1(perServing(nutriments, "proteins", grams) ?? 0),
