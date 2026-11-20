@@ -3,16 +3,32 @@
 </template>
 
 <script setup>
-import { Activity, Church, CircleUser, Flame, Landmark, Sparkles, Star } from "lucide-vue-next";
+import {
+  Activity,
+  Church,
+  CircleUser,
+  Flame,
+  Info,
+  Landmark,
+  Pencil,
+  Receipt,
+  Sparkles,
+  Star,
+  Users,
+} from "lucide-vue-next";
 
 const ICONS = {
   activity: Activity,
   church: Church,
   "circle-user": CircleUser,
   flame: Flame,
+  info: Info,
   landmark: Landmark,
+  pencil: Pencil,
+  receipt: Receipt,
   sparkles: Sparkles,
   star: Star,
+  users: Users,
 };
 
 const props = defineProps({

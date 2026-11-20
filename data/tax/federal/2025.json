@@ -1,0 +1,94 @@
+{
+  "year": 2025,
+  "sources": [
+    "https://www.irs.gov/pub/irs-drop/rp-24-40.pdf",
+    "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf",
+    "https://www.ssa.gov/news/en/cola/factsheets/2025.html",
+    "https://www.irs.gov/taxtopics/tc560"
+  ],
+  "standardDeduction": {
+    "single": 15750,
+    "married_filing_jointly": 31500,
+    "married_filing_separately": 15750,
+    "head_of_household": 23625,
+    "qualifying_surviving_spouse": 31500
+  },
+  "brackets": {
+    "married_filing_jointly": [
+      { "upTo": 23850, "rate": 0.1 },
+      { "upTo": 96950, "rate": 0.12 },
+      { "upTo": 206700, "rate": 0.22 },
+      { "upTo": 394600, "rate": 0.24 },
+      { "upTo": 501050, "rate": 0.32 },
+      { "upTo": 751600, "rate": 0.35 },
+      { "upTo": null, "rate": 0.37 }
+    ],
+    "qualifying_surviving_spouse": [
+      { "upTo": 23850, "rate": 0.1 },
+      { "upTo": 96950, "rate": 0.12 },
+      { "upTo": 206700, "rate": 0.22 },
+      { "upTo": 394600, "rate": 0.24 },
+      { "upTo": 501050, "rate": 0.32 },
+      { "upTo": 751600, "rate": 0.35 },
+      { "upTo": null, "rate": 0.37 }
+    ],
+    "head_of_household": [
+      { "upTo": 17000, "rate": 0.1 },
+      { "upTo": 64850, "rate": 0.12 },
+      { "upTo": 103350, "rate": 0.22 },
+      { "upTo": 197300, "rate": 0.24 },
+      { "upTo": 250500, "rate": 0.32 },
+      { "upTo": 626350, "rate": 0.35 },
+      { "upTo": null, "rate": 0.37 }
+    ],
+    "single": [
+      { "upTo": 11925, "rate": 0.1 },
+      { "upTo": 48475, "rate": 0.12 },
+      { "upTo": 103350, "rate": 0.22 },
+      { "upTo": 197300, "rate": 0.24 },
+      { "upTo": 250525, "rate": 0.32 },
+      { "upTo": 626350, "rate": 0.35 },
+      { "upTo": null, "rate": 0.37 }
+    ],
+    "married_filing_separately": [
+      { "upTo": 11925, "rate": 0.1 },
+      { "upTo": 48475, "rate": 0.12 },
+      { "upTo": 103350, "rate": 0.22 },
+      { "upTo": 197300, "rate": 0.24 },
+      { "upTo": 250525, "rate": 0.32 },
+      { "upTo": 375800, "rate": 0.35 },
+      { "upTo": null, "rate": 0.37 }
+    ]
+  },
+  "childTaxCredit": {
+    "perChild": 2200,
+    "refundablePerChild": 1700,
+    "otherDependent": 500,
+    "phaseout": {
+      "single": 200000,
+      "married_filing_jointly": 400000,
+      "married_filing_separately": 200000,
+      "head_of_household": 200000,
+      "qualifying_surviving_spouse": 200000
+    },
+    "phaseoutStep": 1000,
+    "phaseoutAmount": 50,
+    "earnedIncomeFloor": 2500,
+    "earnedIncomeRate": 0.15
+  },
+  "selfEmployment": {
+    "socialSecurityRate": 0.124,
+    "medicareRate": 0.029,
+    "additionalMedicareRate": 0.009,
+    "netEarningsFactor": 0.9235,
+    "socialSecurityWageBase": 176100,
+    "minimumNetEarnings": 400,
+    "additionalMedicareThreshold": {
+      "single": 200000,
+      "married_filing_jointly": 250000,
+      "married_filing_separately": 125000,
+      "head_of_household": 200000,
+      "qualifying_surviving_spouse": 200000
+    }
+  }
+}
