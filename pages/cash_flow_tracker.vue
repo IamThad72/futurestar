@@ -12,7 +12,7 @@
     </div>
 
     <template v-else>
-      <div class="relative isolate overflow-hidden">
+      <div>
         <header class="pb-4 pt-6 sm:pb-6">
           <div class="mx-auto flex max-w-7xl flex-col gap-4 px-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-6 sm:px-6 lg:px-8">
             <div class="min-w-0">
@@ -113,16 +113,6 @@
             <p v-if="csvPageNotice" class="w-full text-sm text-base-content/70">{{ csvPageNotice }}</p>
           </div>
         </header>
-
-        <div
-          class="absolute left-0 top-full -z-10 mt-96 origin-top-left translate-y-40 -rotate-90 transform-gpu opacity-20 blur-3xl sm:left-1/2 sm:-ml-96 sm:-mt-10 sm:translate-y-0 sm:rotate-0 sm:opacity-50 dark:opacity-10 dark:sm:opacity-30"
-          aria-hidden="true"
-        >
-          <div
-            class="aspect-[1154/678] w-[72.125rem] bg-gradient-to-br from-[#FF80B5] to-[#9089FC]"
-            style="clip-path: polygon(100% 38.5%, 82.6% 100%, 60.2% 37.7%, 52.4% 32.1%, 47.5% 41.8%, 45.2% 65.6%, 27.5% 23.4%, 0.1% 35.3%, 17.9% 0%, 27.7% 23.4%, 76.2% 2.5%, 74.2% 56%, 100% 38.5%)"
-          ></div>
-        </div>
       </div>
 
       <div v-if="loading" class="mx-auto max-w-7xl px-1 py-8 text-xs text-gray-500 sm:px-6 md:py-12 md:text-sm lg:px-8 dark:text-gray-400">Loading...</div>
@@ -169,7 +159,7 @@
         </form>
         </div>
 
-        <div class="space-y-4 md:space-y-6">
+        <div class="budget-tracker-lists space-y-4 md:space-y-6">
         <template v-for="section in budgetTrackerDisplaySections" :key="section.key">
           <EstateSection :title="section.title" :show-add="false" compact>
             <template #total>
@@ -3010,6 +3000,10 @@ watch([selectedYear, selectedMonth], () => {
 <style scoped>
 .budget-tracker-budgeted {
   color: var(--color-pillar, var(--color-primary, #1F3A5F));
+}
+
+.budget-tracker-lists :deep(.estate-record-list__item) {
+  --background: var(--color-base-200, #fbf8f3);
 }
 
 .budget-tx-list {
