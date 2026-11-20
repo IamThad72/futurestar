@@ -1,0 +1,215 @@
+{
+  "note": "Payroll deduction types for the tax page. Patterns run against the budget line category and subcategory, with hyphens treated as spaces. Post-tax types are matched before pre-tax types, and earlier entries in each group win, so Roth 401(k) is not treated as a traditional 401(k) and dental is not treated as medical. Section 125 amounts reduce federal and state income wages and Social Security and Medicare wages. Whether they reduce local wages depends on the jurisdiction rule. Traditional retirement deferrals reduce federal and state income wages only. Post-tax lines reduce no wage base.",
+  "types": [
+    {
+      "key": "roth_401k",
+      "label": "Roth 401(k)",
+      "section": "posttax",
+      "class": "posttax",
+      "patterns": ["roth"],
+      "reduces": {
+        "federalIncome": false,
+        "stateIncome": false,
+        "socialSecurity": false,
+        "medicare": false,
+        "local": false
+      }
+    },
+    {
+      "key": "supplemental_life",
+      "label": "Supplemental Life",
+      "section": "posttax",
+      "class": "posttax",
+      "patterns": ["supplemental\\s*life", "supp\\.?\\s*life", "voluntary\\s*life"],
+      "reduces": {
+        "federalIncome": false,
+        "stateIncome": false,
+        "socialSecurity": false,
+        "medicare": false,
+        "local": false
+      }
+    },
+    {
+      "key": "union_dues",
+      "label": "Union dues",
+      "section": "posttax",
+      "class": "posttax",
+      "patterns": ["union\\s*dues"],
+      "reduces": {
+        "federalIncome": false,
+        "stateIncome": false,
+        "socialSecurity": false,
+        "medicare": false,
+        "local": false
+      }
+    },
+    {
+      "key": "garnishments",
+      "label": "Garnishments",
+      "section": "posttax",
+      "class": "posttax",
+      "patterns": ["garnish"],
+      "reduces": {
+        "federalIncome": false,
+        "stateIncome": false,
+        "socialSecurity": false,
+        "medicare": false,
+        "local": false
+      }
+    },
+    {
+      "key": "stock_option_offset",
+      "label": "Stock Option Offset",
+      "section": "posttax",
+      "class": "posttax",
+      "patterns": ["stock\\s*option\\s*offset", "stock\\s*option", "rsu\\s*offset", "option\\s*offset", "\\brsu\\b"],
+      "reduces": {
+        "federalIncome": false,
+        "stateIncome": false,
+        "socialSecurity": false,
+        "medicare": false,
+        "local": false
+      }
+    },
+    {
+      "key": "dental",
+      "label": "Dental Insurance",
+      "section": "pretax",
+      "class": "section125",
+      "patterns": ["dental"],
+      "reduces": {
+        "federalIncome": true,
+        "stateIncome": true,
+        "socialSecurity": true,
+        "medicare": true,
+        "local": "jurisdiction"
+      }
+    },
+    {
+      "key": "vision",
+      "label": "Vision Insurance",
+      "section": "pretax",
+      "class": "section125",
+      "patterns": ["vision"],
+      "reduces": {
+        "federalIncome": true,
+        "stateIncome": true,
+        "socialSecurity": true,
+        "medicare": true,
+        "local": "jurisdiction"
+      }
+    },
+    {
+      "key": "hsa",
+      "label": "HSA",
+      "section": "pretax",
+      "class": "section125",
+      "patterns": ["\\bhsa\\b", "health\\s*savings"],
+      "reduces": {
+        "federalIncome": true,
+        "stateIncome": true,
+        "socialSecurity": true,
+        "medicare": true,
+        "local": "jurisdiction"
+      }
+    },
+    {
+      "key": "fsa",
+      "label": "FSA",
+      "section": "pretax",
+      "class": "section125",
+      "patterns": ["\\bfsa\\b", "flexible\\s*spending"],
+      "reduces": {
+        "federalIncome": true,
+        "stateIncome": true,
+        "socialSecurity": true,
+        "medicare": true,
+        "local": "jurisdiction"
+      }
+    },
+    {
+      "key": "commuter",
+      "label": "Commuter",
+      "section": "pretax",
+      "class": "section125",
+      "patterns": ["commuter", "qualified\\s*transportation", "transit\\s*benefit"],
+      "reduces": {
+        "federalIncome": true,
+        "stateIncome": true,
+        "socialSecurity": true,
+        "medicare": true,
+        "local": "jurisdiction"
+      }
+    },
+    {
+      "key": "403b",
+      "label": "403(b)",
+      "section": "pretax",
+      "class": "retirement_pretax",
+      "patterns": ["\\b403\\s*[\\(\\s-]*b\\b"],
+      "reduces": {
+        "federalIncome": true,
+        "stateIncome": true,
+        "socialSecurity": false,
+        "medicare": false,
+        "local": false
+      }
+    },
+    {
+      "key": "457",
+      "label": "457",
+      "section": "pretax",
+      "class": "retirement_pretax",
+      "patterns": ["\\b457\\b"],
+      "reduces": {
+        "federalIncome": true,
+        "stateIncome": true,
+        "socialSecurity": false,
+        "medicare": false,
+        "local": false
+      }
+    },
+    {
+      "key": "tsp",
+      "label": "TSP",
+      "section": "pretax",
+      "class": "retirement_pretax",
+      "patterns": ["\\btsp\\b", "thrift\\s*savings"],
+      "reduces": {
+        "federalIncome": true,
+        "stateIncome": true,
+        "socialSecurity": false,
+        "medicare": false,
+        "local": false
+      }
+    },
+    {
+      "key": "401k",
+      "label": "401K",
+      "section": "pretax",
+      "class": "retirement_pretax",
+      "patterns": ["\\b401\\s*[\\(\\s-]*k\\b"],
+      "reduces": {
+        "federalIncome": true,
+        "stateIncome": true,
+        "socialSecurity": false,
+        "medicare": false,
+        "local": false
+      }
+    },
+    {
+      "key": "medical",
+      "label": "Medical Insurance",
+      "section": "pretax",
+      "class": "section125",
+      "patterns": ["medical", "family\\s*(health\\s*)?insurance", "health\\s*insurance"],
+      "reduces": {
+        "federalIncome": true,
+        "stateIncome": true,
+        "socialSecurity": true,
+        "medicare": true,
+        "local": "jurisdiction"
+      }
+    }
+  ]
+}

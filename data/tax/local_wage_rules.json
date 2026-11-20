@@ -1,0 +1,27 @@
+{
+  "note": "Local wage bases. Ohio municipal qualifying wages follow ORC 718 and IRC 3121(a): Section 125 cafeteria-plan amounts (medical, dental, vision, HSA through payroll, FSA, commuter) are subtracted and traditional 401(k), 403(b), 457, and TSP deferrals are not. That is the rule the previous Wooster estimate used. A saved profile chooses the city rate and school district rate. The calculator does not assume a city.",
+  "defaultRuleId": "w2_box1",
+  "rules": [
+    {
+      "id": "ohio_municipal",
+      "label": "Ohio municipal qualifying wages",
+      "states": ["OH"],
+      "subtractClasses": ["section125"],
+      "note": "Gross wages minus Section 125. Traditional retirement deferrals stay in the local wage base."
+    },
+    {
+      "id": "w2_box1",
+      "label": "W-2 Box 1 wages",
+      "states": [],
+      "subtractClasses": ["section125", "retirement_pretax"],
+      "note": "Same wage base as federal income tax wages."
+    },
+    {
+      "id": "gross",
+      "label": "Gross wages",
+      "states": [],
+      "subtractClasses": [],
+      "note": "No payroll deduction reduces the local wage base."
+    }
+  ]
+}
