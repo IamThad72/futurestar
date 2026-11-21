@@ -285,49 +285,11 @@
           </li>
         </ul>
       </section>
-
-      <section class="overflow-hidden rounded-lg border border-primary bg-transparent">
-        <div class="border-b border-primary px-3 py-3 sm:px-4">
-          <h2 class="text-lg font-semibold text-base-content">Line classification</h2>
-          <p class="mt-1 text-xs text-base-content/60">
-            Override how a paycheck line is classified. This applies the next time that line is saved. Stored year-to-date totals are not rebuilt.
-          </p>
-        </div>
-        <form class="grid gap-3 px-3 py-3 sm:grid-cols-4 sm:px-4" @submit.prevent="saveOverride">
-          <label class="flex flex-col gap-1 text-sm sm:col-span-1">
-            <span>Category</span>
-            <input v-model="overrideForm.category" type="text" class="input input-bordered w-full" required />
-          </label>
-          <label class="flex flex-col gap-1 text-sm">
-            <span>Subcategory</span>
-            <input v-model="overrideForm.subCategory" type="text" class="input input-bordered w-full" />
-          </label>
-          <label class="flex flex-col gap-1 text-sm">
-            <span>Treat as</span>
-            <select v-model="overrideForm.deductionKey" class="select select-bordered w-full" required>
-              <option v-for="type in deductionChoices" :key="type.key" :value="type.key">{{ type.label }}</option>
-            </select>
-          </label>
-          <div class="flex items-end">
-            <button type="submit" class="btn btn-primary min-h-11 w-full" :disabled="savingOverride">
-              {{ savingOverride ? "Saving…" : "Save override" }}
-            </button>
-          </div>
-        </form>
-        <p v-if="overrideError" class="px-3 pb-3 text-sm text-error sm:px-4">{{ overrideError }}</p>
-        <ul v-if="overrides.length" class="divide-y divide-base-200 border-t border-base-200">
-          <li v-for="row in overrides" :key="`${row.category}:${row.sub_category}`" class="flex items-center justify-between gap-3 px-3 py-3 text-sm sm:px-4">
-            <span>{{ row.category }}<template v-if="row.sub_category"> · {{ row.sub_category }}</template></span>
-            <span class="text-base-content/70">{{ overrideLabel(row.deduction_key) }}</span>
-          </li>
-        </ul>
-      </section>
     </template>
   </section>
 </template>
 
 <script setup>
-import { deductionTypes } from "~/utils/tax/deductions";
 import { TAX_ESTIMATE_DISCLAIMER, buildTaxPageModel } from "~/utils/tax/pageModel";
 
 const FISCAL_YEARS = [2026, 2027, 2028, 2029, 2030, 2031];
@@ -352,15 +314,6 @@ const savingProfile = ref(false);
 const profileSaveError = ref("");
 const paychecksSoFar = ref(null);
 const budgetPlan = ref(null);
-const overrides = ref([]);
-const savingOverride = ref(false);
-const overrideError = ref("");
-const overrideForm = ref({ category: "", subCategory: "", deductionKey: "401k" });
-
-const deductionChoices = [
-  ...deductionTypes().map((type) => ({ key: type.key, label: type.label })),
-  { key: "ignore", label: "Don't count this line" },
-];
 
 const selectedYear = computed(() => {
   const raw = Number(route.params.year);
@@ -521,10 +474,6 @@ function balanceText(balance) {
   return `${balanceLabel(balance)} $${formatAmount(Math.abs(balance))}`;
 }
 
-function overrideLabel(key) {
-  return deductionChoices.find((choice) => choice.key === key)?.label || key;
-}
-
 function amountsByKind(rows, key) {
   const out = {};
   for (const row of rows ?? []) out[row[key]] = Number(row.total_amount) || 0;
@@ -581,13 +530,6 @@ async function loadTotals() {
   } catch {
     paychecksSoFar.value = null;
     budgetPlan.value = null;
-  }
-
-  try {
-    const listed = await $fetch("/api/tax/deduction-overrides");
-    overrides.value = listed?.overrides ?? [];
-  } catch {
-    overrides.value = [];
   } finally {
     loading.value = false;
   }
@@ -610,27 +552,6 @@ async function saveProfile(payload) {
     profileSaveError.value = err?.data?.statusMessage || err?.message || "Could not save the tax profile.";
   } finally {
     savingProfile.value = false;
-  }
-}
-
-async function saveOverride() {
-  savingOverride.value = true;
-  overrideError.value = "";
-  try {
-    const saved = await $fetch("/api/tax/deduction-overrides", {
-      method: "PUT",
-      body: {
-        category: overrideForm.value.category,
-        sub_category: overrideForm.value.subCategory,
-        deduction_key: overrideForm.value.deductionKey,
-      },
-    });
-    overrides.value = saved?.overrides ?? overrides.value;
-    overrideForm.value = { category: "", subCategory: "", deductionKey: "401k" };
-  } catch (err) {
-    overrideError.value = err?.data?.statusMessage || err?.message || "Could not save that classification.";
-  } finally {
-    savingOverride.value = false;
   }
 }
 
