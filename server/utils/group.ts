@@ -106,7 +106,43 @@ export const backfillGroupIdForUser = async (client: DbClient, groupId: number, 
     }
     await client.query(`UPDATE ${table} SET group_id = $1 WHERE user_id = $2 AND group_id IS NULL`, [groupId, userId]);
   }
+  await retargetHouseholdTaxRows(client, groupId, userId);
 };
+
+/** Move a solo user's tax profile onto the group household key. Skips tables that are not created yet. */
+async function retargetHouseholdTaxRows(client: DbClient, groupId: number, userId: number) {
+  const groupKey = `g:${groupId}`;
+  const soloKey = `u:${userId}`;
+  const profiles = await client.query(`SELECT to_regclass('public.tax_household_profiles') AS rel`, []);
+  if (profiles.rows[0]?.rel) {
+    await client.query(
+      `UPDATE tax_household_profiles
+       SET group_id = $1, household_key = $2, updated_at = NOW()
+       WHERE household_key = $3
+         AND NOT EXISTS (
+           SELECT 1 FROM tax_household_profiles existing
+           WHERE existing.household_key = $2
+             AND existing.tax_year = tax_household_profiles.tax_year
+         )`,
+      [groupId, groupKey, soloKey],
+    );
+  }
+  const overrides = await client.query(`SELECT to_regclass('public.tax_deduction_overrides') AS rel`, []);
+  if (overrides.rows[0]?.rel) {
+    await client.query(
+      `UPDATE tax_deduction_overrides
+       SET household_key = $1, updated_at = NOW()
+       WHERE household_key = $2
+         AND NOT EXISTS (
+           SELECT 1 FROM tax_deduction_overrides existing
+           WHERE existing.household_key = $1
+             AND existing.category = tax_deduction_overrides.category
+             AND existing.sub_category = tax_deduction_overrides.sub_category
+         )`,
+      [groupKey, soloKey],
+    );
+  }
+}
 
 /**
  * Linked-account group for Financial APIs only.

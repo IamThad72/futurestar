@@ -104,6 +104,7 @@ const migrations = [
   "create_estate_documents.sql",
   "create_spiritual_daily_reviews.sql",
   "create_investment_positions.sql",
+  "create_tax_household_profiles.sql",
 ];
 
 async function run() {

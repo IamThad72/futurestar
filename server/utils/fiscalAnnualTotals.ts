@@ -1,12 +1,24 @@
+import {
+  FISCAL_POSTTAX_KIND_LABELS as POSTTAX_KIND_LABELS,
+  FISCAL_POSTTAX_KINDS as POSTTAX_KINDS,
+  FISCAL_PRETAX_KIND_LABELS as PRETAX_KIND_LABELS,
+  FISCAL_PRETAX_KINDS as PRETAX_KINDS,
+  classifyFiscalIncomeKind,
+  classifyFiscalPosttaxKind,
+  classifyFiscalPretaxKind,
+  wageBases,
+} from "~/utils/tax/deductions.js";
 import { annualTotalsHouseholdKey } from "./taxAnnualTotals";
 
+export { classifyFiscalIncomeKind, classifyFiscalPosttaxKind, classifyFiscalPretaxKind };
+
 export const FISCAL_INCOME_KINDS = ["gross", "net", "taxable"] as const;
-export const FISCAL_PRETAX_KINDS = ["medical", "dental", "vision", "401k", "hsa"] as const;
-export const FISCAL_POSTTAX_KINDS = ["supplemental_life", "stock_option_offset"] as const;
+export const FISCAL_PRETAX_KINDS = PRETAX_KINDS;
+export const FISCAL_POSTTAX_KINDS = POSTTAX_KINDS;
 
 export type FiscalIncomeKind = (typeof FISCAL_INCOME_KINDS)[number];
-export type FiscalPretaxKind = (typeof FISCAL_PRETAX_KINDS)[number];
-export type FiscalPosttaxKind = (typeof FISCAL_POSTTAX_KINDS)[number];
+export type FiscalPretaxKind = string;
+export type FiscalPosttaxKind = string;
 export type FiscalSection = "income" | "pretax" | "posttax";
 export type FiscalTotalKind = FiscalIncomeKind | FiscalPretaxKind | FiscalPosttaxKind;
 
@@ -16,18 +28,8 @@ export const FISCAL_INCOME_KIND_LABELS: Record<FiscalIncomeKind, string> = {
   taxable: "Taxable Income",
 };
 
-export const FISCAL_PRETAX_KIND_LABELS: Record<FiscalPretaxKind, string> = {
-  medical: "Medical Insurance",
-  dental: "Dental Insurance",
-  vision: "Vision Insurance",
-  "401k": "401K",
-  hsa: "HSA",
-};
-
-export const FISCAL_POSTTAX_KIND_LABELS: Record<FiscalPosttaxKind, string> = {
-  supplemental_life: "Supplemental Life",
-  stock_option_offset: "Stock Option Offset",
-};
+export const FISCAL_PRETAX_KIND_LABELS: Record<string, string> = PRETAX_KIND_LABELS;
+export const FISCAL_POSTTAX_KIND_LABELS: Record<string, string> = POSTTAX_KIND_LABELS;
 
 type DbClient = {
   query: (queryText: string, values?: unknown[]) => Promise<{ rows: any[]; rowCount?: number | null }>;
@@ -45,105 +47,30 @@ export function isFiscalPosttaxKind(kind: string): kind is FiscalPosttaxKind {
   return (FISCAL_POSTTAX_KINDS as readonly string[]).includes(kind);
 }
 
-function normFiscalLabel(value: string | null | undefined) {
-  return String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[-_]+/g, " ")
-    .replace(/\s+/g, " ");
+type DeductionOverride = {
+  category?: string | null;
+  sub_category?: string | null;
+  deduction_key?: string | null;
+};
+
+/** Household line overrides. A missing table leaves keyword classification in place. */
+export async function listDeductionOverrides(
+  client: DbClient,
+  userId: number,
+  groupId: number | null,
+): Promise<DeductionOverride[]> {
+  const found = await client.query(`SELECT to_regclass('public.tax_deduction_overrides') AS rel`);
+  if (!found.rows[0]?.rel) return [];
+  const result = await client.query(
+    `SELECT category, sub_category, deduction_key
+     FROM tax_deduction_overrides
+     WHERE household_key = $1`,
+    [annualTotalsHouseholdKey(userId, groupId)],
+  );
+  return result.rows;
 }
 
-function labelBlob(
-  category: string | null | undefined,
-  subCategory: string | null | undefined = null,
-) {
-  return `${normFiscalLabel(category)} ${normFiscalLabel(subCategory)}`.trim();
-}
-
-function looksLikeNetIncome(
-  category: string | null | undefined,
-  subCategory: string | null | undefined = null,
-) {
-  const cat = normFiscalLabel(category);
-  const sub = normFiscalLabel(subCategory);
-  if (
-    /\bnet\s+income\b/.test(sub) ||
-    /\bnet\s+pay\b/.test(sub) ||
-    sub === "net" ||
-    sub.includes("take home") ||
-    sub.includes("take-home")
-  ) {
-    return true;
-  }
-  return /\bnet\s+income\b/.test(cat) || /\bnet\s+pay\b/.test(cat);
-}
-
-function looksLikeGrossIncome(
-  category: string | null | undefined,
-  subCategory: string | null | undefined = null,
-) {
-  if (looksLikeNetIncome(category, subCategory)) return false;
-  const cat = normFiscalLabel(category);
-  const sub = normFiscalLabel(subCategory);
-  const looksGross = (t: string) =>
-    t === "gross" ||
-    t.includes("gross income") ||
-    t.includes("gross pay") ||
-    t.includes("gross salary") ||
-    t.includes("gross wages");
-  if (looksGross(cat) || looksGross(sub)) return true;
-  if (/payroll/i.test(String(category || "").trim())) return true;
-  return false;
-}
-
-/** Map budget line labels to Gross / Net income totals. */
-export function classifyFiscalIncomeKind(
-  category: string | null | undefined,
-  subCategory: string | null | undefined = null,
-): "gross" | "net" | null {
-  if (looksLikeNetIncome(category, subCategory)) return "net";
-  if (looksLikeGrossIncome(category, subCategory)) return "gross";
-  return null;
-}
-
-/** Map budget line category/subcategory text to a Pre-Tax annual total kind. */
-export function classifyFiscalPretaxKind(
-  category: string | null | undefined,
-  subCategory: string | null | undefined = null,
-): FiscalPretaxKind | null {
-  const blob = labelBlob(category, subCategory);
-  if (!blob) return null;
-  if (/dental/.test(blob)) return "dental";
-  if (/vision/.test(blob)) return "vision";
-  if (/\bhsa\b|health\s*savings/.test(blob)) return "hsa";
-  if (/\b401\s*[\(\s-]*k\b/.test(blob)) return "401k";
-  if (/medical|family\s*(health\s*)?insurance|health\s*insurance/.test(blob)) {
-    return "medical";
-  }
-  return null;
-}
-
-/** Map budget line labels to Post-Tax annual total kinds. */
-export function classifyFiscalPosttaxKind(
-  category: string | null | undefined,
-  subCategory: string | null | undefined = null,
-): FiscalPosttaxKind | null {
-  const blob = labelBlob(category, subCategory);
-  if (!blob) return null;
-  if (
-    /supplemental\s*life/.test(blob) ||
-    /supp\.?\s*life/.test(blob) ||
-    /voluntary\s*life/.test(blob)
-  ) {
-    return "supplemental_life";
-  }
-  if (/stock\s*option\s*offset|stock\s*option|rsu\s*offset|option\s*offset/.test(blob)) {
-    return "stock_option_offset";
-  }
-  return null;
-}
-
-/** Taxable Income = Gross − (Medical + Dental + Vision + 401k + HSA). */
+/** Taxable income when every pre-tax dollar reduces federal wages. Box 1 uses the deduction file. */
 export function computeTaxableIncome(grossAmount: number, pretaxSum: number) {
   const gross = Number(grossAmount) || 0;
   const pretax = Number(pretaxSum) || 0;
@@ -169,8 +96,10 @@ export async function syncTaxableIncomeFromGrossAndPretax(
   const year = taxYear == null ? NaN : Number(taxYear);
   if (!Number.isFinite(year) || year < 2000 || year > 2100) return;
 
-  const { income } = await listFiscalAnnualTotals(client, userId, groupId, year);
-  const taxable = income.find((r) => r.total_kind === "taxable")?.total_amount ?? 0;
+  const { income, pretax } = await listFiscalAnnualTotals(client, userId, groupId, year);
+  const gross = income.find((r) => r.total_kind === "gross")?.total_amount ?? 0;
+  const deductions = Object.fromEntries(pretax.map((row) => [row.total_kind, row.total_amount]));
+  const taxable = wageBases({ gross, deductions }).box1;
   await upsertFiscalAnnualTotal(client, userId, groupId, year, "income", "taxable", taxable);
 }
 
@@ -198,11 +127,12 @@ export async function applyFiscalTotalsForTransaction(
 
   const itemType = String(input.itemType || "").trim().toLowerCase();
   let syncTaxable = false;
+  const overrides = await listDeductionOverrides(client, userId, groupId);
 
   if (input.itemKind === "income") {
     if (itemType === "deduction") {
       // Post-Tax first so Supplemental Life never lands in Pre-Tax.
-      const posttaxKind = classifyFiscalPosttaxKind(input.category, input.subCategory);
+      const posttaxKind = classifyFiscalPosttaxKind(input.category, input.subCategory, overrides);
       if (posttaxKind) {
         await applyFiscalAnnualTotalDelta(
           client,
@@ -214,7 +144,7 @@ export async function applyFiscalTotalsForTransaction(
           amount,
         );
       } else {
-        const pretaxKind = classifyFiscalPretaxKind(input.category, input.subCategory);
+        const pretaxKind = classifyFiscalPretaxKind(input.category, input.subCategory, overrides);
         if (pretaxKind) {
           await applyFiscalAnnualTotalDelta(
             client,
@@ -244,7 +174,7 @@ export async function applyFiscalTotalsForTransaction(
       }
     }
   } else if (itemType === "savings" || itemType === "investment") {
-    const pretaxKind = classifyFiscalPretaxKind(input.category, input.subCategory);
+    const pretaxKind = classifyFiscalPretaxKind(input.category, input.subCategory, overrides);
     if (pretaxKind) {
       await applyFiscalAnnualTotalDelta(
         client,
@@ -321,7 +251,10 @@ function assembleFiscalAnnualTotals(byKey: Map<string, number>) {
     total_amount: byKey.get(`pretax:${kind}`) ?? 0,
   }));
 
-  const taxable = computeTaxableIncome(gross, sumFiscalPretaxAmounts(pretax));
+  const taxable = wageBases({
+    gross,
+    deductions: Object.fromEntries(pretax.map((row) => [row.total_kind, row.total_amount])),
+  }).box1;
 
   const income = FISCAL_INCOME_KINDS.map((kind) => ({
     section: "income" as const,
