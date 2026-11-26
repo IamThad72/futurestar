@@ -2,6 +2,7 @@
  * Weekly worship check-in: wording by tradition, week math and a gentle streak.
  * Weeks run Sunday to Saturday, like the church calendar panel.
  */
+import { isRealIsoDate } from "./isoDate.js";
 import { addDays } from "./readingPlans.js";
 
 export const ATTENDANCE_OPTIONS = ["in_person", "online", "not_this_week"];
@@ -65,7 +66,7 @@ function weekdayOf(iso) {
 
 /** The Sunday that starts the week containing `iso`. */
 export function weekStartFor(iso) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(iso || ""))) return "";
+  if (!isRealIsoDate(iso)) return "";
   return addDays(iso, -weekdayOf(iso));
 }
 

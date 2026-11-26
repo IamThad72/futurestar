@@ -33,6 +33,11 @@ test("before the start date nothing is scheduled; after the end it stays on the 
   assert.equal(scheduledDay("2026-11-01", "2027-03-01", 30), 30);
 });
 
+test("an impossible calendar day is not a reading day", () => {
+  assert.equal(scheduledDay("2026-02-31", "2026-03-03", 30), 0);
+  assert.equal(dateForDay("2026-02-31", 1), "");
+});
+
 test("day math crosses months, leap days and daylight saving changes", () => {
   assert.equal(scheduledDay("2028-02-27", "2028-03-01", 365), 4); // 2028 is a leap year
   assert.equal(scheduledDay("2026-03-07", "2026-03-09", 365), 3); // US DST starts Mar 8

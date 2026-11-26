@@ -1,5 +1,6 @@
 import { createError, getQuery } from "h3";
 import type { H3Event } from "h3";
+import { isRealIsoDate } from "~/utils/isoDate.js";
 
 /** True when scripts/create_faith_common.sql has not run yet. */
 export function practicesUnavailable(error: unknown) {
@@ -8,18 +9,51 @@ export function practicesUnavailable(error: unknown) {
   return code === "42P01" || code === "42703";
 }
 
+/** Shown to people using the app. The script path stays in the server log. */
 export const PRACTICES_SETUP_MESSAGE =
-  "Reading plans, the prayer list and worship check-ins need their tables. Run scripts/create_faith_common.sql in Supabase (or npm run migrate).";
+  "Reading plans, the prayer list, and worship check-ins are not set up yet.";
 
-export function practicesSetupError() {
+const PRACTICES_SETUP_HINT =
+  "Faith practices are not set up. Run scripts/create_faith_common.sql in Supabase (or npm run migrate).";
+
+export function logPracticesSetup(error?: unknown) {
+  console.error(PRACTICES_SETUP_HINT, error ?? "");
+}
+
+export function practicesSetupError(error?: unknown) {
+  logPracticesSetup(error);
   return createError({ statusCode: 503, statusMessage: PRACTICES_SETUP_MESSAGE });
 }
 
-/** The person's local date (sent by the app), else the server date. */
+/**
+ * How far a phone's calendar date may sit from the server date.
+ * Time zones span at most about a day; two days leaves room for that
+ * without letting a client pick an arbitrary streak or reading day.
+ */
+export const CLIENT_DATE_WINDOW_DAYS = 2;
+
+function serverToday() {
+  return isoDate(new Date()) as string;
+}
+
+function calendarDayNumber(iso: string) {
+  const [year, month, day] = iso.split("-").map(Number);
+  return Math.floor(Date.UTC(year!, month! - 1, day!) / 86_400_000);
+}
+
+/**
+ * The person's local date when the app sends a real YYYY-MM-DD close to the
+ * server's date. Impossible days (2026-02-31, which `Date` rolls into March)
+ * and dates outside the window are ignored, and the server date is used.
+ * A body date wins over the query string; an unusable body date does not
+ * fall through to the query.
+ */
 export function clientToday(event: H3Event, bodyDate?: unknown) {
   const raw = String(bodyDate ?? getQuery(event).date ?? "").trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw) && !Number.isNaN(Date.parse(`${raw}T00:00:00Z`))) return raw;
-  return isoDate(new Date()) as string;
+  const today = serverToday();
+  if (!isRealIsoDate(raw)) return today;
+  if (Math.abs(calendarDayNumber(raw) - calendarDayNumber(today)) > CLIENT_DATE_WINDOW_DAYS) return today;
+  return raw;
 }
 
 export function parseId(value: unknown, label = "id") {
@@ -42,7 +76,7 @@ export function isoDate(value: unknown) {
 /** Rethrow HTTP errors, map a missing table to 503, everything else to 500. */
 export function practicesError(error: unknown, message: string): never {
   if (error && typeof error === "object" && "statusCode" in error) throw error;
-  if (practicesUnavailable(error)) throw practicesSetupError();
+  if (practicesUnavailable(error)) throw practicesSetupError(error);
   console.error(message, error);
   throw createError({ statusCode: 500, statusMessage: message });
 }

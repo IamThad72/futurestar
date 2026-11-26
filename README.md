@@ -74,6 +74,16 @@ bun run preview
 
 Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
 
+## Faith data
+
+Faith settings, reading plans, the prayer list and worship check-ins need tables in Supabase.
+`npm run migrate` applies `scripts/create_faith_profiles.sql` and `scripts/create_faith_common.sql`.
+Details are in [docs/faith-traditions.md](docs/faith-traditions.md).
+
+Until those tables exist, the app tells people that faith settings (or the reading plans, prayer list
+and worship check-in) are not set up yet. The script names above are for operators: they appear in
+this documentation and in the server log, not in the app.
+
 ## iOS & Android
 
 Native apps use **Ionic + Capacitor** with the [@nuxtjs/ionic](https://ionic.nuxtjs.org/) module.

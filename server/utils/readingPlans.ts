@@ -14,6 +14,7 @@ import {
 import { includesDeuterocanon } from "~/utils/faithProfile.js";
 import type { FaithProfile } from "./faithProfile";
 import { isoDate, practicesUnavailable } from "./faithPractices";
+import { isRealIsoDate } from "~/utils/isoDate.js";
 
 type EnrollmentRow = {
   user_plan_id: number;
@@ -169,7 +170,7 @@ export async function enrollmentDayReadings(client: Client, userId: number, user
 
 function validStart(startOn: unknown, today: string) {
   const text = String(startOn || "").trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(text) || Number.isNaN(Date.parse(`${text}T00:00:00Z`))) {
+  if (!isRealIsoDate(text)) {
     throw createError({ statusCode: 400, statusMessage: "Choose a start date." });
   }
   if (text < addDays(today, -400) || text > addDays(today, 400)) {

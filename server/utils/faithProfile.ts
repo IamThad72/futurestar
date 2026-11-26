@@ -28,6 +28,16 @@ export function faithProfileUnavailable(error: unknown) {
   return code === "42P01" || code === "42703";
 }
 
+/** Shown to people using the app. The script path stays in the server log. */
+export const FAITH_PROFILE_SETUP_MESSAGE = "Faith settings are not set up yet.";
+
+const FAITH_PROFILE_SETUP_HINT =
+  "Faith settings storage is not set up. Run scripts/create_faith_profiles.sql in Supabase (or npm run migrate).";
+
+function logFaithProfileSetup(error?: unknown) {
+  console.error(FAITH_PROFILE_SETUP_HINT, error ?? "");
+}
+
 function mapRow(row: Record<string, unknown>): FaithProfile {
   return normalizeFaithProfile({
     tradition: row.tradition,
@@ -50,6 +60,7 @@ export async function readFaithProfile(client: Client, userId: number): Promise<
     return { profile: mapRow(row), exists: true, unavailable: false };
   } catch (error) {
     if (faithProfileUnavailable(error)) {
+      logFaithProfileSetup(error);
       return { profile: legacyFaithProfile() as FaithProfile, exists: false, unavailable: true };
     }
     throw error;
@@ -61,7 +72,7 @@ export async function saveFaithProfile(client: Client, userId: number, body: Rec
   if (current.unavailable) {
     throw createError({
       statusCode: 503,
-      statusMessage: "Faith settings storage is not set up. Run scripts/create_faith_profiles.sql in Supabase.",
+      statusMessage: FAITH_PROFILE_SETUP_MESSAGE,
     });
   }
   let next: FaithProfile;

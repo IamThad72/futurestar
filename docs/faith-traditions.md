@@ -22,6 +22,10 @@ from the deuterocanon; every other mode reads from the 66 shared books.
 Both SQL scripts are also in `npm run migrate`. Until they run, the app behaves as before (Catholic, CPDV,
 Roman calendar). If a translation is not seeded yet, Scripture falls back to the CPDV with a short notice.
 
+People using the app never see these script paths. Faith settings says "Faith settings are not set up yet."
+Reading plans, the prayer list and worship check-in say they are not set up yet. The server log names
+`scripts/create_faith_profiles.sql` or `scripts/create_faith_common.sql` (or `npm run migrate`).
+
 ## Code
 
 - `utils/faithProfile.js`: traditions, defaults, labels; `composables/useFaithProfile.js` on the client.
