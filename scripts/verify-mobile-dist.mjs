@@ -64,12 +64,15 @@ if (jsFiles.length === 0) {
   process.exit(1);
 }
 
+// Bundled fonts, OFL licenses, PWA icons, and the web manifest are static
+// files from public/, not prerendered routes.
 const allowedTopLevel = new Set([
   "_nuxt",
   "200.html",
   "404.html",
   "favicon.ico",
   "fonts",
+  "icons",
   "index.html",
   "licenses",
   "manifest.webmanifest",
