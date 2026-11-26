@@ -22,5 +22,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Load the Capacitor config
+        run: node scripts/check-capacitor-config.mjs
       - run: npm test
       - run: npm run build

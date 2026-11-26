@@ -1,6 +1,9 @@
 import tailwindcss from "@tailwindcss/vite";
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { bundledFontPublicPath, bundledFonts, copyBundledFonts } from "./scripts/copy-bundled-fonts.mjs";
+
+copyBundledFonts();
 
 const isProd = process.env.NODE_ENV === "production";
 const isMobileProd = process.env.NUXT_MOBILE_PRODUCTION === "true";
@@ -22,6 +25,13 @@ export default defineNuxtConfig({
         { name: "theme-color", content: "#0F1621", media: "(prefers-color-scheme: dark)" },
         { name: "color-scheme", content: "light dark" },
       ],
+      link: bundledFonts.map((font) => ({
+        rel: "preload",
+        as: "font",
+        type: "font/woff2",
+        href: bundledFontPublicPath(font.file),
+        crossorigin: "anonymous",
+      })),
       script: [
         {
           key: "sacred-ledger-theme",

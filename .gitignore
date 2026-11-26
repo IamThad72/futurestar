@@ -49,3 +49,6 @@ ios/DerivedData/
 
 # Uploaded estate / financial documents (never commit binaries)
 uploads/
+
+# Copied from @fontsource-variable when Nuxt starts (scripts/copy-bundled-fonts.mjs)
+public/fonts/

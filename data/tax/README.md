@@ -16,7 +16,7 @@ Income on the page is the household year-to-date gross from `fiscal_annual_total
 
 W-2 Box 1 is gross minus every pre-tax type. Box 3 and Box 5 subtract Section 125 only. Box 3 is capped at the Social Security wage base in the federal file. Employee Social Security is 6.2% of Box 3 and employee Medicare is 1.45% of Box 5, plus 0.9% Additional Medicare above the filing-status threshold. The page flags withholding that exceeds that expectation by more than $1.
 
-A household can override one line's classification in `tax_deduction_overrides`. The override is used the next time that line is saved. Stored year-to-date totals are not rebuilt.
+A household can override one line's classification in `tax_deduction_overrides`. The override is used the next time that line is saved. Stored year-to-date totals are not rebuilt. The Tax page no longer includes an editor for this. The table stays, and so do `GET` and `PUT /api/tax/deduction-overrides`, because fiscal totals and household linking still use the rows.
 
 ## Local wages
 
@@ -51,7 +51,7 @@ The calculator does not hard-code a household. Saving this profile for the house
 
 The commented `INSERT` in `scripts/create_tax_household_profiles.sql` is the same seed. Replace `YOUR_USER_ID` with the app user id. A linked-account key is `g:GROUP_ID` instead of `u:YOUR_USER_ID`. The script creates `tax_household_profiles` and `tax_deduction_overrides`, widens the allowed fiscal deduction kinds, and does not drop a table or delete rows. Run it in the Supabase SQL editor, or with `npm run migrate`.
 
-People using the app never see that script path. When the table is missing, the Tax page says "Tax profile storage is not set up yet. Withholding below is unchanged." Saving a profile returns the same sentence. Line classification says "Line classification storage is not set up yet." The server log names `scripts/create_tax_household_profiles.sql` (or `npm run migrate`).
+People using the app never see that script path. When the profile table is missing, the Tax page says "Tax profile storage is not set up yet. Withholding below is unchanged." Saving a profile returns the same sentence. There is no line-classification step in the app. If a caller hits the deduction-overrides route before that table exists, the response is "Line classification storage is not set up yet." The server log names `scripts/create_tax_household_profiles.sql` (or `npm run migrate`).
 
 ## Known gaps
 

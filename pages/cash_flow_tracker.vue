@@ -1673,11 +1673,8 @@ async function loadData() {
       posttax: indexAnnualTotals(data?.annual_totals?.posttax, "total_kind"),
     };
   } catch (err) {
-    console.error("Failed to load", err);
-    loadError.value = parseFetchError(
-      err,
-      "Failed to load budget tracker. If you recently updated the app, run: npm run migrate",
-    );
+    console.error("Failed to load budget tracker. If you recently updated the app, run: npm run migrate", err);
+    loadError.value = parseFetchError(err, "The budget tracker could not be loaded. Try again in a moment.");
     budgets.value = { income: [], expenses: [] };
     budgetOptions.value = [];
     periodBudgetId.value = null;
