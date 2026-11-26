@@ -69,6 +69,8 @@ export default defineNuxtConfig({
       nativeApiBase,
       /** Baked in when NUXT_CAPACITOR=true; used by native hash-router plugin */
       isCapacitorBuild,
+      /** Shown on /privacy and /terms only when set. Do not invent an address. */
+      supportEmail: process.env.NUXT_PUBLIC_SUPPORT_EMAIL || "",
     },
   },
 

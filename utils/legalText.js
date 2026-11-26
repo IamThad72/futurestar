@@ -1,0 +1,409 @@
+/**
+ * Draft privacy policy and terms. The wording lives here so page markup
+ * does not have to change when the owner edits a sentence.
+ * LEGAL_DRAFT stays true until the owner approves the text.
+ */
+
+export const LEGAL_UPDATED = "2026-11-26";
+export const LEGAL_DRAFT = true;
+export const PUBLISHER_NAME = "Marcelli Enterprises LLC";
+
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+export function legalUpdatedLabel(iso = LEGAL_UPDATED) {
+  const [year, month, day] = String(iso).split("-").map(Number);
+  const name = MONTHS[month - 1];
+  if (!name || !year || !day) return String(iso);
+  return `${name} ${day}, ${year}`;
+}
+
+export function tableOfContents(document) {
+  return (document?.sections || []).map((section) => ({
+    id: section.id,
+    heading: section.heading,
+  }));
+}
+
+export const privacyPolicy = {
+  id: "privacy",
+  title: "Privacy policy",
+  path: "/privacy",
+  sections: [
+    {
+      id: "who-we-are",
+      heading: "Who we are",
+      blocks: [
+        {
+          type: "p",
+          text: "Future Star is a personal app for money, faith practice, and physical training. The footer of the app names the publisher as Marcelli Enterprises LLC. This draft uses that name.",
+        },
+        {
+          type: "placeholder",
+          text: "Add the postal address for Marcelli Enterprises LLC. This draft does not invent one.",
+        },
+      ],
+    },
+    {
+      id: "what-we-collect",
+      heading: "What we collect",
+      blocks: [
+        {
+          type: "p",
+          text: "We store what you enter so the app can show it back to you. We do not ask for your phone number, your contacts, or your precise location.",
+        },
+        { type: "h3", text: "Account" },
+        {
+          type: "p",
+          text: "We store your email address. You can add a display name and an optional profile photo. The photo is saved with your account as image data. Sign-in goes through Supabase Auth. The app keeps a session so you stay signed in. A password hash is stored only for accounts that use the older password path. An account that signs in only through Supabase can have no local password.",
+        },
+        { type: "h3", text: "Money" },
+        {
+          type: "p",
+          text: "If you use the money tools, we store what you enter: budgets, transactions, income, debt, savings, investments and holdings, tax figures and a household tax profile, insurance, real estate, and an account map. Linked household members can see these records. See Household sharing.",
+        },
+        { type: "h3", text: "Estate documents" },
+        {
+          type: "p",
+          text: "You can upload files. We store the file, its original name, its type, its size, and any title or note you add. Files sit on the server disk, or in Supabase Storage when that is configured. Household members can see household documents.",
+        },
+        { type: "h3", text: "Vehicles" },
+        {
+          type: "p",
+          text: "You can save vehicles and service records. Those records are part of the household money data, so linked members can see them. When you look up a make, model, or year, your browser asks the NHTSA vehicle catalog for that list. We do not send a vehicle identification number in that lookup.",
+        },
+        { type: "h3", text: "Health and fitness" },
+        {
+          type: "p",
+          text: "This is private to you. We store nutrition plans (calorie and macro targets), food logs (food name, meal, amount, and calories and macros), foods you save, workouts, and a training journal (session name, exercises, sets, reps, weight, and duration).",
+        },
+        {
+          type: "p",
+          text: "The barcode scanner reads the code on your device. Only the digits go to our server, which asks Open Food Facts for that product. A food search sends the words you type to USDA FoodData Central. Exercise names and instructions come from ExerciseDB. The moving images load in your browser from ExerciseDB’s image host. The camera picture is not uploaded.",
+        },
+        { type: "h3", text: "Faith practice" },
+        {
+          type: "p",
+          text: "This is private to you. We store the tradition and Bible translation you choose, whether you show the church calendar, prayer requests (title, notes, a person, a category, and an answer if you write one), worship check-ins (attendance, church name, sermon passage, notes, and a takeaway), daily reviews (the morning and evening answers you type), and reading-plan progress (which plan, the start date, and the days you mark done or skipped).",
+        },
+        {
+          type: "p",
+          text: "Scripture text and the church calendar are shared catalogs in the app. They are not your private notes.",
+        },
+        {
+          type: "p",
+          text: "We also store the ids the app needs to run: an account id, a Supabase user id when you sign in that way, and session records.",
+        },
+      ],
+    },
+    {
+      id: "how-we-use-it",
+      heading: "How we use it",
+      blocks: [
+        {
+          type: "p",
+          text: "We use this information to show you your records, to sign you in, to share money records with people you link in a household, and to run the lookups and suggestions described below.",
+        },
+        {
+          type: "p",
+          text: "The app code does not include an advertising SDK or an analytics SDK, and it does not ask for an advertising identifier.",
+        },
+        {
+          type: "placeholder",
+          text: "Say whether personal information is sold. This draft does not say that it is sold, and it does not say that it is never sold.",
+        },
+      ],
+    },
+    {
+      id: "who-we-share-it-with",
+      heading: "Who we share it with",
+      blocks: [
+        {
+          type: "p",
+          text: "These are the outside services the app already calls. Each one is listed with the purpose we use it for. Household members are people you link, not outside services. They are described under Household sharing.",
+        },
+        {
+          type: "ul",
+          items: [
+            "Supabase. Sign-in, and file storage for estate documents when Supabase Storage is configured. Account records are stored in PostgreSQL. When the database URL points at Supabase, the connection uses that host.",
+            "Vercel. Hosts the web app and runs the scheduled job that refreshes investment prices.",
+            "Groq. Optional written suggestions. See AI features. Called only when a server key is set.",
+            "USDA FoodData Central. The food words you search, and a food id when a result is opened. Needs a server API key.",
+            "Open Food Facts. The barcode digits only.",
+            "Alpha Vantage. Ticker symbols from investment holdings, from a server job. Not your name or email.",
+            "NHTSA vPIC. Your browser requests vehicle makes, models, and years while you fill in a vehicle. That request does not go through our server.",
+            "ExerciseDB. The server asks for exercise names and instructions. By default that host is oss.exercisedb.dev. If a RapidAPI key is configured, the server uses that ExerciseDB host instead. Your browser loads exercise images from static.exercisedb.dev. The search is an exercise name or a body-part filter, not your journal.",
+          ],
+        },
+        {
+          type: "p",
+          text: "Fonts are bundled with the app. The app does not load fonts from Google.",
+        },
+      ],
+    },
+    {
+      id: "household-sharing",
+      heading: "Household sharing",
+      blocks: [
+        {
+          type: "p",
+          text: "If you link accounts, money records are visible to the other people in that household. That includes budgets, transactions, income, debt, savings, investments, tax totals and the household tax profile, estate records, vehicles and service records, insurance, real estate, the account map, and estate documents that belong to the household.",
+        },
+        {
+          type: "p",
+          text: "Faith practice and body data stay on your account. They are not part of the household share list.",
+        },
+        {
+          type: "p",
+          text: "You can also share one estate record with another account. The kinds are inventory, vehicle, cash or investment, debt, insurance, and real estate. That share does not include faith or body data.",
+        },
+      ],
+    },
+    {
+      id: "ai-features",
+      heading: "AI features",
+      blocks: [
+        {
+          type: "p",
+          text: "Some screens ask Groq for a short note or a suggestion. This runs only when a Groq key is set on the server. If the key is missing, or the request fails, the screen shows a sentence written in the app, or it skips the suggestion. There is no separate switch for each note.",
+        },
+        {
+          type: "p",
+          text: "You start these yourself: a transaction sentence (the description and amount, plus your category names) to suggest a category; a bank-import file (up to forty descriptions and amounts, plus category names); a meal sentence to split it into foods and estimate nutrition; a workout description, with the goal, schedule, equipment limits, exercises to avoid, recent exercise names, and catalog exercise names, to draft a plan; a verse already on the page (the citation and the text) to write two reflection questions; a virtue name and its published definition to suggest one act; a daily-review answer you wrote in grateful, troubled, or shortfall, to ask a follow-up; and an intention you wrote, to shorten it.",
+        },
+        {
+          type: "p",
+          text: "These run when you open the screen, if the key is set. Budget line names: merchant names that already repeat in your expenses, and your category names. Month close: the category furthest over budget, the category furthest under budget, and up to three uncategorized merchant names with amounts. Today: counts for the week (sessions, whether you logged today, mobility sessions) and calorie and protein totals and what remains. Not the free text of a workout.",
+        },
+        {
+          type: "p",
+          text: "The weekly mirror does not send your prayer requests, and it does not send the full text of a review. It sends counts: how many days have a review, which virtues you named and how often, how many times tomorrow was filled, and words that appear more than once in the troubled and shortfall answers.",
+        },
+        {
+          type: "p",
+          text: "Suggestions can be wrong. They are not advice. See the terms of service.",
+        },
+      ],
+    },
+    {
+      id: "retention-and-deletion",
+      heading: "Retention and deletion",
+      blocks: [
+        {
+          type: "p",
+          text: "The app does not delete records on a timer. They stay until you delete them in the app, or until you delete the account.",
+        },
+        {
+          type: "p",
+          parts: [
+            "You can delete your account from You, under Privacy and data, and from the public page ",
+            { href: "/delete-account", label: "Delete account" },
+            ". Shared household money stays with the household and is handed to someone who remains. Your private data is erased. That includes faith practice, nutrition, workouts and the training journal, your profile photo, your password hash, and your sessions. Money rows that were never shared with a household are erased with your account. If you are the last person in the household, the household and its shared records are deleted with the account. An estate file is removed when that document is deleted. A document handed to the household stays, including the file. A share you granted on a single estate record is removed with your account, even if the record itself stays.",
+          ],
+        },
+      ],
+    },
+    {
+      id: "security",
+      heading: "Security",
+      blocks: [
+        {
+          type: "p",
+          text: "Sign-in is handled by Supabase Auth. On the web, a session cookie identifies you. In the phone app, requests send the Supabase access token. Passwords for the older sign-in path are stored as a hash, not as the password you typed. The database is reached from the server. Estate files sit on the server disk or in Supabase Storage.",
+        },
+        {
+          type: "p",
+          text: "This is ordinary server storage. People who operate the database and the file storage can read what is stored. The app does not encrypt records so that only your devices can read them.",
+        },
+      ],
+    },
+    {
+      id: "children",
+      heading: "Children",
+      blocks: [
+        {
+          type: "p",
+          text: "The app does not ask for a date of birth. The code does not set a minimum age.",
+        },
+        {
+          type: "placeholder",
+          text: "Decide the minimum age, if any. This draft does not guess one.",
+        },
+      ],
+    },
+    {
+      id: "changes",
+      heading: "Changes",
+      blocks: [
+        {
+          type: "p",
+          text: "When this policy changes, the date at the top changes with it. This draft is dated November 26, 2026.",
+        },
+      ],
+    },
+    {
+      id: "contact",
+      heading: "Contact",
+      blocks: [
+        { type: "supportEmail" },
+        {
+          type: "placeholder",
+          text: "Add the postal address for Marcelli Enterprises LLC.",
+        },
+      ],
+    },
+  ],
+};
+
+export const termsOfService = {
+  id: "terms",
+  title: "Terms of service",
+  path: "/terms",
+  sections: [
+    {
+      id: "the-agreement",
+      heading: "The agreement",
+      blocks: [
+        {
+          type: "p",
+          parts: [
+            "These terms are between you and Marcelli Enterprises LLC, the publisher named in the app footer, for your use of Future Star. The ",
+            { href: "/privacy", label: "privacy policy" },
+            " describes what the app does with data. Both pages are drafts until the owner approves them.",
+          ],
+        },
+      ],
+    },
+    {
+      id: "acceptable-use",
+      heading: "Acceptable use",
+      blocks: [
+        {
+          type: "p",
+          text: "Use the app for your own records. Do not break into someone else’s account, do not upload files you have no right to store, and do not try to disrupt the service. Do not use the app to break the law.",
+        },
+      ],
+    },
+    {
+      id: "accounts",
+      heading: "Accounts",
+      blocks: [
+        {
+          type: "p",
+          text: "You need an account to use the tools. You are responsible for your sign-in. If you link a household, money records are visible to the other members, as the privacy policy describes. Faith practice and body data stay on your account.",
+        },
+      ],
+    },
+    {
+      id: "your-content",
+      heading: "Your content and documents",
+      blocks: [
+        {
+          type: "p",
+          text: "You keep what you enter. You let the publisher store it and show it so the app can run. That includes showing household money records, and household documents, to people you have linked. Estate files are stored on the server disk or in Supabase Storage, as the privacy policy describes.",
+        },
+      ],
+    },
+    {
+      id: "not-advice",
+      heading: "Not advice",
+      blocks: [
+        {
+          type: "p",
+          text: "Future Star is a place to keep records. It is not financial advice, tax advice, medical advice, or spiritual direction. Tax figures in the app are estimates. Nutrition numbers are estimates from the description you type, from a food database, or from a barcode lookup. A workout plan is a draft from a catalog. Scripture tools and review prompts are not spiritual direction. You decide what to do with any of it.",
+        },
+      ],
+    },
+    {
+      id: "ai-output",
+      heading: "AI output",
+      blocks: [
+        {
+          type: "p",
+          text: "Suggestions and short notes can be wrong. They can misread a sentence, pick the wrong category, or estimate nutrition that does not match the food. Check them before you rely on them. If the model is unavailable, the app may show a sentence written on the server instead, or no suggestion.",
+        },
+      ],
+    },
+    {
+      id: "availability",
+      heading: "Availability",
+      blocks: [
+        {
+          type: "p",
+          text: "The app can be interrupted. Food search, barcode lookup, vehicle lists, exercise images, investment prices, and written suggestions depend on other services. We do not promise that a feature will be available every time you open it.",
+        },
+      ],
+    },
+    {
+      id: "ending-use",
+      heading: "Ending use",
+      blocks: [
+        {
+          type: "p",
+          parts: [
+            "You can stop using the app. Deleting the account is described in the ",
+            { href: "/privacy", label: "privacy policy" },
+            ", under Retention and deletion, and starts from You or from ",
+            { href: "/delete-account", label: "Delete account" },
+            ". The publisher can stop offering the app.",
+          ],
+        },
+      ],
+    },
+    {
+      id: "liability",
+      heading: "Limitation of liability",
+      blocks: [
+        {
+          type: "placeholder",
+          text: "State any limit on liability, and any warranty language, that the owner or counsel approves. This draft does not.",
+        },
+      ],
+    },
+    {
+      id: "governing-law",
+      heading: "Governing law",
+      blocks: [
+        {
+          type: "placeholder",
+          text: "Name the state or country, and the court, that should govern these terms. This draft does not guess.",
+        },
+      ],
+    },
+    {
+      id: "changes",
+      heading: "Changes",
+      blocks: [
+        {
+          type: "p",
+          text: "When these terms change, the date at the top changes with it. This draft is dated November 26, 2026.",
+        },
+      ],
+    },
+    {
+      id: "contact",
+      heading: "Contact",
+      blocks: [
+        { type: "supportEmail" },
+        {
+          type: "placeholder",
+          text: "Add the postal address for Marcelli Enterprises LLC.",
+        },
+      ],
+    },
+  ],
+};
+
+export const legalDocuments = [privacyPolicy, termsOfService];
