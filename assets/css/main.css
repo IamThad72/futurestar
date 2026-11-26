@@ -1212,10 +1212,11 @@ ion-app .account-map-budget-bar button.btn:focus-visible {
   background: var(--sl-bg);
 }
 
-/* In-app confirms. Variables inherit into the alert shadow tree.
-   Surface and ink follow the active theme; a destructive button uses
-   the existing error color. */
+/* In-app confirms. The alert's own :host rule sets --background from
+   --ion-overlay-background-color, so that variable is what themes the card.
+   Ink and the destructive button follow the existing tokens. */
 ion-alert {
+  --ion-overlay-background-color: var(--sl-elevated);
   --background: var(--sl-elevated);
   --ion-text-color: var(--sl-ink);
   --ion-color-primary: var(--sl-primary);
