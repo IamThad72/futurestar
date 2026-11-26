@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    env:
+      # Placeholders so `nuxt build` and server modules load without real secrets.
+      SUPABASE_URL: https://placeholder.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: placeholder-publishable-key
+      SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
+      DATABASE_URL: postgresql://placeholder:placeholder@127.0.0.1:5432/placeholder
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build

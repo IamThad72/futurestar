@@ -6,6 +6,7 @@
  */
 import { classifyBook, displayBookName } from "./bibleBooks.js";
 import { orthodoxEasterIso, westernEasterIso } from "./christianYear.js";
+import { isRealIsoDate } from "./isoDate.js";
 
 // Chapter counts in standard numbering. Protestant canon order.
 const OT_BOOKS = [
@@ -332,9 +333,10 @@ export function dayCitation(readings) {
 const DAY_MS = 86_400_000;
 
 function dayValue(iso) {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || "").trim());
-  if (!match) return null;
-  return Math.floor(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])) / DAY_MS);
+  const text = String(iso || "").trim();
+  if (!isRealIsoDate(text)) return null;
+  const [year, month, day] = text.split("-").map(Number);
+  return Math.floor(Date.UTC(year, month - 1, day) / DAY_MS);
 }
 
 function isoFromValue(value) {

@@ -14,7 +14,6 @@
         class="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
       >
         Faith settings are not set up yet, so the original Catholic setup is in use.
-        Run scripts/create_faith_profiles.sql in Supabase to turn them on.
       </p>
 
       <form class="mt-4 grid min-w-0 gap-4" @submit.prevent="saveSettings">

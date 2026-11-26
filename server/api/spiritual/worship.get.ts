@@ -1,7 +1,7 @@
 import { createDbClient } from "../../utils/db";
 import { requirePrivateUserId } from "../../utils/privateUserAccess";
 import { readFaithProfile } from "../../utils/faithProfile";
-import { clientToday, practicesError, practicesUnavailable, PRACTICES_SETUP_MESSAGE } from "../../utils/faithPractices";
+import { clientToday, logPracticesSetup, practicesError, practicesUnavailable, PRACTICES_SETUP_MESSAGE } from "../../utils/faithPractices";
 import { worshipOverview } from "../../utils/worshipCheckins";
 
 export default defineEventHandler(async (event) => {
@@ -15,6 +15,7 @@ export default defineEventHandler(async (event) => {
       return { unavailable: false, message: "", tradition: profile.tradition, ...(await worshipOverview(client, userId, today)) };
     } catch (error) {
       if (practicesUnavailable(error)) {
+        logPracticesSetup(error);
         return {
           unavailable: true,
           message: PRACTICES_SETUP_MESSAGE,

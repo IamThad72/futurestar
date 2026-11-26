@@ -25,6 +25,8 @@ test("weeks start on Sunday", () => {
   assert.equal(weekStartFor("2026-11-23"), "2026-11-22");
   assert.equal(weekStartFor("2027-01-01"), "2026-12-27");
   assert.equal(weekStartFor("bad"), "");
+  assert.equal(weekStartFor("2026-02-31"), "");
+  assert.equal(weekStartFor("2026-02-29"), "");
 });
 
 test("attendance values are checked", () => {

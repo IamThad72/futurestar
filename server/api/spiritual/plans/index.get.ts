@@ -2,7 +2,7 @@ import { getQuery } from "h3";
 import { createDbClient } from "../../../utils/db";
 import { requirePrivateUserId } from "../../../utils/privateUserAccess";
 import { readFaithProfile } from "../../../utils/faithProfile";
-import { clientToday, practicesError, practicesUnavailable, PRACTICES_SETUP_MESSAGE } from "../../../utils/faithPractices";
+import { clientToday, logPracticesSetup, practicesError, practicesUnavailable, PRACTICES_SETUP_MESSAGE } from "../../../utils/faithPractices";
 import { listEnrollments, planLibrary } from "../../../utils/readingPlans";
 
 /** The plan library for your tradition and your plans. `?active=1` returns running plans only (Today card). */
@@ -20,6 +20,7 @@ export default defineEventHandler(async (event) => {
       return { unavailable: false, message: "", today, library, plans };
     } catch (error) {
       if (practicesUnavailable(error)) {
+        logPracticesSetup(error);
         return { unavailable: true, message: PRACTICES_SETUP_MESSAGE, today, library, plans: [] };
       }
       throw error;

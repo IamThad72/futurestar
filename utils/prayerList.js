@@ -1,4 +1,5 @@
 /** Prayer list: categories and input checks shared by the screen and the API. */
+import { isRealIsoDate } from "./isoDate.js";
 
 export const PRAYER_CATEGORIES = ["Family", "Friends", "Church", "Work", "Health", "World", "Myself", "Other"];
 
@@ -32,7 +33,7 @@ export function parsePrayerInput(input, { requireTitle = false } = {}) {
   if ("answer_note" in source) value.answer_note = clean(source.answer_note, PRAYER_LIMITS.answer_note) || null;
   if ("answered_on" in source) {
     const date = source.answered_on == null || source.answered_on === "" ? null : String(source.answered_on).trim();
-    if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) return { value, error: "Answered date must be YYYY-MM-DD." };
+    if (date && !isRealIsoDate(date)) return { value, error: "Answered date must be YYYY-MM-DD." };
     value.answered_on = date;
   }
   return { value, error: "" };

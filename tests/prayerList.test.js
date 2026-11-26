@@ -13,6 +13,9 @@ test("categories come from the list and dates must be ISO", () => {
   assert.ok(PRAYER_CATEGORIES.includes("Church"));
   assert.match(parsePrayerInput({ category: "Sports" }).error, /category/);
   assert.match(parsePrayerInput({ answered_on: "11/22/2026" }).error, /YYYY-MM-DD/);
+  assert.match(parsePrayerInput({ answered_on: "2026-02-31" }).error, /YYYY-MM-DD/);
+  assert.match(parsePrayerInput({ answered_on: "2026-02-29" }).error, /YYYY-MM-DD/);
+  assert.equal(parsePrayerInput({ answered_on: "2024-02-29" }).value.answered_on, "2024-02-29");
   assert.equal(parsePrayerInput({ answered_on: "" }).value.answered_on, null);
 });
 
