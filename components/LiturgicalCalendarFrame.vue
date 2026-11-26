@@ -12,7 +12,7 @@
       @click="collapsed = false"
     >
       <span class="calendar-frame__rail-label">Calendar</span>
-      <span aria-hidden="true">‹</span>
+      <AppIcon name="chevron-back" :size="18" />
     </button>
 
     <aside
@@ -30,7 +30,7 @@
           :aria-expanded="!collapsed"
           @click="collapsed = true"
         >
-          ›
+          <AppIcon name="chevron-forward" :size="18" />
         </button>
         <div class="flex min-w-0 flex-1 items-center justify-between gap-2">
           <button
@@ -39,7 +39,7 @@
             aria-label="Previous month"
             @click="changeMonth(-1)"
           >
-            ‹
+            <AppIcon name="chevron-back" :size="18" />
           </button>
           <div class="min-w-0 text-center">
             <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
@@ -60,7 +60,7 @@
             aria-label="Next month"
             @click="changeMonth(1)"
           >
-            ›
+            <AppIcon name="chevron-forward" :size="18" />
           </button>
         </div>
       </div>

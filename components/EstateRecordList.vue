@@ -11,7 +11,8 @@
       >
         {{ col.l }}
         <span v-if="sortState.key === col.k" class="estate-record-list__sort-dir">
-          {{ sortState.dir === "asc" ? "▲" : "▼" }}
+          <AppIcon :name="sortState.dir === 'asc' ? 'chevron-up' : 'chevron-down'" :size="18" />
+          <span class="sr-only">{{ sortState.dir === "asc" ? "ascending" : "descending" }}</span>
         </span>
       </button>
     </div>
@@ -158,6 +159,8 @@ function onRowClick(item) {
 }
 
 .estate-record-list__sort-dir {
+  display: inline-flex;
+  align-items: center;
   font-size: 0.625rem;
 }
 

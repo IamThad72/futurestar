@@ -22,7 +22,7 @@
             class="estate-action-btn"
             @click="$emit('add')"
           >
-            <PlusSmallIcon class="-ml-0.5 size-4 md:size-5" aria-hidden="true" />
+            <AppIcon name="add" :size="18" />
             {{ addLabel }}
           </button>
         </div>
@@ -40,8 +40,6 @@
 </template>
 
 <script setup>
-import { PlusSmallIcon } from "@heroicons/vue/20/solid";
-
 defineProps({
   title: { type: String, required: true },
   total: { type: String, default: "" },

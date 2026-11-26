@@ -36,9 +36,7 @@
                     alt="Profile"
                     class="w-full h-full object-cover"
                   />
-                  <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                  </svg>
+                  <AppIcon v-else name="person" :size="24" />
                 </div>
               </div>
               <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -116,9 +114,7 @@
         <details class="group border border-base-200 rounded-lg overflow-hidden">
           <summary class="flex items-center justify-between cursor-pointer list-none px-3 py-2 bg-base-200/50 hover:bg-base-200/70 text-xs font-semibold">
             Change Email
-            <svg class="size-4 transition-transform group-open:rotate-180" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-            </svg>
+            <AppIcon name="chevron-down" :size="18" class="transition-transform group-open:rotate-180" />
           </summary>
           <div class="p-3 space-y-1.5">
           <form @submit.prevent="updateEmail" class="space-y-1.5">
@@ -153,9 +149,7 @@
         <details class="group border border-base-200 rounded-lg overflow-hidden">
           <summary class="flex items-center justify-between cursor-pointer list-none px-3 py-2 bg-base-200/50 hover:bg-base-200/70 text-xs font-semibold">
             Change Password
-            <svg class="size-4 transition-transform group-open:rotate-180" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-            </svg>
+            <AppIcon name="chevron-down" :size="18" class="transition-transform group-open:rotate-180" />
           </summary>
           <div class="p-3 space-y-1.5">
           <form @submit.prevent="updatePassword" class="space-y-1.5">

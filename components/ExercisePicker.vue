@@ -21,16 +21,22 @@
           <li v-for="type in typeList" :key="type.slug">
             <button
               type="button"
-              class="flex w-full flex-col items-start rounded-lg border border-base-300 px-4 py-3 text-left"
+              class="flex w-full items-center gap-3 rounded-lg border border-base-300 px-4 py-3 text-left"
               @click="openType(type.slug)"
             >
-              <span class="text-sm font-semibold text-base-content">{{ type.name }}</span>
-              <span class="mt-0.5 text-xs text-base-content/60">{{ type.description }}</span>
+              <span class="app-icon-chip is-physical" aria-hidden="true">
+                <AppIcon :name="type.icon" :size="20" />
+              </span>
+              <span class="min-w-0">
+                <span class="block text-sm font-semibold text-base-content">{{ type.name }}</span>
+                <span class="mt-0.5 block text-xs text-base-content/60">{{ type.description }}</span>
+              </span>
             </button>
           </li>
         </ul>
         <template v-else>
         <button type="button" class="training-chip btn btn-ghost btn-sm rounded-full" @click="backToTypes">
+          <AppIcon name="chevron-back" :size="18" />
           Back
         </button>
         <p class="mt-3 text-sm font-semibold text-base-content">{{ resultTitle }}</p>
@@ -140,6 +146,7 @@ const typeList = PHYSICAL_CATEGORIES.map((item) => ({
   slug: item.slug,
   name: item.name.replace(" Training", ""),
   description: item.description,
+  icon: item.icon,
 }));
 
 const showingTypes = computed(() => category.value === "all" && !searchQuery.value);

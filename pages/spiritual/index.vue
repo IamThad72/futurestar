@@ -26,7 +26,10 @@
         <h2 v-if="group.key !== 'daily'" class="sl-caption mb-2 mt-6">{{ group.name }}</h2>
         <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <li v-for="item in group.links" :key="item.href">
-            <AppLink :to="item.href" class="app-card-link">
+            <AppLink :to="item.href" class="app-card-link app-card-link--spiritual">
+              <span v-if="item.icon" class="app-icon-chip app-icon-chip--lead is-spiritual" aria-hidden="true">
+                <AppIcon :name="item.icon" :size="20" />
+              </span>
               <h2 class="text-ink">{{ item.name }}</h2>
               <p class="mt-2 flex-1 text-base leading-6 text-muted">
                 {{ item.description }}

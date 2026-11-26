@@ -51,6 +51,7 @@ const homeGroups = computed(() =>
         .map((tab) => ({
           name: tab.name,
           href: tab.href,
+          icon: tab.icon,
           description: tab.description,
         })),
     }))
@@ -151,7 +152,10 @@ watch([expenseMonth, expenseYear], () => {
         <h2 class="text-xs font-semibold uppercase tracking-wide text-base-content/50">{{ group.name }}</h2>
         <ul class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <li v-for="item in group.links" :key="item.href">
-            <AppLink :to="item.href" class="app-card-link">
+            <AppLink :to="item.href" class="app-card-link app-card-link--financial">
+              <span v-if="item.icon" class="app-icon-chip app-icon-chip--lead is-financial" aria-hidden="true">
+                <AppIcon :name="item.icon" :size="20" />
+              </span>
               <h3 class="text-ink">{{ item.name }}</h3>
               <p class="mt-2 flex-1 text-base leading-6 text-muted">{{ item.description }}</p>
             </AppLink>

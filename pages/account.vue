@@ -4,13 +4,16 @@
     <p v-if="auth.user?.email" class="mt-2 text-base text-muted">{{ auth.user.email }}</p>
 
     <div class="mt-6 flex flex-col gap-2">
-      <button type="button" class="btn btn-primary justify-start" @click="showAccountManagement = true">
+      <button type="button" class="btn btn-primary justify-start gap-2" @click="showAccountManagement = true">
+        <AppIcon name="person" :size="18" />
         Account Management
       </button>
-      <button type="button" class="btn btn-outline justify-start" @click="showLinkedAccounts = true">
+      <button type="button" class="btn btn-outline justify-start gap-2" @click="showLinkedAccounts = true">
+        <AppIcon name="people" :size="18" />
         Linked Accounts
       </button>
-      <button type="button" class="btn btn-ghost justify-start text-error" @click="handleLogout">
+      <button type="button" class="btn btn-ghost justify-start gap-2 text-error" @click="handleLogout">
+        <AppIcon name="log-out" :size="18" />
         Logout
       </button>
     </div>

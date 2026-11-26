@@ -73,7 +73,10 @@
             </p>
             <p v-if="prayer.notes" class="mt-2 whitespace-pre-line break-words text-sm text-gray-800">{{ prayer.notes }}</p>
             <div v-if="prayer.answered_on" class="mt-3 rounded-md bg-gray-50 px-3 py-2">
-              <p class="text-xs font-semibold text-gray-900">Answered {{ formatDate(prayer.answered_on) }}</p>
+              <p class="inline-flex items-center gap-1 text-xs font-semibold text-gray-900">
+                <AppIcon name="heart" :size="18" filled />
+                Answered {{ formatDate(prayer.answered_on) }}
+              </p>
               <p v-if="prayer.answer_note" class="sl-scripture mt-1 whitespace-pre-line break-words">{{ prayer.answer_note }}</p>
             </div>
 

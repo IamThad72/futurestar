@@ -222,9 +222,7 @@
       <details class="group overflow-hidden rounded-lg border border-primary bg-transparent [&:not([open])>:not(summary)]:hidden">
         <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 sm:px-4">
           <h2 class="text-lg font-semibold text-base-content">How taxable wages were figured</h2>
-          <svg class="size-5 shrink-0 transition-transform group-open:rotate-180" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-          </svg>
+          <AppIcon name="chevron-down" :size="20" class="shrink-0 transition-transform group-open:rotate-180" />
         </summary>
         <div class="border-t border-primary">
           <p class="px-3 pt-3 text-xs text-base-content/60 sm:px-4">Gross − traditional retirement − Section 125 = W-2 Box 1.</p>
@@ -250,9 +248,7 @@
       <details class="group overflow-hidden rounded-lg border border-primary bg-transparent [&:not([open])>:not(summary)]:hidden">
         <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 sm:px-4">
           <h2 class="text-lg font-semibold text-base-content">Social Security and Medicare check</h2>
-          <svg class="size-5 shrink-0 transition-transform group-open:rotate-180" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-          </svg>
+          <AppIcon name="chevron-down" :size="20" class="shrink-0 transition-transform group-open:rotate-180" />
         </summary>
         <div class="border-t border-primary">
           <p class="px-3 pt-3 text-xs text-base-content/60 sm:px-4">

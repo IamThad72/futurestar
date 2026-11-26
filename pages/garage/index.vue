@@ -17,9 +17,10 @@
           <div>
             <NuxtLink
               to="/estate_mgmt"
-              class="text-sm font-medium text-base-content/60 hover:text-primary md:text-base"
+              class="inline-flex items-center gap-1 text-sm font-medium text-base-content/60 hover:text-primary md:text-base"
             >
-              ← Estate Management
+              <AppIcon name="chevron-back" :size="18" />
+              Estate Management
             </NuxtLink>
             <h1 class="mt-1 text-lg font-semibold text-base-content md:text-xl">Garage</h1>
             <p class="mt-0.5 text-xs text-base-content/60">

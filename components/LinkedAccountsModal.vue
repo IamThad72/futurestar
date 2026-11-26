@@ -113,22 +113,12 @@
                 <button
                   v-if="canRemoveMember(member)"
                   type="button"
-                  class="btn btn-ghost btn-xs btn-square min-h-8 min-w-8 text-error hover:bg-error/20"
+                  class="btn btn-ghost btn-xs btn-square min-h-11 min-w-11 text-error hover:bg-error/20"
                   :aria-label="member.user_id === auth.user?.user_id ? 'Leave group' : 'Remove member'"
                   :disabled="removingUserId === member.user_id"
                   @click="removeGroupMember(member)"
                 >
-                  <svg
-                    v-if="removingUserId !== member.user_id"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke-width="1.5"
-                    stroke="currentColor"
-                    class="size-4"
-                  >
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                  </svg>
+                  <AppIcon v-if="removingUserId !== member.user_id" name="close" :size="18" />
                   <span v-else class="loading loading-spinner loading-xs"></span>
                 </button>
               </li>

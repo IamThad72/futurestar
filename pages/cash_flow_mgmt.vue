@@ -91,11 +91,7 @@
                 class="btn btn-ghost btn-sm h-auto min-h-0 shrink-0 gap-2 py-1.5 pl-1 pr-2 font-medium normal-case text-base-content hover:bg-base-200"
                 @click="openAddBudget('expense')"
               >
-                <span class="flex size-[1.05rem] shrink-0 items-center justify-center rounded-full bg-primary text-primary-content">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="size-[0.525rem] shrink-0" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                  </svg>
-                </span>
+                <AppIcon name="add" :size="18" class="shrink-0" />
                 Add Expense
               </button>
             </h2>
@@ -134,9 +130,7 @@
                       <p class="whitespace-nowrap text-error">
                         ${{ formatAmount(item.monthly_amount) }}/mo
                       </p>
-                      <svg viewBox="0 0 2 2" class="size-0.5 shrink-0 fill-current" aria-hidden="true">
-                        <circle cx="1" cy="1" r="1" />
-                      </svg>
+                      <span aria-hidden="true">·</span>
                       <p class="truncate">{{ item.description?.trim() || "—" }}</p>
                     </div>
                     <p v-if="debtLabelForBudgetItem(item)" class="mt-1 text-xs text-base-content/70">
@@ -149,7 +143,7 @@
                         class="budget-row-menu__trigger relative block rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-white"
                       >
                         <span class="sr-only">Open options</span>
-                        <EllipsisVerticalIcon class="size-5" aria-hidden="true" />
+                        <AppIcon :name="overflowIcon" :size="20" />
                       </HeadlessMenuButton>
                       <transition
                         enter-active-class="transition ease-out duration-100"
@@ -206,11 +200,7 @@
                 class="btn btn-ghost btn-sm h-auto min-h-0 shrink-0 gap-2 py-1.5 pl-1 pr-2 font-medium normal-case text-base-content hover:bg-base-200"
                 @click="openAddBudget('income')"
               >
-                <span class="flex size-[1.05rem] shrink-0 items-center justify-center rounded-full bg-primary text-primary-content">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="size-[0.525rem] shrink-0" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                  </svg>
-                </span>
+                <AppIcon name="add" :size="18" class="shrink-0" />
                 Add Income
               </button>
             </h2>
@@ -250,9 +240,7 @@
                         >
                           {{ item.income_type === "deduction" ? "-" : "" }}${{ formatAmount(item.monthly_amount) }}/mo
                         </p>
-                        <svg viewBox="0 0 2 2" class="size-0.5 shrink-0 fill-current" aria-hidden="true">
-                          <circle cx="1" cy="1" r="1" />
-                        </svg>
+                        <span aria-hidden="true">·</span>
                         <p class="truncate">{{ item.description?.trim() || "—" }}</p>
                       </div>
                     </div>
@@ -262,7 +250,7 @@
                           class="budget-row-menu__trigger relative block rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-white"
                         >
                           <span class="sr-only">Open options</span>
-                          <EllipsisVerticalIcon class="size-5" aria-hidden="true" />
+                          <AppIcon :name="overflowIcon" :size="20" />
                         </HeadlessMenuButton>
                         <transition
                           enter-active-class="transition ease-out duration-100"
@@ -323,11 +311,7 @@
                 class="btn btn-ghost btn-sm h-auto min-h-0 shrink-0 gap-2 py-1.5 pl-1 pr-2 font-medium normal-case text-base-content hover:bg-base-200"
                 @click="openAddBudget('investment')"
               >
-                <span class="flex size-[1.05rem] shrink-0 items-center justify-center rounded-full bg-primary text-primary-content">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="size-[0.525rem] shrink-0" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                  </svg>
-                </span>
+                <AppIcon name="add" :size="18" class="shrink-0" />
                 Add Investments
               </button>
             </h2>
@@ -364,9 +348,7 @@
                           <p class="whitespace-nowrap text-secondary">
                             ${{ formatAmount(item.monthly_amount) }}/mo
                           </p>
-                          <svg viewBox="0 0 2 2" class="size-0.5 shrink-0 fill-current" aria-hidden="true">
-                            <circle cx="1" cy="1" r="1" />
-                          </svg>
+                          <span aria-hidden="true">·</span>
                           <p class="truncate">{{ item.description?.trim() || "—" }}</p>
                         </div>
                       </div>
@@ -376,7 +358,7 @@
                             class="budget-row-menu__trigger relative block rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-white"
                           >
                             <span class="sr-only">Open options</span>
-                            <EllipsisVerticalIcon class="size-5" aria-hidden="true" />
+                            <AppIcon :name="overflowIcon" :size="20" />
                           </HeadlessMenuButton>
                           <transition
                             enter-active-class="transition ease-out duration-100"
@@ -434,11 +416,7 @@
                 class="btn btn-ghost btn-sm h-auto min-h-0 shrink-0 gap-2 py-1.5 pl-1 pr-2 font-medium normal-case text-base-content hover:bg-base-200"
                 @click="openAddBudget('savings')"
               >
-                <span class="flex size-[1.05rem] shrink-0 items-center justify-center rounded-full bg-primary text-primary-content">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="size-[0.525rem] shrink-0" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                  </svg>
-                </span>
+                <AppIcon name="add" :size="18" class="shrink-0" />
                 Add Savings
               </button>
             </h2>
@@ -475,9 +453,7 @@
                           <p class="whitespace-nowrap text-secondary">
                             ${{ formatAmount(item.monthly_amount) }}/mo
                           </p>
-                          <svg viewBox="0 0 2 2" class="size-0.5 shrink-0 fill-current" aria-hidden="true">
-                            <circle cx="1" cy="1" r="1" />
-                          </svg>
+                          <span aria-hidden="true">·</span>
                           <p class="truncate">{{ item.description?.trim() || "—" }}</p>
                         </div>
                       </div>
@@ -487,7 +463,7 @@
                             class="budget-row-menu__trigger relative block rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-white"
                           >
                             <span class="sr-only">Open options</span>
-                            <EllipsisVerticalIcon class="size-5" aria-hidden="true" />
+                            <AppIcon :name="overflowIcon" :size="20" />
                           </HeadlessMenuButton>
                           <transition
                             enter-active-class="transition ease-out duration-100"
@@ -545,11 +521,7 @@
                 class="btn btn-ghost btn-sm h-auto min-h-0 shrink-0 gap-2 py-1.5 pl-1 pr-2 font-medium normal-case text-base-content hover:bg-base-200"
                 @click="openAddBudget('tax')"
               >
-                <span class="flex size-[1.05rem] shrink-0 items-center justify-center rounded-full bg-primary text-primary-content">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="size-[0.525rem] shrink-0" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                  </svg>
-                </span>
+                <AppIcon name="add" :size="18" class="shrink-0" />
                 Add Tax
               </button>
             </h2>
@@ -584,9 +556,7 @@
                         </div>
                         <div class="mt-1 flex items-center gap-x-2 text-xs/5 text-gray-500 dark:text-gray-400">
                           <p class="whitespace-nowrap text-secondary">-${{ formatAmount(item.monthly_amount) }}/mo</p>
-                          <svg viewBox="0 0 2 2" class="size-0.5 shrink-0 fill-current" aria-hidden="true">
-                            <circle cx="1" cy="1" r="1" />
-                          </svg>
+                          <span aria-hidden="true">·</span>
                           <p class="truncate">{{ item.description?.trim() || "—" }}</p>
                         </div>
                       </div>
@@ -596,7 +566,7 @@
                             class="budget-row-menu__trigger relative block rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-white"
                           >
                             <span class="sr-only">Open options</span>
-                            <EllipsisVerticalIcon class="size-5" aria-hidden="true" />
+                            <AppIcon :name="overflowIcon" :size="20" />
                           </HeadlessMenuButton>
                           <transition
                             enter-active-class="transition ease-out duration-100"
@@ -654,11 +624,7 @@
                 class="btn btn-ghost btn-sm h-auto min-h-0 shrink-0 gap-2 py-1.5 pl-1 pr-2 font-medium normal-case text-base-content hover:bg-base-200"
                 @click="openAddBudget('insurance')"
               >
-                <span class="flex size-[1.05rem] shrink-0 items-center justify-center rounded-full bg-primary text-primary-content">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="size-[0.525rem] shrink-0" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                  </svg>
-                </span>
+                <AppIcon name="add" :size="18" class="shrink-0" />
                 Add Insurance
               </button>
             </h2>
@@ -693,9 +659,7 @@
                         </div>
                         <div class="mt-1 flex items-center gap-x-2 text-xs/5 text-gray-500 dark:text-gray-400">
                           <p class="whitespace-nowrap text-secondary">-${{ formatAmount(item.monthly_amount) }}/mo</p>
-                          <svg viewBox="0 0 2 2" class="size-0.5 shrink-0 fill-current" aria-hidden="true">
-                            <circle cx="1" cy="1" r="1" />
-                          </svg>
+                          <span aria-hidden="true">·</span>
                           <p class="truncate">{{ item.description?.trim() || "—" }}</p>
                         </div>
                       </div>
@@ -705,7 +669,7 @@
                             class="budget-row-menu__trigger relative block rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-white"
                           >
                             <span class="sr-only">Open options</span>
-                            <EllipsisVerticalIcon class="size-5" aria-hidden="true" />
+                            <AppIcon :name="overflowIcon" :size="20" />
                           </HeadlessMenuButton>
                           <transition
                             enter-active-class="transition ease-out duration-100"
@@ -787,11 +751,13 @@
 </template>
 
 <script setup>
-import { EllipsisVerticalIcon } from "@heroicons/vue/20/solid";
+import { Capacitor } from "@capacitor/core";
 import { formatDebtRecordLabel } from "~/utils/budgetDebt";
+import { overflowIconName } from "~/utils/iconRegistry";
 import { isGrossIncomeBudgetLine, isNetIncomeBudgetLine } from "~/utils/budgetChart";
 
 const auth = useAuthStore();
+const overflowIcon = overflowIconName(Capacitor.getPlatform());
 const addBudgetModalRef = ref(null);
 const editBudgetModalRef = ref(null);
 const deleteDialogRef = ref(null);

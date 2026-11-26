@@ -14,7 +14,7 @@
 
       <AppLink to="/spiritual/morning" class="app-card-link today-prayer">
         <span class="today-prayer__icon" aria-hidden="true">
-          <AppIcon name="church" :size="24" :stroke-width="1.75" />
+          <AppIcon name="church" :size="20" :stroke-width="1.75" />
         </span>
         <span>
           <h2>Morning Prayer</h2>
@@ -29,7 +29,7 @@
       <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <AppLink to="/financial" class="app-card-link today-summary today-summary--financial">
           <span class="today-summary__icon is-financial" aria-hidden="true">
-            <AppIcon name="landmark" :size="24" :stroke-width="1.75" />
+            <AppIcon name="landmark" :size="20" :stroke-width="1.75" />
           </span>
           <h2>Money</h2>
           <p v-if="estateLoading" class="mt-2 text-base text-muted">Loading snapshot…</p>
@@ -42,7 +42,7 @@
 
         <AppLink to="/physical" class="app-card-link today-summary today-summary--physical">
           <span class="today-summary__icon is-physical" aria-hidden="true">
-            <AppIcon name="activity" :size="24" :stroke-width="1.75" />
+            <AppIcon name="activity" :size="20" :stroke-width="1.75" />
           </span>
           <h2>Body</h2>
           <p v-if="physicalLoading" class="mt-2 text-base text-muted">Loading today…</p>

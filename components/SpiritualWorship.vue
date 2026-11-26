@@ -66,11 +66,21 @@
 
       <section class="app-card min-w-0 px-4 py-4">
         <h2 class="text-sm font-semibold text-gray-900">Recent weeks</h2>
-        <p class="sl-scripture mt-2">{{ streakText }}</p>
+        <p class="sl-scripture mt-2 inline-flex items-start gap-1.5">
+          <AppIcon name="flame" :size="18" class="mt-0.5 shrink-0" />
+          <span>{{ streakText }}</span>
+        </p>
         <ol class="mt-3 divide-y divide-gray-200">
           <li v-for="week in recentWeeks" :key="week">
             <button type="button" class="worship-row" :class="{ 'is-current': week === editingWeek }" @click="editWeek(week)">
-              <span class="worship-row__mark" :class="markClass(entryFor(week))" aria-hidden="true" />
+              <span class="worship-row__mark" :class="markClass(entryFor(week))" aria-hidden="true">
+                <AppIcon
+                  v-if="attended(entryFor(week)?.attendance)"
+                  name="checkmark-circle"
+                  :size="18"
+                  filled
+                />
+              </span>
               <span class="min-w-0 flex-1">
                 <span class="block text-xs text-gray-700">{{ weekRange(week) }}</span>
                 <span class="block truncate text-sm text-gray-900">{{ rowText(entryFor(week)) }}</span>
@@ -256,8 +266,14 @@ onMounted(() => {
   border: 1px solid var(--sl-muted, #888);
 }
 .worship-row__mark.is-attended {
-  background: var(--sl-violet);
-  border-color: var(--sl-violet);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: transparent;
+  color: var(--sl-violet);
 }
 .worship-row__mark.is-rest {
   background: var(--sl-violet-tint);

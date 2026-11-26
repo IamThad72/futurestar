@@ -18,8 +18,9 @@
           <p class="mt-2 flex-1 text-base leading-6 text-muted">
             {{ area.description }}
           </p>
-          <p class="mt-4 text-base font-semibold text-navy">
-            Open {{ area.name }} →
+          <p class="mt-4 inline-flex items-center gap-1 text-base font-semibold text-navy">
+            Open {{ area.name }}
+            <AppIcon name="chevron-forward" :size="18" />
           </p>
         </AppLink>
       </li>

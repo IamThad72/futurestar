@@ -57,8 +57,8 @@
                     :display-value="foodDisplayValue"
                     @change="foodSearchQuery = $event.target.value"
                   />
-                  <ComboboxButton class="absolute inset-y-0 right-0 flex items-center px-3 text-base-content/60">
-                    <ChevronDownIcon class="size-4" aria-hidden="true" />
+                  <ComboboxButton class="absolute inset-y-0 right-0 flex min-w-11 items-center justify-center px-3 text-base-content/60" aria-label="Show foods">
+                    <AppIcon name="chevron-down" :size="18" />
                   </ComboboxButton>
                   <ComboboxOptions
                     class="absolute z-30 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-base-300 bg-base-100 py-1 shadow-lg"
@@ -655,7 +655,6 @@
 
 <script setup>
 import { Combobox, ComboboxButton, ComboboxInput, ComboboxOption, ComboboxOptions } from "@headlessui/vue";
-import { ChevronDownIcon } from "@heroicons/vue/24/outline";
 import { finishBarcodeScan, releaseBarcodeHardware } from "~/utils/barcodeScan";
 import { parseFetchError } from "~/utils/parseFetchError";
 import {

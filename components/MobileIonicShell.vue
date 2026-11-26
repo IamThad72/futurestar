@@ -45,9 +45,7 @@
                 v-else
                 class="mobile-user-btn__fallback"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                </svg>
+                <AppIcon name="person" :size="20" />
               </span>
             </button>
           </ion-buttons>
@@ -81,7 +79,7 @@
           >
             <span class="mobile-area-bar__pill">
               <span class="mobile-area-bar__icon" :class="link.pillar ? `is-${link.pillar}` : 'is-neutral'">
-                <AppIcon :name="link.icon" :size="24" :stroke-width="1.75" />
+                <AppIcon :name="link.icon" :size="26" :filled="link.current" :stroke-width="1.75" />
               </span>
               <span class="mobile-area-bar__label">{{ link.name }}</span>
             </span>
