@@ -453,7 +453,7 @@ onMounted(() => {
   background: var(--sl-violet, #6d28d9);
 }
 .plan-text {
-  font-family: "Fraunces", ui-serif, Georgia, serif;
+  font-family: "Fraunces Variable", ui-serif, Georgia, serif;
   color: var(--sl-ink, inherit);
   font-size: 1.05rem;
   line-height: 1.75;

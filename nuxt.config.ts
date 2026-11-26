@@ -22,14 +22,6 @@ export default defineNuxtConfig({
         { name: "theme-color", content: "#0F1621", media: "(prefers-color-scheme: dark)" },
         { name: "color-scheme", content: "light dark" },
       ],
-      link: [
-        { rel: "preconnect", href: "https://fonts.googleapis.com" },
-        { rel: "preconnect", href: "https://fonts.gstatic.com", crossorigin: "" },
-        {
-          rel: "stylesheet",
-          href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap",
-        },
-      ],
       script: [
         {
           key: "sacred-ledger-theme",
@@ -80,7 +72,7 @@ export default defineNuxtConfig({
   },
 
   // Global CSS (Tailwind + daisyUI). Ionic styles are added by @nuxtjs/ionic.
-  css: ["~/assets/css/main.css"],
+  css: ["~/assets/css/fonts.css", "~/assets/css/main.css"],
 
   modules: ["@pinia/nuxt", "nuxt-headlessui", "@nuxtjs/ionic"],
 
