@@ -108,7 +108,7 @@
               </template>
               <template v-else>
                 <button type="button" class="training-chip btn btn-ghost btn-xs rounded-full" :disabled="busyId === prayer.prayer_id" @click="act(prayer, 'unarchive')">Restore</button>
-                <button type="button" class="training-chip btn btn-ghost btn-xs rounded-full text-red-700" :disabled="busyId === prayer.prayer_id" @click="remove(prayer)">Delete</button>
+                <button type="button" class="training-chip btn btn-ghost btn-xs rounded-full text-red-700" :disabled="prayerConfirmOpen(busyId)" @click="remove(prayer)">Delete</button>
               </template>
             </div>
           </li>
@@ -121,7 +121,7 @@
 <script setup>
 import { parseFetchError } from "~/utils/parseFetchError";
 import { todayIsoDate } from "~/utils/liturgicalCalendar";
-import { PRAYER_CATEGORIES } from "~/utils/prayerList";
+import { PRAYER_CATEGORIES, prayerConfirmOpen } from "~/utils/prayerList";
 
 const { light } = useHaptics();
 const { confirm: askUser } = useConfirm();
@@ -254,7 +254,7 @@ async function act(prayer, action) {
 }
 
 async function remove(prayer) {
-  if (busyId.value === prayer.prayer_id) return;
+  if (prayerConfirmOpen(busyId.value)) return;
   busyId.value = prayer.prayer_id;
   const ok = await askUser({
     header: "Delete prayer?",

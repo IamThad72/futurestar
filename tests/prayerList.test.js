@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parsePrayerInput, prayerView, PRAYER_CATEGORIES } from "../utils/prayerList.js";
+import { parsePrayerInput, prayerConfirmOpen, prayerView, PRAYER_CATEGORIES } from "../utils/prayerList.js";
 
 test("a request needs a title; optional fields become null when blank", () => {
   assert.equal(parsePrayerInput({ title: "  " }, { requireTitle: true }).error, "Give the request a short title.");
@@ -21,6 +21,14 @@ test("categories come from the list and dates must be ISO", () => {
 
 test("edits only return the fields sent", () => {
   assert.deepEqual(parsePrayerInput({ notes: "update" }).value, { notes: "update" });
+});
+
+test("one confirm covers the whole prayer list", () => {
+  assert.equal(prayerConfirmOpen(0), false);
+  assert.equal(prayerConfirmOpen(null), false);
+  assert.equal(prayerConfirmOpen(undefined), false);
+  assert.equal(prayerConfirmOpen(4), true);
+  assert.equal(prayerConfirmOpen(9), true);
 });
 
 test("views: archived wins, then answered, else active", () => {

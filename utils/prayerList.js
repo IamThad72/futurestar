@@ -39,6 +39,15 @@ export function parsePrayerInput(input, { requireTitle = false } = {}) {
   return { value, error: "" };
 }
 
+/**
+ * True when any row is already confirming a delete. The id is list-wide:
+ * a different prayer must not open a second alert. Zero means the list is idle.
+ */
+export function prayerConfirmOpen(busyId) {
+  const id = Number(busyId);
+  return Number.isFinite(id) && id !== 0;
+}
+
 /** Which view a request belongs to. */
 export function prayerView(row) {
   if (row?.archived_at) return "archived";
