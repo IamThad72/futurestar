@@ -1177,15 +1177,18 @@ async function clearMonthAssignment(year, month) {
 }
 
 async function deleteSelectedBudget() {
-  if (!selectedBudget.value || selectedBudget.value.is_active) return;
+  if (!selectedBudget.value || selectedBudget.value.is_active || budgetBusy.value) return;
+  budgetBusy.value = true;
   const ok = await askUser({
     header: "Delete budget?",
     message: `Delete budget “${selectedBudget.value.name}”? Its plan lines and map will be removed.`,
     confirmText: "Delete",
     destructive: true,
   });
-  if (!ok) return;
-  budgetBusy.value = true;
+  if (!ok) {
+    budgetBusy.value = false;
+    return;
+  }
   error.value = "";
   try {
     await $fetch(`/api/budgets/${selectedBudget.value.budget_id}`, { method: "DELETE" });

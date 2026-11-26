@@ -254,14 +254,18 @@ async function act(prayer, action) {
 }
 
 async function remove(prayer) {
+  if (busyId.value === prayer.prayer_id) return;
+  busyId.value = prayer.prayer_id;
   const ok = await askUser({
     header: "Delete prayer?",
     message: `Delete "${prayer.title}" for good?`,
     confirmText: "Delete",
     destructive: true,
   });
-  if (!ok) return;
-  busyId.value = prayer.prayer_id;
+  if (!ok) {
+    busyId.value = 0;
+    return;
+  }
   try {
     await $fetch(`/api/spiritual/prayers/${prayer.prayer_id}`, { method: "DELETE" });
     await load();

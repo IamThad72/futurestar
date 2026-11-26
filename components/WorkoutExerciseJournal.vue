@@ -628,16 +628,23 @@ async function saveSession() {
   }
 }
 
+let deletePromptOpen = false;
+
 async function deleteSession() {
-  if (!draft.value.sessionId) return;
+  if (!draft.value.sessionId || deletePromptOpen) return;
+  deletePromptOpen = true;
+  saving.value = true;
   const ok = await askUser({
     header: "Delete session?",
     message: "Delete this journal session? This cannot be undone.",
     confirmText: "Delete",
     destructive: true,
   });
-  if (!ok) return;
-  saving.value = true;
+  if (!ok) {
+    deletePromptOpen = false;
+    saving.value = false;
+    return;
+  }
   saveError.value = "";
   try {
     await $fetch(`/api/physical/journal/${draft.value.sessionId}`, { method: "DELETE" });
@@ -646,6 +653,7 @@ async function deleteSession() {
   } catch (error) {
     saveError.value = parseFetchError(error, "Could not delete this session.");
   } finally {
+    deletePromptOpen = false;
     saving.value = false;
   }
 }

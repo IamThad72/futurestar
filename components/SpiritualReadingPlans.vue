@@ -415,13 +415,20 @@ async function planAction(action) {
 }
 
 async function confirmRestart() {
+  if (busy.value) return;
+  busy.value = true;
   const ok = await askUser({
     header: "Start again?",
     message: "Start this plan again from day 1 today? Your marks for this plan will be cleared.",
     confirmText: "Start again",
     destructive: true,
   });
-  if (ok) void planAction("restart");
+  if (!ok) {
+    busy.value = false;
+    return;
+  }
+  busy.value = false;
+  void planAction("restart");
 }
 
 watch(

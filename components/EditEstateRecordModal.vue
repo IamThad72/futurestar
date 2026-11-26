@@ -274,24 +274,30 @@ async function saveEdit() {
 }
 
 async function deleteRecord() {
-  if (!editRecord.value || !editRecordType.value) return;
+  if (!editRecord.value || !editRecordType.value || deleteSaving.value) return;
+  deleteSaving.value = true;
   const ok = await askUser({
     header: "Delete record?",
     message: "Are you sure you want to delete this record? This cannot be undone.",
     confirmText: "Delete",
     destructive: true,
   });
-  if (!ok) return;
+  if (!ok) {
+    deleteSaving.value = false;
+    return;
+  }
 
   const type = editRecordType.value;
   const idKey = ID_KEY_MAP[type];
   const id = editRecord.value[idKey];
-  if (!id) return;
+  if (!id) {
+    deleteSaving.value = false;
+    return;
+  }
 
   const path = API_PATH_MAP[type];
   const url = `/api/records/${path}/${id}`;
 
-  deleteSaving.value = true;
   error.value = "";
   try {
     await $fetch(url, { method: "DELETE" });

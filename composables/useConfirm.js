@@ -1,17 +1,10 @@
 import { buildConfirmCopy } from "~/utils/confirmCopy";
 
-function escapeHtml(text) {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
 /**
  * In-app confirm. Returns true only when the person chooses the confirm
  * button. Cancel, the backdrop, and the Android back button resolve false.
- * If Ionic's alert controller is unavailable, falls back to window.confirm.
+ * Ionic renders header and message as plain text, so the strings are not
+ * HTML-escaped. If the alert cannot be shown, the action is declined.
  */
 export function useConfirm() {
   const { warning } = useHaptics();
@@ -24,11 +17,11 @@ export function useConfirm() {
     try {
       const { alertController } = await import("@ionic/vue");
       if (typeof alertController?.create !== "function") {
-        throw new Error("alertController unavailable");
+        return false;
       }
       const alert = await alertController.create({
-        header: escapeHtml(copy.header),
-        message: copy.message ? escapeHtml(copy.message) : undefined,
+        header: copy.header,
+        message: copy.message || undefined,
         backdropDismiss: true,
         buttons: [
           { text: copy.cancelText, role: "cancel" },
@@ -43,9 +36,6 @@ export function useConfirm() {
       const role = detail?.role;
       return role === "confirm" || role === "destructive";
     } catch {
-      if (typeof window !== "undefined" && typeof window.confirm === "function") {
-        return window.confirm(copy.message || copy.header);
-      }
       return false;
     }
   }

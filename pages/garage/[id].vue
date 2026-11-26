@@ -402,15 +402,18 @@ async function saveService() {
 }
 
 async function deleteService(svc) {
-  if (!svc?.vsr_id) return;
+  if (!svc?.vsr_id || deleteSavingId.value != null) return;
+  deleteSavingId.value = svc.vsr_id;
   const ok = await askUser({
     header: "Delete service?",
     message: `Delete "${svc.service_name}"?`,
     confirmText: "Delete",
     destructive: true,
   });
-  if (!ok) return;
-  deleteSavingId.value = svc.vsr_id;
+  if (!ok) {
+    deleteSavingId.value = null;
+    return;
+  }
   try {
     await $fetch(`/api/garage/services/${svc.vsr_id}`, { method: "DELETE" });
     await loadDetail();
