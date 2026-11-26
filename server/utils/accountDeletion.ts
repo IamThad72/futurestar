@@ -16,6 +16,7 @@ import {
   REAUTH_WINDOW_MS,
   REOWN_HOUSEHOLD_TAX,
   REOWN_NAME_COLUMNS,
+  renamedSourceName,
   householdKeyForGroup,
   isSafeIdentifier,
 } from "~/utils/accountDeletionPolicy.js";
@@ -210,21 +211,35 @@ async function reownGroupRows(
   const quoted = quoteIdent(table);
   const nameColumn = REOWN_NAME_COLUMNS[table as keyof typeof REOWN_NAME_COLUMNS];
   if (nameColumn && isSafeIdentifier(nameColumn)) {
-    const column = quoteIdent(nameColumn);
-    await client.query(
-      `UPDATE ${quoted} AS src
-       SET user_id = $1
-       WHERE src.user_id = $2
-         AND src.group_id = $3
-         AND NOT EXISTS (
-           SELECT 1
-           FROM ${quoted} AS existing
-           WHERE existing.user_id = $1
-             AND COALESCE(existing.group_id, 0) = COALESCE(src.group_id, 0)
-             AND LOWER(existing.${column}) = LOWER(src.${column})
-         )`,
-      [newOwnerId, userId, groupId],
+    const leaving = await client.query(
+      `SELECT source_id, name
+       FROM ${quoted}
+       WHERE user_id = $1 AND group_id = $2
+       ORDER BY source_id`,
+      [userId, groupId],
     );
+    const held = await client.query(
+      `SELECT name
+       FROM ${quoted}
+       WHERE user_id = $1 AND COALESCE(group_id, 0) = $2`,
+      [newOwnerId, groupId],
+    );
+    const taken = held.rows.map((row) => String(row.name ?? ""));
+    for (const row of leaving.rows) {
+      let nextName: string;
+      try {
+        nextName = renamedSourceName(String(row.name ?? ""), taken);
+      } catch {
+        throw createError({ statusCode: 500, statusMessage: "Could not delete the account." });
+      }
+      taken.push(nextName);
+      await client.query(
+        `UPDATE ${quoted}
+         SET user_id = $1, name = $2
+         WHERE source_id = $3 AND user_id = $4`,
+        [newOwnerId, nextName, Number(row.source_id), userId],
+      );
+    }
     return;
   }
   await client.query(

@@ -128,9 +128,12 @@ export class AccountDeletionDb {
       return this.memberList(params);
     }
     if (text.includes("SELECT storage_path, storage_backend")) return this.estateFiles(params);
+    if (text.startsWith("SELECT source_id, name")) return this.leavingSources(text, params);
+    if (text.startsWith("SELECT name FROM")) return this.ownerSourceNames(text, params);
     if (text.startsWith("UPDATE groups SET created_by")) return this.updateCreatedBy(params);
     if (text.includes("SET role = 'owner'")) return this.setRole(params, "owner");
     if (text.includes("SET role = 'member'")) return this.setRole(params, "member");
+    if (text.startsWith("UPDATE") && text.includes("source_id =")) return this.renameSource(text, params);
     if (text.startsWith("UPDATE") && text.includes("NOT EXISTS")) return this.reownSkippingNames(text, params);
     if (text.startsWith("UPDATE") && text.includes("household_key")) return this.reownByHouseholdKey(text, params);
     if (text.startsWith("UPDATE") && text.includes("SET user_id")) return this.reownByGroup(text, params);
@@ -287,6 +290,47 @@ export class AccountDeletionDb {
     return result([], count);
   }
 
+  private sourceTable(text: string) {
+    const match = /FROM "?([a-z_][a-z0-9_]*)"?/.exec(text);
+    if (!match) throw new Error(`Could not read source table: ${text}`);
+    return match[1];
+  }
+
+  private leavingSources(text: string, params: unknown[]) {
+    const table = this.sourceTable(text);
+    const userId = Number(params[0]);
+    const groupId = Number(params[1]);
+    const rows = (this.rows[table] ?? [])
+      .filter((row) => Number(row.user_id) === userId && Number(row.group_id) === groupId)
+      .sort((a, b) => Number(a.source_id) - Number(b.source_id));
+    return result(rows.map((row) => ({ source_id: row.source_id, name: row.name })));
+  }
+
+  private ownerSourceNames(text: string, params: unknown[]) {
+    const table = this.sourceTable(text);
+    const userId = Number(params[0]);
+    const groupId = Number(params[1]);
+    const rows = (this.rows[table] ?? []).filter(
+      (row) => Number(row.user_id) === userId && Number(row.group_id ?? 0) === groupId,
+    );
+    return result(rows.map((row) => ({ name: row.name })));
+  }
+
+  private renameSource(text: string, params: unknown[]) {
+    const table = this.tableName(text);
+    const newOwner = Number(params[0]);
+    const name = String(params[1] ?? "");
+    const sourceId = Number(params[2]);
+    const oldOwner = Number(params[3]);
+    const row = (this.rows[table] ?? []).find(
+      (item) => Number(item.source_id) === sourceId && Number(item.user_id) === oldOwner,
+    );
+    if (!row) return result([], 0);
+    row.user_id = newOwner;
+    row.name = name;
+    return result([], 1);
+  }
+
   private reownSkippingNames(text: string, params: unknown[]) {
     const table = this.tableName(text);
     const [newOwner, oldOwner, groupId] = params.map(Number);
@@ -371,6 +415,12 @@ export class AccountDeletionDb {
     this.sessions = this.sessions.filter((item) => item.user_id !== userId);
     this.members = this.members.filter((item) => item.user_id !== userId);
     for (const [table, rows] of Object.entries(this.rows)) {
+      if (table === "record_shares") {
+        this.rows[table] = rows.filter(
+          (row) => Number(row.owner_user_id) !== userId && Number(row.shared_user_id) !== userId,
+        );
+        continue;
+      }
       this.rows[table] = rows.filter((row) => Number(row.user_id) !== userId);
     }
     return result([], 1);

@@ -3,10 +3,13 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { planAccountDeletion } from "../utils/accountDeletionPlan.js";
 import {
+  FORMER_MEMBER_SUFFIX,
   HOUSEHOLD_DELETION_POLICY,
   REOWN_HOUSEHOLD_TAX,
+  SOURCE_NAME_MAX_LENGTH,
   householdKeyForGroup,
   isSafeIdentifier,
+  renamedSourceName,
 } from "../utils/accountDeletionPolicy.js";
 import {
   ACCOUNT_DELETED_NOTICE,
@@ -150,6 +153,29 @@ test("Date join times sort the same way as ISO strings", () => {
     { ...earlyMember, created_at: new Date("2024-02-01T00:00:00.000Z") },
   ], { createdBy: 1 });
   assert.equal(plan.newOwnerId, 2);
+});
+
+test("a colliding source is renamed and kept, and the same inputs stay the same", () => {
+  assert.equal(renamedSourceName("Bonus", ["Pay"]), "Bonus");
+  assert.equal(renamedSourceName("Pay", ["Pay"]), `Pay${FORMER_MEMBER_SUFFIX}`);
+  assert.equal(renamedSourceName("pay", ["Pay"]), `pay${FORMER_MEMBER_SUFFIX}`);
+  const first = renamedSourceName("Pay", ["Pay"]);
+  assert.equal(renamedSourceName("Pay", ["Pay"]), first);
+
+  const repeated = renamedSourceName("Pay", ["Pay", `Pay${FORMER_MEMBER_SUFFIX}`]);
+  assert.equal(repeated, `Pay${FORMER_MEMBER_SUFFIX} 2`);
+  assert.equal(renamedSourceName("Pay", ["Pay", `Pay${FORMER_MEMBER_SUFFIX}`]), repeated);
+  assert.equal(
+    renamedSourceName("Pay", ["Pay", `Pay${FORMER_MEMBER_SUFFIX}`, `Pay${FORMER_MEMBER_SUFFIX} 2`]),
+    `Pay${FORMER_MEMBER_SUFFIX} 3`,
+  );
+
+  const long = "P".repeat(SOURCE_NAME_MAX_LENGTH);
+  const renamed = renamedSourceName(long, [long]);
+  assert.equal(renamed.length, SOURCE_NAME_MAX_LENGTH);
+  assert.equal(renamed.endsWith(FORMER_MEMBER_SUFFIX), true);
+  assert.notEqual(renamed.toLowerCase(), long.toLowerCase());
+  assert.equal(renamedSourceName(long, [long]), renamed);
 });
 
 test("the default household policy is keep-shared and tax rows are included", () => {

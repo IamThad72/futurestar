@@ -1,13 +1,17 @@
 /**
  * Household rule for account deletion. This is the only place to change it.
  *
- * keep-shared (proposed default, pending the owner's policy decisions):
+ * keep-shared (owner decision, Nov 26, 2026):
  *   Money rows that already belong to a household stay with that household.
  *   A household row is a row in a GROUP_SHARED_TABLES table (server/utils/group.ts)
  *   whose group_id is set, plus the household tax tables below when
  *   REOWN_HOUSEHOLD_TAX is true. Those rows are given to the person who remains.
  *   Rows with no group, and everything private to the person (Faith, Body,
  *   profile, sessions, sign-in), are erased.
+ *   A same-name income, investment, or savings source is kept and renamed.
+ *   record_shares that name the leaving person are deleted with that person.
+ *   When the last person leaves, household rows are deleted, including rows
+ *   that still name someone who already left. They are not made private.
  *
  * The server refuses to delete an account if HOUSEHOLD_DELETION_POLICY is not
  * "keep-shared", so a renamed policy cannot silently wipe a household.
@@ -17,7 +21,7 @@
 
 export const HOUSEHOLD_DELETION_POLICY = "keep-shared";
 
-/** Also hand household tax rows to the person who remains. They are money records, but they are not in GROUP_SHARED_TABLES. */
+/** Household tax profiles and deduction overrides stay with the household. Owner decision, Nov 26, 2026. */
 export const REOWN_HOUSEHOLD_TAX = true;
 
 /**
@@ -31,15 +35,47 @@ export const HOUSEHOLD_TAX_TABLES = [
 ];
 
 /**
- * Unique on (user_id, group, lower(name)). A shared name stays with the
- * person who remains; the leaving copy is erased with their account.
- * Linked transactions use ON DELETE SET NULL, so they keep the remaining source.
+ * Unique on (user_id, group, lower(name)). The name column is TEXT, so the
+ * table has no declared length. Renames are capped at SOURCE_NAME_MAX_LENGTH
+ * so the unique index stays a normal btree key. A colliding leaving copy is
+ * kept and renamed. Rows that point at its source_id stay pointed there.
  */
 export const REOWN_NAME_COLUMNS = {
   income_sources: "name",
   investment_sources: "name",
   savings_sources: "name",
 };
+
+/** First rename of a colliding source. Later collisions add " 2", " 3", and so on. */
+export const FORMER_MEMBER_SUFFIX = " (former member)";
+
+/** Application cap for a renamed source. The column itself is unbounded TEXT. */
+export const SOURCE_NAME_MAX_LENGTH = 200;
+
+function clipSourceName(original, tail) {
+  const room = SOURCE_NAME_MAX_LENGTH - tail.length;
+  const head = room > 0 ? String(original).slice(0, room) : "";
+  const name = `${head}${tail}`;
+  return name.length <= SOURCE_NAME_MAX_LENGTH ? name : name.slice(0, SOURCE_NAME_MAX_LENGTH);
+}
+
+/**
+ * Name to store when handing a source to the person who remains.
+ * `takenNames` are the names that person already has in this household,
+ * plus names already assigned to earlier leaving rows in this same pass.
+ * The same inputs always return the same name. A name that is not taken is unchanged.
+ */
+export function renamedSourceName(originalName, takenNames) {
+  const original = String(originalName ?? "");
+  const taken = new Set((takenNames ?? []).map((name) => String(name).toLowerCase()));
+  if (!taken.has(original.toLowerCase())) return original;
+  for (let n = 1; n <= 9999; n += 1) {
+    const tail = n === 1 ? FORMER_MEMBER_SUFFIX : `${FORMER_MEMBER_SUFFIX} ${n}`;
+    const candidate = clipSourceName(original, tail);
+    if (!taken.has(candidate.toLowerCase())) return candidate;
+  }
+  throw new Error("Could not rename a shared source.");
+}
 
 /**
  * When the last person leaves, delete household rows children-first so a

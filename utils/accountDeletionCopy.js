@@ -9,7 +9,7 @@ export const ERASED_ON_DELETE = [
 ];
 
 export const KEPT_ON_DELETE =
-  "Shared household money records stay with the household for as long as that household keeps them. If other people remain, those shared records are kept for them. If you are the owner and others remain, an owner who is already in the household is chosen before anyone else, and otherwise the person who joined next becomes the owner. If you are the only person, the household is deleted too.";
+  "Shared household money stays with the household. Household tax profiles and deduction overrides stay too. If one of your shared income, investment, or savings sources has the same name as one a remaining person already has, your copy is kept and renamed with \" (former member)\". If that name is taken, a number is added, such as \" (former member) 2\". Transactions stay linked to your renamed source. Sharing links that name you are removed. If other people remain, those shared records are kept for them. If you are the owner and others remain, an owner who is already in the household is chosen before anyone else, and otherwise the person who joined next becomes the owner. If you are the only person, the household is deleted, including household rows that still name someone who already left. Those rows are not turned into private records.";
 
 export const RETENTION_ON_DELETE =
   "Your private records are not kept after deletion. The sign-in id is kept so that sign-in cannot open a new account. If removing the sign-in does not finish immediately, a daily job retries until it is gone. Your email is not stored on that marker.";

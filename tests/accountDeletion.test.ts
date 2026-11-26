@@ -251,7 +251,13 @@ describe("household deletion", () => {
       { budget_id: 1, user_id: 1, group_id: 10, name: "Shared" },
       { budget_id: 2, user_id: 2, group_id: null, name: "Solo" },
     );
-    db.rows.budget_transactions.push({ transaction_id: 1, user_id: 2, group_id: 10, amount: 25 });
+    db.rows.budget_transactions.push({
+      transaction_id: 1,
+      user_id: 2,
+      group_id: 10,
+      amount: 25,
+      income_source_id: 2,
+    });
     db.rows.estate_documents.push(
       { doc_id: 1, user_id: 2, group_id: 10, storage_path: "group/keep", storage_backend: "supabase", original_filename: "secret-will.pdf" },
       { doc_id: 2, user_id: 2, group_id: null, storage_path: "solo/remove", storage_backend: "disk", original_filename: "secret-will.pdf" },
@@ -261,6 +267,15 @@ describe("household deletion", () => {
       { source_id: 2, user_id: 2, group_id: 10, name: "Pay" },
       { source_id: 3, user_id: 2, group_id: 10, name: "Bonus" },
     );
+    db.rows.record_shares = [
+      {
+        share_id: 1,
+        record_type: "income_source",
+        record_id: 2,
+        owner_user_id: 2,
+        shared_user_id: 1,
+      },
+    ];
     db.rows.prayer_requests.push(
       { prayer_id: 1, user_id: 1, title: "Owner prayer" },
       { prayer_id: 2, user_id: 2, title: "Member prayer" },
@@ -286,11 +301,21 @@ describe("household deletion", () => {
     expect(db.members.map((item) => item.user_id)).toEqual([1]);
     expect(db.members[0]?.role).toBe("owner");
     expect(db.rows.budgets.map((item) => item.budget_id)).toEqual([1]);
-    expect(db.rows.budget_transactions[0]).toMatchObject({ user_id: 1, group_id: 10, amount: 25 });
+    expect(db.rows.budget_transactions[0]).toMatchObject({
+      user_id: 1,
+      group_id: 10,
+      amount: 25,
+      income_source_id: 2,
+    });
     expect(db.rows.estate_documents).toEqual([
       expect.objectContaining({ storage_path: "group/keep", user_id: 1, group_id: 10 }),
     ]);
-    expect(db.rows.income_sources.map((item) => `${item.user_id}:${item.name}`).sort()).toEqual(["1:Bonus", "1:Pay"]);
+    expect(db.rows.income_sources.map((item) => `${item.source_id}:${item.user_id}:${item.name}`).sort()).toEqual([
+      "1:1:Pay",
+      "2:1:Pay (former member)",
+      "3:1:Bonus",
+    ]);
+    expect(db.rows.record_shares).toEqual([]);
     expect(db.rows.tax_household_profiles[0]).toMatchObject({ user_id: 1, group_id: 10, household_key: "g:10" });
     expect(db.rows.tax_deduction_overrides[0]).toMatchObject({ user_id: 1, household_key: "g:10" });
     expect(db.rows.prayer_requests.map((item) => item.user_id)).toEqual([1]);
@@ -300,6 +325,30 @@ describe("household deletion", () => {
     const logged = vi.mocked(console.error).mock.calls.map((args) => JSON.stringify(args)).join(" ");
     expect(logged).not.toContain("secret-will.pdf");
     expect(logged).not.toContain("member@example.com");
+  });
+
+  it("numbers the renamed source when that name is already taken and keeps the transaction link", async () => {
+    const db = install(new AccountDeletionDb());
+    household(db);
+    db.rows.income_sources.push({
+      source_id: 4,
+      user_id: 1,
+      group_id: 10,
+      name: "Pay (former member)",
+    });
+
+    await call(db, {
+      cookie: "session-member",
+      body: { confirmEmail: "member@example.com", password: PASSWORD },
+    });
+
+    expect(db.rows.income_sources.find((item) => item.source_id === 2)).toMatchObject({
+      user_id: 1,
+      name: "Pay (former member) 2",
+    });
+    expect(db.rows.income_sources.find((item) => item.source_id === 1)?.name).toBe("Pay");
+    expect(db.rows.budget_transactions[0]?.income_source_id).toBe(2);
+    expect(db.rows.record_shares).toEqual([]);
   });
 
   it("promotes the other member when the owner leaves", async () => {
@@ -346,6 +395,7 @@ describe("household deletion", () => {
     expect(db.groups).toEqual([]);
     expect(db.members).toEqual([]);
     expect(db.rows.budgets).toEqual([expect.objectContaining({ budget_id: 2, user_id: 2, group_id: null, name: "Solo" })]);
+    expect(db.rows.budgets.find((item) => item.budget_id === 9)).toBeUndefined();
     expect(db.rows.budget_transactions).toEqual([]);
     expect(db.rows.estate_documents).toEqual([
       expect.objectContaining({ storage_path: "solo/remove", user_id: 2, group_id: null }),
