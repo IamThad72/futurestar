@@ -1,8 +1,8 @@
 /** Section-home headings that say the same thing as the short tab title. */
 const HOME_HEADING_ALIASES = {
-  "/financial": "financial health",
-  "/spiritual": "spiritual health",
-  "/physical": "physical health",
+  "/financial": "money",
+  "/spiritual": "faith",
+  "/physical": "body",
 };
 
 function normalizeTitle(text) {

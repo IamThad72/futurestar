@@ -1,8 +1,8 @@
-/** Financial section destinations (header Financial + in-section tabs). */
+/** Money destinations (sidebar and in-section links). */
 
 export const FINANCIAL_NAV_TABS = [
   {
-    name: "Financial Home",
+    name: "Money home",
     href: "/financial",
     icon: "wallet",
     description: "Overview of your financial health and tools.",

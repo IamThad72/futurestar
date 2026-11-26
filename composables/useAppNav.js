@@ -59,9 +59,9 @@ export function useAppNav() {
   });
 
   const sectionLabel = computed(() => {
-    if (isFinancialSection.value) return "Financial";
-    if (isPhysicalSection.value) return "Physical";
-    if (isSpiritualSection.value) return "Spiritual";
+    if (isFinancialSection.value) return "Money";
+    if (isPhysicalSection.value) return "Body";
+    if (isSpiritualSection.value) return "Faith";
     return "Future Star";
   });
 

@@ -49,6 +49,6 @@ watch(
 );
 
 useHead(() => ({
-  title: section.value?.name || "Physical Health",
+  title: section.value?.name || "Body",
 }));
 </script>

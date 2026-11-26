@@ -14,7 +14,7 @@
       v-else-if="!auth.user"
       class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
     >
-      You must be logged in to use Spiritual Health.
+      You must be logged in to use Faith.
     </div>
     <template v-else>
       <SpiritualMorningPrayer v-if="section.slug === 'morning'" />
@@ -64,6 +64,6 @@ watch(
 );
 
 useHead(() => ({
-  title: section.value?.name || "Spiritual Health",
+  title: section.value?.name || "Faith",
 }));
 </script>

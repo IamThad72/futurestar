@@ -3,7 +3,7 @@ import { financialSidebarGroups, financialTabsForPath } from "~/utils/financialN
 
 const auth = useAuthStore();
 
-useHead({ title: "Financial Health" });
+useHead({ title: "Money" });
 const { loading: estateLoading, loadError: estateLoadError, estateStats, loadSummary } =
   useEstateSummary();
 const {
@@ -94,13 +94,13 @@ watch([expenseMonth, expenseYear], () => {
     v-else-if="!auth.user"
     class="app-page rounded-lg border border-warning/30 bg-warning/10 text-base text-base-content"
   >
-    You must be logged in to use Financial Home.
+    You must be logged in to use Money.
   </div>
 
   <section v-else class="app-page overflow-x-hidden">
     <header class="mb-6 sm:mb-8">
       <h1 class="text-ink">
-        Financial Health
+        Money
       </h1>
       <p class="mt-2 text-base leading-6 text-muted">
         Steward cash, accounts, and tax in one place. The snapshot is the current picture.
