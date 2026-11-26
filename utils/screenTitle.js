@@ -11,6 +11,8 @@ export function screenTitleForRoute(path, query = {}, hash = "", tradition = "")
   if (p.startsWith("/reset-password")) return "Reset password";
   if (p === "/delete-account") return "Delete account";
   if (p === "/account") return "You";
+  if (p === "/privacy") return "Privacy policy";
+  if (p === "/terms") return "Terms of service";
   if (p.startsWith("/garage/") && p !== "/garage") return "Vehicle";
 
   const financial = financialTabsForPath(p, query, hash).find((tab) => tab.current);

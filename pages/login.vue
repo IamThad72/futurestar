@@ -99,6 +99,12 @@
         </p>
       </form>
 
+      <p class="mt-6 text-center text-sm text-muted">
+        <AppLink to="/privacy" class="font-semibold text-navy underline underline-offset-2 hover:underline">Privacy</AppLink>
+        <span aria-hidden="true"> · </span>
+        <AppLink to="/terms" class="font-semibold text-navy underline underline-offset-2 hover:underline">Terms</AppLink>
+      </p>
+
       <div
         v-if="error"
         class="mt-6 rounded-md bg-error/10 px-3 py-2 text-sm text-error ring-1 ring-error/20 ring-inset"

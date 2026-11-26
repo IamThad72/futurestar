@@ -32,6 +32,12 @@
       </AppLink>
       to use your tools in each area.
     </p>
+
+    <footer class="mt-10 border-t border-base-300 pt-4 text-center text-sm text-muted">
+      <AppLink to="/privacy" class="font-semibold text-navy underline underline-offset-2 hover:underline">Privacy</AppLink>
+      <span aria-hidden="true"> · </span>
+      <AppLink to="/terms" class="font-semibold text-navy underline underline-offset-2 hover:underline">Terms</AppLink>
+    </footer>
   </section>
 </template>
 
