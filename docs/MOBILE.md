@@ -34,7 +34,7 @@ If tabs still fail after a correct sync, use Chrome **Remote debugging** (`chrom
 
 ## Mobile tab bar
 
-When someone is signed in on a phone (viewport at most 767px) or in the native app, `components/MobileIonicShell.vue` shows a header and a bottom tab bar. The destinations come from `utils/primaryNav.js`. Wider web layouts use a left sidebar for the same five destinations (`composables/useMobileShell.js`). The phone header has no hamburger, star, or avatar. Signed in, it is only the centered screen title. Signed out, a Login button stays on the right. Account Management, Linked Accounts, Faith settings, and Logout live on the You tab. The desktop header still has the brand and the avatar menu.
+When someone is signed in on a phone (viewport at most 767px) or in the native app, `components/MobileIonicShell.vue` shows a header and a bottom tab bar. The destinations come from `utils/primaryNav.js`. Wider web layouts use a left sidebar for the same five destinations (`composables/useMobileShell.js`). The phone header has no hamburger, star, or avatar. Signed in, it is only the centered screen title. Signed out, a Login button stays on the right. The You tab icon is the signed-in profile photo when one is saved on the session, and the person icon when there is none or it fails to load. The You page opens with that photo and name, then Account Management, Linked Accounts, Faith settings, and a full-width Logout button. The desktop header still has the brand and the avatar menu.
 
 Native builds give haptic feedback through `composables/useHaptics.js`: a tick when the tab changes, a light tap when a worship check-in is saved, a prayer is marked answered, or a reading day is marked done, a success pattern when a workout journal session is finished, and a warning before a destructive confirm. Nothing happens on the web. Deletes and discards use an Ionic alert from `composables/useConfirm.js` instead of the browser confirm dialog.
 
@@ -46,7 +46,7 @@ The tab bar is hidden until the person is signed in.
 | Money | `/financial` | evergreen (`--sl-evergreen`) |
 | Faith | `/spiritual` | violet (`--sl-violet`) |
 | Body | `/physical` | ember (`--sl-ember`) |
-| You | `/account` | neutral ink |
+| You | `/account` | profile photo, or neutral ink when there is none |
 
 Money, Faith, and Body stay highlighted for the pages under those areas, not only the exact path in the table. Estate, budget, and the cash-flow tracker are still pages inside Money. They are not tabs.
 

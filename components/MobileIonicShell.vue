@@ -46,7 +46,14 @@
           >
             <span class="mobile-area-bar__pill">
               <span class="mobile-area-bar__icon" :class="link.pillar ? `is-${link.pillar}` : 'is-neutral'">
-                <AppIcon :name="link.icon" :size="26" :filled="link.current" :stroke-width="1.75" />
+                <img
+                  v-if="isYouLink(link) && youAvatarUrl"
+                  :src="youAvatarUrl"
+                  alt=""
+                  class="mobile-area-bar__avatar"
+                  @error="youAvatarFailed = true"
+                />
+                <AppIcon v-else :name="link.icon" :size="26" :filled="link.current" :stroke-width="1.75" />
               </span>
               <span class="mobile-area-bar__label">{{ link.name }}</span>
             </span>
@@ -67,6 +74,7 @@ import {
   IonToolbar,
 } from "@ionic/vue";
 import { isDuplicateScreenTitle } from "~/utils/titleDedupe";
+import { profilePhotoUrl, showProfileAvatar } from "~/utils/profileAvatar";
 
 const {
   auth,
@@ -78,6 +86,20 @@ const {
 const { go } = useAppNavigate();
 const { selection } = useHaptics();
 const showLogin = computed(() => !auth.user && !route.path.startsWith("/login"));
+const youAvatarFailed = ref(false);
+watch(
+  () => auth.user?.profile_photo,
+  () => {
+    youAvatarFailed.value = false;
+  },
+);
+const youAvatarUrl = computed(() =>
+  showProfileAvatar(auth.user, youAvatarFailed.value) ? profilePhotoUrl(auth.user) : "",
+);
+
+function isYouLink(link) {
+  return link?.path === "/account";
+}
 const contentRef = ref(null);
 const mainRef = ref(null);
 const textFieldFocused = ref(false);
