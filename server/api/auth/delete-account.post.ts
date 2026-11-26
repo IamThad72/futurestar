@@ -15,11 +15,12 @@ import {
 import { countUserGroups } from "../../utils/group";
 
 function requestIp(event: Parameters<typeof getRequestIP>[0]) {
-  // Vercel appends the client address, so the first hop is the client there.
-  // On any other host this header can be spoofed and must not be trusted.
-  const forwarded = getHeader(event, "x-forwarded-for");
-  const first = forwarded?.split(",")[0]?.trim();
-  return first || getRequestIP(event) || "unknown";
+  // Vercel overwrites x-forwarded-for and sets x-vercel-forwarded-for to the
+  // client address. Off Vercel, x-forwarded-for is whatever the caller sent.
+  const vercel = getHeader(event, "x-vercel-forwarded-for");
+  const fromVercel = vercel?.split(",")[0]?.trim();
+  if (fromVercel) return fromVercel;
+  return getRequestIP(event) || "unknown";
 }
 
 function bearerToken(event: Parameters<typeof getHeader>[0]) {
@@ -130,7 +131,7 @@ export default defineEventHandler(async (event) => {
       throw error;
     }
     const code = error && typeof error === "object" && "code" in error ? (error as { code?: unknown }).code : null;
-    console.error("[auth/delete-account] failed", { userId, code: code ?? null });
+    console.error("[auth/delete-account] failed", { code: code ?? null });
     await client.end().catch(() => undefined);
     throw createError({ statusCode: 500, statusMessage: "Could not delete the account." });
   }
@@ -145,7 +146,7 @@ export default defineEventHandler(async (event) => {
     try {
       cleanup = await cleanupDeletedAccount(client, outcome);
     } catch {
-      console.error("[auth/delete-account] cleanup failed", { userId: outcome.userId });
+      console.error("[auth/delete-account] cleanup failed", { files: outcome.files.length });
       cleanup = {
         authUserRemoved: false,
         authRemovalPending: Boolean(outcome.supabaseUserId),

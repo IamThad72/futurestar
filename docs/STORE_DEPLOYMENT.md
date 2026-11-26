@@ -109,7 +109,7 @@ Shared household money records stay with the household for as long as the househ
 - [ ] Apple Developer / Google Play developer accounts
 - [ ] App signing (release keystore / App Store Connect certificates)
 - [ ] Privacy policy URL: ________ (required for finance apps and for both stores). No privacy page is in the app yet, so publish the URL before the first upload.
-- [ ] Account deletion URL: ________ (required by Apple). No in-app account-deletion flow is in the app yet, so publish the URL before the first upload.
+- [ ] Account deletion URL: ________ (required by Apple). In the app: You → Privacy and data → Delete account. On the web: `/delete-account`. Publish that URL before the first upload.
 - [ ] Build with Xcode 26 or later (App Store Connect requirement since April 28, 2026)
 - [ ] Target API 36 (Google Play requirement from August 31, 2026). Already set: `compileSdkVersion` and `targetSdkVersion` are 36 in `android/variables.gradle`.
 - [ ] App Store / Play Data safety & privacy questionnaires

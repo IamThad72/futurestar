@@ -2,6 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { hashPassword } from "../server/utils/password";
 import deleteAccount from "../server/api/auth/delete-account.post";
 import accountCleanup from "../server/api/cron/account-cleanup.get";
+import { deletionIpHash, deletionLogRef } from "../server/utils/accountDeletion";
 import { supabasePasswordMatches } from "../server/utils/supabasePassword";
 import { makeEvent } from "./helpers/event";
 import { AccountDeletionDb, type AccountUser } from "./helpers/accountDeletionDb";
@@ -103,8 +104,8 @@ function session(db: AccountDeletionDb, userId: number, token: string) {
   db.sessions.push({ session_token: token, user_id: userId, expires_at: later() });
 }
 
-async function call(db: AccountDeletionDb, options: { cookie?: string; jwt?: string; body?: unknown } = {}) {
-  const headers: Record<string, string> = {};
+async function call(db: AccountDeletionDb, options: { cookie?: string; jwt?: string; body?: unknown; headers?: Record<string, string> } = {}) {
+  const headers: Record<string, string> = { ...(options.headers ?? {}) };
   if (options.cookie) headers.cookie = `session=${options.cookie}`;
   if (options.jwt) headers.authorization = `Bearer ${options.jwt}`;
   const event = makeEvent({
@@ -431,10 +432,14 @@ describe("auth user and storage cleanup", () => {
     expect(Number(db.rows.deleted_auth_users[0]?.attempt_count)).toBeGreaterThan(0);
     expect(db.rows.pending_storage_deletes[0]).toMatchObject({ storage_path: "solo/remove", deleted_at: null });
     const logged = vi.mocked(console.error).mock.calls.map((args) => JSON.stringify(args)).join(" ");
-    expect(logged).toContain("sb-a");
-    expect(logged).toContain("solo/remove");
+    expect(logged).toContain("disk");
+    expect(logged).toContain(deletionLogRef("sb-a"));
+    expect(logged).toContain(deletionLogRef("solo/remove"));
+    expect(logged).not.toContain("sb-a");
+    expect(logged).not.toContain("solo/remove");
     expect(logged).not.toContain("a@example.com");
     expect(logged).not.toContain("secret-will.pdf");
+    expect(logged).not.toContain("userId");
   });
 
   it("succeeds when no service-role client and no Supabase user are configured", async () => {
@@ -610,7 +615,73 @@ describe("throttle, households, and handoff details", () => {
     expect(result.filesRemoved).toBe(1);
     expect(result.authUsersRemoved).toBe(1);
     expect(result.attemptsPurged).toBe(1);
+    const logged = vi.mocked(console.error).mock.calls.map((args) => JSON.stringify(args)).join(" ");
+    expect(logged).not.toContain("solo/remove");
+    expect(logged).not.toContain("sb-old");
     expect(db.rows.pending_storage_deletes[0]?.deleted_at).toBeTruthy();
     expect(db.rows.deleted_auth_users[0]?.auth_deleted_at).toBeTruthy();
+  });
+
+  it("purges only this user's old throttle rows, and the daily job deletes a limited batch", async () => {
+    const db = install(new AccountDeletionDb());
+    db.users.push(user({ user_id: 1, email: "a@example.com" }));
+    session(db, 1, "session-a");
+    const old = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+    db.rows.account_deletion_attempts.push(
+      { user_id: 1, ip_hash: "old-a", succeeded: false, attempted_at: old },
+      { user_id: 2, ip_hash: "old-b", succeeded: false, attempted_at: old },
+    );
+    await expectStatus(
+      call(db, { cookie: "session-a", body: { confirmEmail: "a@example.com", password: "wrong" } }).then((item) => item.value),
+      400,
+    );
+    expect(db.rows.account_deletion_attempts.some((row) => row.user_id === 1 && row.ip_hash === "old-a")).toBe(false);
+    expect(db.rows.account_deletion_attempts.some((row) => row.user_id === 2 && row.ip_hash === "old-b")).toBe(true);
+
+    for (let index = 0; index < 3; index += 1) {
+      db.rows.account_deletion_attempts.push({
+        user_id: 8,
+        ip_hash: `batch-${index}`,
+        succeeded: false,
+        attempted_at: old,
+      });
+    }
+    process.env.CRON_SECRET = "1234567890123456";
+    const result = await (accountCleanup as (event: HandlerEvent) => Promise<{ attemptsPurged: number }>)(makeEvent({
+      method: "GET",
+      url: "/api/cron/account-cleanup",
+      headers: { authorization: "Bearer 1234567890123456" },
+    }));
+    expect(result.attemptsPurged).toBe(4);
+    expect(db.queries.some((query) => query.includes("LIMIT 500"))).toBe(true);
+    expect(db.rows.account_deletion_attempts.every((row) => Date.parse(String(row.attempted_at)) > Date.now() - 24 * 60 * 60 * 1000)).toBe(true);
+  });
+
+  it("reads the Vercel client address and ignores a forwarded header elsewhere", async () => {
+    const db = install(new AccountDeletionDb());
+    db.users.push(user({ user_id: 1, email: "a@example.com" }));
+    session(db, 1, "session-a");
+    await expectStatus(
+      call(db, {
+        cookie: "session-a",
+        body: { confirmEmail: "a@example.com", password: "wrong" },
+        headers: {
+          "x-vercel-forwarded-for": "203.0.113.5, 198.51.100.1",
+          "x-forwarded-for": "198.51.100.9",
+        },
+      }).then((item) => item.value),
+      400,
+    );
+    expect(db.rows.account_deletion_attempts.at(-1)?.ip_hash).toBe(deletionIpHash("203.0.113.5"));
+
+    await expectStatus(
+      call(db, {
+        cookie: "session-a",
+        body: { confirmEmail: "a@example.com", password: "wrong" },
+        headers: { "x-forwarded-for": "198.51.100.9" },
+      }).then((item) => item.value),
+      400,
+    );
+    expect(db.rows.account_deletion_attempts.at(-1)?.ip_hash).toBe(deletionIpHash("unknown"));
   });
 });

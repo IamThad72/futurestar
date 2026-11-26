@@ -97,7 +97,13 @@ export class AccountDeletionDb {
     if (text.includes("COUNT(*)") && text.includes("FROM group_members")) return this.memberCount(params);
     if (text.includes("FROM group_members") && text.includes("group_id <>")) return this.otherHousehold(params);
     if (text.includes("pg_advisory_xact_lock")) return result([]);
-    if (text.startsWith("DELETE FROM account_deletion_attempts")) return this.purgeAttempts();
+    if (text.startsWith("DELETE FROM account_deletion_attempts") && text.includes("user_id =")) {
+      return this.purgeAttempts(Number(params[0]));
+    }
+    if (text.startsWith("DELETE FROM account_deletion_attempts")) {
+      const limit = text.match(/LIMIT (\d+)/);
+      return this.purgeAttempts(undefined, limit ? Number(limit[1]) : undefined);
+    }
     if (text.includes("SELECT role FROM group_members")) return this.memberRole(params);
     if (text.includes("FROM account_deletion_attempts") && text.includes("ip_hash =")) return this.attemptCount("ip", params);
     if (text.includes("FROM account_deletion_attempts") && text.includes("user_id =")) return this.attemptCount("user", params);
@@ -405,13 +411,17 @@ export class AccountDeletionDb {
     }).length;
   }
 
-  private purgeAttempts() {
+  private purgeAttempts(userId?: number, limit?: number) {
     const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-    const before = this.rows.account_deletion_attempts.length;
-    this.rows.account_deletion_attempts = this.rows.account_deletion_attempts.filter((row) => {
+    const rows = this.rows.account_deletion_attempts ?? [];
+    const doomed = rows.filter((row) => {
+      if (userId != null && Number(row.user_id) !== userId) return false;
       const at = Date.parse(String(row.attempted_at ?? ""));
-      return !Number.isFinite(at) || at >= cutoff;
+      return Number.isFinite(at) && at < cutoff;
     });
+    const drop = new Set(limit == null ? doomed : doomed.slice(0, limit));
+    const before = rows.length;
+    this.rows.account_deletion_attempts = rows.filter((row) => !drop.has(row));
     return result([], before - this.rows.account_deletion_attempts.length);
   }
 

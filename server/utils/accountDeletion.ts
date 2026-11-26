@@ -78,6 +78,14 @@ export function deletionIpHash(ip: string) {
   return createHash("sha256").update(`futurestar-delete:${ip || "unknown"}`).digest("hex");
 }
 
+/** Short hash for logs. The raw path or sign-in id is not written. */
+export function deletionLogRef(value: string) {
+  return createHash("sha256").update(`futurestar-delete-log:${value}`).digest("hex").slice(0, 12);
+}
+
+/** How many old throttle rows the daily job deletes in one run. */
+const ATTEMPT_PURGE_BATCH = 500;
+
 /** Email must match. A password is always required. Local hashes are checked here. */
 export function confirmAccountDeletion(input: {
   email: string;
@@ -114,10 +122,12 @@ export async function assertDeletionNotThrottled(client: QueryClient, userId: nu
     throw missingMigrationError(MIGRATION_ATTEMPTS);
   }
   await client.query(`SELECT pg_advisory_xact_lock($1::int)`, [userId]);
-  // Drop rows older than a day here, before the 15-minute count. The cleanup cron is only
-  // once a day, so the throttle must not wait for that job.
+  // This request only drops this person's rows older than a day. The 15-minute
+  // count does not include them anyway. The daily cron sweeps every user.
   await client.query(
-    `DELETE FROM account_deletion_attempts WHERE attempted_at < NOW() - INTERVAL '1 day'`,
+    `DELETE FROM account_deletion_attempts
+     WHERE user_id = $1 AND attempted_at < NOW() - INTERVAL '1 day'`,
+    [userId],
   );
   const byUser = await client.query(
     `SELECT COUNT(*)::int AS failures
@@ -467,16 +477,15 @@ async function retryStorageDeletes(client: QueryClient, outcome: AccountDeletion
     } catch {
       await markStorageAttempt(client, file, false);
       console.error("[auth/delete-account] storage cleanup failed", {
-        userId: outcome.userId,
         backend: file.backend,
-        storagePath: file.storagePath,
+        ref: deletionLogRef(file.storagePath),
       });
     }
   }
 }
 
 /** Removes one Supabase Auth user and records the attempt on the tombstone. */
-export async function retryAuthDeletion(client: QueryClient, supabaseUserId: string, userId: number | null) {
+export async function retryAuthDeletion(client: QueryClient, supabaseUserId: string) {
   const hasTable = await relationExists(client, "public.deleted_auth_users");
   try {
     const admin = getSupabaseAdmin();
@@ -490,8 +499,7 @@ export async function retryAuthDeletion(client: QueryClient, supabaseUserId: str
         );
       }
       console.error("[auth/delete-account] auth user removal pending", {
-        userId,
-        supabaseUserId,
+        ref: deletionLogRef(supabaseUserId),
         reason: "no-service-role",
       });
       return false;
@@ -516,7 +524,9 @@ export async function retryAuthDeletion(client: QueryClient, supabaseUserId: str
         [supabaseUserId],
       ).catch(() => undefined);
     }
-    console.error("[auth/delete-account] auth user removal failed", { userId, supabaseUserId });
+    console.error("[auth/delete-account] auth user removal failed", {
+      ref: deletionLogRef(supabaseUserId),
+    });
     return false;
   }
 }
@@ -551,7 +561,7 @@ export async function runAccountCleanup(client: QueryClient) {
         await markStorageAttempt(client, file, false);
         console.error("[cron/account-cleanup] storage cleanup failed", {
           backend: file.backend,
-          storagePath: file.storagePath,
+          ref: deletionLogRef(file.storagePath),
         });
       }
     }
@@ -566,18 +576,21 @@ export async function runAccountCleanup(client: QueryClient) {
        LIMIT 25`,
     );
     for (const row of pending.rows) {
-      const removed = await retryAuthDeletion(
-        client,
-        String(row.supabase_user_id ?? ""),
-        row.app_user_id == null ? null : Number(row.app_user_id),
-      );
+      const removed = await retryAuthDeletion(client, String(row.supabase_user_id ?? ""));
       if (removed) authUsersRemoved += 1;
     }
   }
 
   if (await relationExists(client, "public.account_deletion_attempts")) {
     const purged = await client.query(
-      `DELETE FROM account_deletion_attempts WHERE attempted_at < NOW() - INTERVAL '1 day'`,
+      `DELETE FROM account_deletion_attempts
+       WHERE attempt_id IN (
+         SELECT attempt_id
+         FROM account_deletion_attempts
+         WHERE attempted_at < NOW() - INTERVAL '1 day'
+         ORDER BY attempted_at
+         LIMIT ${ATTEMPT_PURGE_BATCH}
+       )`,
     );
     attemptsPurged = Number(purged.rowCount ?? 0);
   }
@@ -591,6 +604,6 @@ export async function cleanupDeletedAccount(client: QueryClient, outcome: Accoun
   if (!outcome.supabaseUserId) {
     return { authUserRemoved: false, authRemovalPending: false };
   }
-  const authUserRemoved = await retryAuthDeletion(client, outcome.supabaseUserId, outcome.userId);
+  const authUserRemoved = await retryAuthDeletion(client, outcome.supabaseUserId);
   return { authUserRemoved, authRemovalPending: !authUserRemoved };
 }

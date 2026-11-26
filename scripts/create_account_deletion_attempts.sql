@@ -17,6 +17,9 @@ CREATE INDEX IF NOT EXISTS idx_account_deletion_attempts_user
 CREATE INDEX IF NOT EXISTS idx_account_deletion_attempts_ip
   ON account_deletion_attempts (ip_hash, attempted_at);
 
+CREATE INDEX IF NOT EXISTS idx_account_deletion_attempts_attempted_at
+  ON account_deletion_attempts (attempted_at);
+
 ALTER TABLE account_deletion_attempts ENABLE ROW LEVEL SECURITY;
 
 DO $$
