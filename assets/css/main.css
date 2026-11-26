@@ -1462,6 +1462,15 @@ ion-app .textarea:focus-visible {
 .app-primary-nav__icon.is-neutral,
 .mobile-area-bar__icon.is-neutral { color: currentColor; }
 
+.mobile-area-bar__avatar {
+  display: block;
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  object-fit: cover;
+  background: var(--sl-sunken);
+}
+
 .today-page__greeting { margin-bottom: 1.5rem; }
 
 .today-prayer,
@@ -1623,6 +1632,126 @@ ion-app .textarea:focus-visible {
 .mobile-ionic-shell .investment-edit-btn,
 .mobile-ionic-shell .budget-row-menu__item {
   min-height: 44px;
+}
+
+/* You page: profile card, even icon rows, and a logout that clears the tab bar. */
+.you-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 1rem;
+}
+
+.you-profile__photo,
+.you-profile__fallback {
+  width: 3.5rem;
+  height: 3.5rem;
+  flex: 0 0 3.5rem;
+  border-radius: 9999px;
+}
+
+.you-profile__photo {
+  display: block;
+  object-fit: cover;
+  background: var(--sl-sunken);
+}
+
+.you-profile__fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--sl-primary);
+  color: var(--color-primary-content, #fff);
+}
+
+.you-profile__text {
+  min-width: 0;
+}
+
+.you-profile__name {
+  margin: 0;
+  overflow: hidden;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.5rem;
+  color: var(--sl-ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.you-profile__email {
+  margin: 0.125rem 0 0;
+  overflow: hidden;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--sl-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.you-menu {
+  margin-top: 1rem;
+  overflow: hidden;
+  padding: 0;
+}
+
+.you-menu__list {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.you-menu ion-item {
+  --background: var(--sl-surface);
+  --color: var(--sl-ink);
+  --padding-start: 16px;
+  --inner-padding-end: 16px;
+  --inner-padding-start: 0px;
+  --min-height: 52px;
+  --border-width: 0;
+  --inner-border-width: 0;
+  --detail-icon-color: var(--sl-muted);
+  --detail-icon-opacity: 1;
+  --detail-icon-font-size: 1.125rem;
+  --ripple-color: var(--sl-muted);
+}
+
+.you-menu ion-item + ion-item {
+  border-top: 1px solid var(--sl-line);
+}
+
+.you-menu ion-icon[slot="start"] {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: 0 0 1.5rem;
+  margin-top: 0;
+  margin-bottom: 0;
+  margin-inline-start: 0;
+  margin-inline-end: 16px;
+  color: var(--sl-muted);
+  font-size: 1.5rem;
+  align-self: center;
+}
+
+.you-menu ion-label {
+  margin-top: 12px;
+  margin-bottom: 12px;
+  margin-inline-start: 0;
+  color: var(--sl-ink);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5rem;
+}
+
+.you-page__logout {
+  margin-top: 1.5rem;
+}
+
+/* Room under Logout for the home indicator. On a phone the tab bar is the
+   footer above this padding, so the button stays in view when the page is
+   scrolled to the end. */
+.you-page {
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
 }
 
 .mobile-ionic-shell :is(.checkbox-sm, .radio-sm, .toggle-sm) {

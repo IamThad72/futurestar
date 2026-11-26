@@ -1,24 +1,45 @@
 <template>
-  <div class="app-page mx-auto max-w-lg pb-safe-content">
+  <div class="app-page you-page mx-auto max-w-lg">
     <h1 class="text-ink">You</h1>
-    <p v-if="auth.user?.email" class="mt-2 text-base text-muted">{{ auth.user.email }}</p>
 
-    <div class="mt-6 flex flex-col gap-2">
-      <button type="button" class="btn btn-primary justify-start gap-2" @click="showAccountManagement = true">
-        <AppIcon name="person" :size="18" />
-        Account Management
-      </button>
-      <button type="button" class="btn btn-outline justify-start gap-2" @click="showLinkedAccounts = true">
-        <AppIcon name="people" :size="18" />
-        Linked Accounts
-      </button>
-      <button type="button" class="btn btn-ghost justify-start gap-2 text-error" @click="handleLogout">
+    <section class="you-profile app-card" aria-label="Profile">
+      <img
+        v-if="showAvatar"
+        :src="avatarUrl"
+        alt=""
+        class="you-profile__photo"
+        @error="avatarFailed = true"
+      />
+      <span v-else class="you-profile__fallback" aria-hidden="true">
+        <AppIcon name="person" :size="28" />
+      </span>
+      <div class="you-profile__text">
+        <p class="you-profile__name">{{ identity.name }}</p>
+        <p v-if="identity.email" class="you-profile__email">{{ identity.email }}</p>
+      </div>
+    </section>
+
+    <div class="you-menu app-card">
+      <ion-list lines="none" class="you-menu__list">
+        <ion-item button detail class="you-menu__item" @click="showAccountManagement = true">
+          <ion-icon slot="start" :icon="personOutline" aria-hidden="true" />
+          <ion-label>Account Management</ion-label>
+        </ion-item>
+        <ion-item button detail class="you-menu__item" @click="showLinkedAccounts = true">
+          <ion-icon slot="start" :icon="peopleOutline" aria-hidden="true" />
+          <ion-label>Linked Accounts</ion-label>
+        </ion-item>
+      </ion-list>
+    </div>
+
+    <FaithSettings v-if="auth.user" class="mt-4" />
+
+    <div class="you-page__logout">
+      <button type="button" class="btn btn-error w-full gap-2" @click="handleLogout">
         <AppIcon name="log-out" :size="18" />
         Logout
       </button>
     </div>
-
-    <FaithSettings v-if="auth.user" class="mt-6" />
 
     <LazyAccountManagementModal v-if="showAccountManagement" v-model="showAccountManagement" />
     <LazyLinkedAccountsModal v-if="showLinkedAccounts" v-model="showLinkedAccounts" />
@@ -26,14 +47,29 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { computed, ref, watch } from "vue";
+import { IonIcon, IonItem, IonLabel, IonList } from "@ionic/vue";
+import { peopleOutline, personOutline } from "ionicons/icons";
 import { useAuthStore } from "~/stores/auth";
+import { profileIdentity, profilePhotoUrl, showProfileAvatar } from "~/utils/profileAvatar";
 
 const auth = useAuthStore();
 const router = useRouter();
 const { signOut } = useSignOut();
 const showAccountManagement = ref(false);
 const showLinkedAccounts = ref(false);
+const avatarFailed = ref(false);
+
+const identity = computed(() => profileIdentity(auth.user));
+const showAvatar = computed(() => showProfileAvatar(auth.user, avatarFailed.value));
+const avatarUrl = computed(() => (showAvatar.value ? profilePhotoUrl(auth.user) : ""));
+
+watch(
+  () => auth.user?.profile_photo,
+  () => {
+    avatarFailed.value = false;
+  },
+);
 
 async function handleLogout() {
   await signOut();
