@@ -96,6 +96,9 @@ export class AccountDeletionDb {
     if (text.includes("COUNT(DISTINCT group_id)")) return this.groupCount(params);
     if (text.includes("COUNT(*)") && text.includes("FROM group_members")) return this.memberCount(params);
     if (text.includes("FROM group_members") && text.includes("group_id <>")) return this.otherHousehold(params);
+    if (text.includes("pg_advisory_xact_lock")) return result([]);
+    if (text.startsWith("DELETE FROM account_deletion_attempts")) return this.purgeAttempts();
+    if (text.includes("SELECT role FROM group_members")) return this.memberRole(params);
     if (text.includes("FROM account_deletion_attempts") && text.includes("ip_hash =")) return this.attemptCount("ip", params);
     if (text.includes("FROM account_deletion_attempts") && text.includes("user_id =")) return this.attemptCount("user", params);
     if (text.startsWith("INSERT INTO account_deletion_attempts")) return this.insertAttempt(params);
@@ -115,7 +118,9 @@ export class AccountDeletionDb {
     if (text.includes("supabase_user_id") && text.includes("FROM app_users")) return this.userBySupabase(params);
     if (text.includes("FROM group_members gm")) return this.membership(params);
     if (text.startsWith("SELECT created_by FROM groups")) return this.createdBy(params);
-    if (text.includes("FROM group_members") && text.includes("WHERE group_id")) return this.memberList(params);
+    if (text.startsWith("SELECT") && text.includes("FROM group_members") && text.includes("WHERE group_id")) {
+      return this.memberList(params);
+    }
     if (text.includes("SELECT storage_path, storage_backend")) return this.estateFiles(params);
     if (text.startsWith("UPDATE groups SET created_by")) return this.updateCreatedBy(params);
     if (text.includes("SET role = 'owner'")) return this.setRole(params, "owner");
@@ -123,6 +128,7 @@ export class AccountDeletionDb {
     if (text.startsWith("UPDATE") && text.includes("NOT EXISTS")) return this.reownSkippingNames(text, params);
     if (text.startsWith("UPDATE") && text.includes("household_key")) return this.reownByHouseholdKey(text, params);
     if (text.startsWith("UPDATE") && text.includes("SET user_id")) return this.reownByGroup(text, params);
+    if (text.startsWith("DELETE FROM group_members")) return this.deleteMember(params);
     if (text.startsWith("DELETE FROM app_users") || text.includes("DELETE FROM app_users")) return this.deleteUser(params);
     if (text.startsWith("DELETE FROM groups") || text.includes("DELETE FROM groups WHERE")) return this.deleteGroup(params);
     if (text.startsWith("DELETE FROM") && text.includes("household_key")) return this.deleteByHouseholdKey(text, params);
@@ -325,6 +331,14 @@ export class AccountDeletionDb {
     return result([], before.length - this.rows[table].length);
   }
 
+  private deleteMember(params: unknown[]) {
+    const groupId = Number(params[0]);
+    const userId = Number(params[1]);
+    const before = this.members.length;
+    this.members = this.members.filter((item) => !(item.group_id === groupId && item.user_id === userId));
+    return result([], before - this.members.length);
+  }
+
   private deleteGroup(params: unknown[]) {
     const groupId = Number(params[0]);
     const existed = this.groups.some((item) => item.group_id === groupId);
@@ -391,6 +405,23 @@ export class AccountDeletionDb {
     }).length;
   }
 
+  private purgeAttempts() {
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    const before = this.rows.account_deletion_attempts.length;
+    this.rows.account_deletion_attempts = this.rows.account_deletion_attempts.filter((row) => {
+      const at = Date.parse(String(row.attempted_at ?? ""));
+      return !Number.isFinite(at) || at >= cutoff;
+    });
+    return result([], before - this.rows.account_deletion_attempts.length);
+  }
+
+  private memberRole(params: unknown[]) {
+    const groupId = Number(params[0]);
+    const userId = Number(params[1]);
+    const member = this.members.find((item) => item.group_id === groupId && item.user_id === userId);
+    return result(member ? [{ role: member.role }] : []);
+  }
+
   private attemptCount(kind: "user" | "ip", params: unknown[]) {
     return result([{ failures: this.recentFailures(kind, params[0]) }]);
   }
@@ -455,7 +486,10 @@ export class AccountDeletionDb {
   }
 
   private selectTombstone(params: unknown[]) {
-    const rows = this.rows.deleted_auth_users.filter((row) => row.supabase_user_id === String(params[0]));
+    const rows = this.rows.deleted_auth_users.filter((row) => {
+      if (params[0] == null) return row.auth_deleted_at == null;
+      return row.supabase_user_id === String(params[0]);
+    });
     return result(rows.map((row) => ({ ...row })));
   }
 

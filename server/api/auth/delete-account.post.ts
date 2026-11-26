@@ -15,6 +15,8 @@ import {
 import { countUserGroups } from "../../utils/group";
 
 function requestIp(event: Parameters<typeof getRequestIP>[0]) {
+  // Vercel appends the client address, so the first hop is the client there.
+  // On any other host this header can be spoofed and must not be trusted.
   const forwarded = getHeader(event, "x-forwarded-for");
   const first = forwarded?.split(",")[0]?.trim();
   return first || getRequestIP(event) || "unknown";
@@ -55,42 +57,58 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 409, statusMessage: MULTIPLE_HOUSEHOLDS_MESSAGE });
     }
 
-    await assertDeletionNotThrottled(client, userId, ipHash);
-
     const passwordHash =
       previewUser.password_hash == null || previewUser.password_hash === "" ? null : String(previewUser.password_hash);
     const supabaseUserId = previewUser.supabase_user_id == null ? null : String(previewUser.supabase_user_id);
-    const problem = confirmAccountDeletion({
-      email: String(previewUser.email ?? ""),
-      confirmEmail: body?.confirmEmail,
-      password: body?.password,
-      passwordHash,
-    });
-    if (problem) {
-      if (problem === "Enter your password to confirm.") {
+    const token = bearerToken(event);
+    if (!passwordHash && supabaseUserId && token) {
+      await assertSupabaseReauth({
+        email: String(previewUser.email ?? "").trim().toLowerCase(),
+        password: String(body?.password ?? ""),
+        bearerToken: token,
+        checkPassword: false,
+      });
+    }
+
+    await client.query("BEGIN");
+    let denial: string | null = null;
+    try {
+      await assertDeletionNotThrottled(client, userId, ipHash);
+      denial = confirmAccountDeletion({
+        email: String(previewUser.email ?? ""),
+        confirmEmail: body?.confirmEmail,
+        password: body?.password,
+        passwordHash,
+      });
+      if (!denial && !passwordHash && !supabaseUserId) {
+        denial = "Enter your password to confirm.";
+      }
+      if (!denial && !passwordHash && supabaseUserId) {
+        try {
+          await assertSupabaseReauth({
+            email: String(previewUser.email ?? "").trim().toLowerCase(),
+            password: String(body?.password ?? ""),
+            bearerToken: null,
+          });
+        } catch (error) {
+          const statusCode =
+            error && typeof error === "object" && "statusCode" in error
+              ? Number((error as { statusCode?: number }).statusCode)
+              : 0;
+          if (statusCode !== 400) throw error;
+          denial = "Enter your password to confirm.";
+        }
+      }
+      if (denial === "Enter your password to confirm.") {
         await recordDeletionFailure(client, userId, ipHash);
       }
-      throw createError({ statusCode: 400, statusMessage: problem });
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
     }
-
-    if (!passwordHash && !supabaseUserId) {
-      await recordDeletionFailure(client, userId, ipHash);
-      throw createError({ statusCode: 400, statusMessage: "Enter your password to confirm." });
-    }
-
-    if (!passwordHash && supabaseUserId) {
-      try {
-        await assertSupabaseReauth({
-          email: String(previewUser.email ?? "").trim().toLowerCase(),
-          password: String(body?.password ?? ""),
-          bearerToken: bearerToken(event),
-        });
-      } catch (error) {
-        const statusCode =
-          error && typeof error === "object" && "statusCode" in error ? Number((error as { statusCode?: number }).statusCode) : 0;
-        if (statusCode === 400) await recordDeletionFailure(client, userId, ipHash);
-        throw error;
-      }
+    if (denial) {
+      throw createError({ statusCode: 400, statusMessage: denial });
     }
 
     await client.query("BEGIN");
@@ -107,7 +125,7 @@ export default defineEventHandler(async (event) => {
   } catch (error) {
     const statusCode =
       error && typeof error === "object" && "statusCode" in error ? Number((error as { statusCode?: number }).statusCode) : 0;
-    if (statusCode >= 400 && statusCode < 500) {
+    if (statusCode >= 400) {
       await client.end().catch(() => undefined);
       throw error;
     }

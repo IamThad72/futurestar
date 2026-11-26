@@ -1,6 +1,8 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { hashPassword } from "../server/utils/password";
 import deleteAccount from "../server/api/auth/delete-account.post";
+import accountCleanup from "../server/api/cron/account-cleanup.get";
+import { supabasePasswordMatches } from "../server/utils/supabasePassword";
 import { makeEvent } from "./helpers/event";
 import { AccountDeletionDb, type AccountUser } from "./helpers/accountDeletionDb";
 
@@ -31,10 +33,10 @@ vi.mock("../server/utils/supabaseAdmin", () => ({
 }));
 
 vi.mock("../server/utils/supabasePassword", () => ({
-  supabasePasswordMatches: async (email: string, password: string) => {
+  supabasePasswordMatches: vi.fn(async (email: string, password: string) => {
     const accepted = (globalThis as { __supabasePasswords?: Record<string, string> }).__supabasePasswords ?? {};
     return accepted[email] === password;
-  },
+  }),
 }));
 
 vi.mock("../server/utils/estateDocuments", async (importOriginal) => {
@@ -456,6 +458,7 @@ describe("auth user and storage cleanup", () => {
     (globalThis as { __supabasePasswords?: Record<string, string> }).__supabasePasswords = { "mobile@example.com": PASSWORD };
     const stale = bearerJwt(Math.floor(Date.now() / 1000) - 600);
     db.trustJwt(stale, "sb-mobile");
+    vi.mocked(supabasePasswordMatches).mockClear();
 
     await expectStatus(
       call(db, { jwt: stale, body: { confirmEmail: "mobile@example.com", password: PASSWORD } }).then((item) => item.value),
@@ -464,6 +467,7 @@ describe("auth user and storage cleanup", () => {
     );
     expect(db.users).toHaveLength(1);
     expect(db.queries.some((query) => query === "BEGIN")).toBe(false);
+    expect(supabasePasswordMatches).not.toHaveBeenCalled();
 
     const fresh = bearerJwt(Math.floor(Date.now() / 1000));
     db.trustJwt(fresh, "sb-mobile");
@@ -478,7 +482,7 @@ describe("auth user and storage cleanup", () => {
 });
 
 describe("throttle, households, and handoff details", () => {
-  it("does not open a transaction until the password matches", async () => {
+  it("records a failed password without deleting the account", async () => {
     const db = install(new AccountDeletionDb());
     db.users.push(user({ user_id: 1, email: "a@example.com" }));
     session(db, 1, "session-a");
@@ -486,7 +490,8 @@ describe("throttle, households, and handoff details", () => {
       call(db, { cookie: "session-a", body: { confirmEmail: "a@example.com", password: "wrong" } }).then((item) => item.value),
       400,
     );
-    expect(db.queries.some((query) => query === "BEGIN")).toBe(false);
+    expect(db.queries.some((query) => query.includes("DELETE FROM app_users"))).toBe(false);
+    expect(db.queries.some((query) => query.includes("pg_advisory_xact_lock"))).toBe(true);
     expect(db.rows.account_deletion_attempts).toHaveLength(1);
     expect(db.users).toHaveLength(1);
   });
@@ -507,7 +512,7 @@ describe("throttle, households, and handoff details", () => {
       "Too many attempts. Try again later.",
     );
     expect(db.users).toHaveLength(1);
-    expect(db.queries.filter((query) => query === "BEGIN")).toHaveLength(0);
+    expect(db.queries.some((query) => query.includes("DELETE FROM app_users"))).toBe(false);
   });
 
   it("refuses to delete an account that is already in two households", async () => {
@@ -525,7 +530,7 @@ describe("throttle, households, and handoff details", () => {
     await expectStatus(
       call(db, { cookie: "session-a", body: { confirmEmail: "a@example.com", password: PASSWORD } }).then((item) => item.value),
       409,
-      "This account is in more than one household. Leave the extra household before deleting the account.",
+      "This account is in more than one household. In Linked Accounts, make someone else the owner of each extra household, leave those households, and then delete the account.",
     );
     expect(db.users).toHaveLength(1);
     expect(db.groups).toHaveLength(2);
@@ -554,5 +559,58 @@ describe("throttle, households, and handoff details", () => {
     expect(db.members.find((item) => item.user_id === 3)?.role).toBe("owner");
     expect(db.members.find((item) => item.user_id === 2)?.role).toBe("member");
     expect(db.rows.budgets[0]).toMatchObject({ user_id: 3, group_id: 10 });
+  });
+
+  it("names the migration when the throttle table is missing", async () => {
+    const db = install(new AccountDeletionDb());
+    db.relations.delete("account_deletion_attempts");
+    db.users.push(user({ user_id: 1, email: "a@example.com" }));
+    session(db, 1, "session-a");
+    await expectStatus(
+      call(db, { cookie: "session-a", body: { confirmEmail: "a@example.com", password: PASSWORD } }).then((item) => item.value),
+      500,
+      "Account deletion is not ready. Run scripts/create_account_deletion_attempts.sql before deleting accounts.",
+    );
+    expect(db.users).toHaveLength(1);
+  });
+
+  it("retries pending deletes from the cleanup cron and rejects a missing secret", async () => {
+    const db = install(new AccountDeletionDb());
+    db.rows.pending_storage_deletes.push({
+      storage_path: "solo/remove",
+      storage_backend: "disk",
+      deleted_at: null,
+      attempt_count: 0,
+    });
+    db.rows.deleted_auth_users.push({
+      supabase_user_id: "sb-old",
+      app_user_id: 9,
+      auth_deleted_at: null,
+      attempt_count: 0,
+    });
+    db.rows.account_deletion_attempts.push({
+      user_id: 9,
+      ip_hash: "old",
+      succeeded: false,
+      attempted_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+    process.env.CRON_SECRET = "1234567890123456";
+    await expectStatus(
+      (accountCleanup as (event: HandlerEvent) => Promise<unknown>)(makeEvent({
+        method: "GET",
+        url: "/api/cron/account-cleanup",
+      })),
+      401,
+    );
+    const result = await (accountCleanup as (event: HandlerEvent) => Promise<{ filesRemoved: number; authUsersRemoved: number; attemptsPurged: number }>)(makeEvent({
+      method: "GET",
+      url: "/api/cron/account-cleanup",
+      headers: { authorization: "Bearer 1234567890123456" },
+    }));
+    expect(result.filesRemoved).toBe(1);
+    expect(result.authUsersRemoved).toBe(1);
+    expect(result.attemptsPurged).toBe(1);
+    expect(db.rows.pending_storage_deletes[0]?.deleted_at).toBeTruthy();
+    expect(db.rows.deleted_auth_users[0]?.auth_deleted_at).toBeTruthy();
   });
 });

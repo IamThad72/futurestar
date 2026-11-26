@@ -14,3 +14,15 @@ CREATE TABLE IF NOT EXISTS pending_storage_deletes (
 CREATE INDEX IF NOT EXISTS idx_pending_storage_deletes_open
   ON pending_storage_deletes (created_at)
   WHERE deleted_at IS NULL;
+
+ALTER TABLE pending_storage_deletes ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    EXECUTE 'REVOKE ALL ON TABLE pending_storage_deletes FROM anon';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    EXECUTE 'REVOKE ALL ON TABLE pending_storage_deletes FROM authenticated';
+  END IF;
+END $$;

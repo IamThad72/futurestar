@@ -16,3 +16,15 @@ CREATE INDEX IF NOT EXISTS idx_account_deletion_attempts_user
 
 CREATE INDEX IF NOT EXISTS idx_account_deletion_attempts_ip
   ON account_deletion_attempts (ip_hash, attempted_at);
+
+ALTER TABLE account_deletion_attempts ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    EXECUTE 'REVOKE ALL ON TABLE account_deletion_attempts FROM anon';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    EXECUTE 'REVOKE ALL ON TABLE account_deletion_attempts FROM authenticated';
+  END IF;
+END $$;

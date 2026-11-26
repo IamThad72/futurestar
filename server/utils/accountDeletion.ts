@@ -47,7 +47,18 @@ export type CleanupResult = {
 };
 
 export const MULTIPLE_HOUSEHOLDS_MESSAGE =
-  "This account is in more than one household. Leave the extra household before deleting the account.";
+  "This account is in more than one household. In Linked Accounts, make someone else the owner of each extra household, leave those households, and then delete the account.";
+
+export const MIGRATION_ATTEMPTS = "scripts/create_account_deletion_attempts.sql";
+export const MIGRATION_TOMBSTONE = "scripts/create_deleted_auth_users.sql";
+export const MIGRATION_STORAGE = "scripts/create_pending_storage_deletes.sql";
+
+export function missingMigrationError(script: string) {
+  return createError({
+    statusCode: 500,
+    statusMessage: `Account deletion is not ready. Run ${script} before deleting accounts.`,
+  });
+}
 
 const SHARED_TABLES = new Set<string>(GROUP_SHARED_TABLES);
 const TAX_TABLES = new Map(HOUSEHOLD_TAX_TABLES.map((item) => [item.table, item.match]));
@@ -99,7 +110,13 @@ async function relationExists(client: QueryClient, name: string) {
 }
 
 export async function assertDeletionNotThrottled(client: QueryClient, userId: number, ipHash: string) {
-  if (!(await relationExists(client, "public.account_deletion_attempts"))) return;
+  if (!(await relationExists(client, "public.account_deletion_attempts"))) {
+    throw missingMigrationError(MIGRATION_ATTEMPTS);
+  }
+  await client.query(`SELECT pg_advisory_xact_lock($1::int)`, [userId]);
+  await client.query(
+    `DELETE FROM account_deletion_attempts WHERE attempted_at < NOW() - INTERVAL '1 day'`,
+  );
   const byUser = await client.query(
     `SELECT COUNT(*)::int AS failures
      FROM account_deletion_attempts
@@ -122,7 +139,9 @@ export async function assertDeletionNotThrottled(client: QueryClient, userId: nu
 }
 
 export async function recordDeletionFailure(client: QueryClient, userId: number, ipHash: string) {
-  if (!(await relationExists(client, "public.account_deletion_attempts"))) return;
+  if (!(await relationExists(client, "public.account_deletion_attempts"))) {
+    throw missingMigrationError(MIGRATION_ATTEMPTS);
+  }
   await client.query(
     `INSERT INTO account_deletion_attempts (user_id, ip_hash) VALUES ($1, $2)`,
     [userId, ipHash],
@@ -139,16 +158,18 @@ export async function assertSupabaseReauth(input: {
   password: string;
   bearerToken: string | null;
   nowMs?: number;
+  checkPassword?: boolean;
 }) {
-  const matches = await supabasePasswordMatches(input.email, input.password);
-  if (!matches) {
-    throw createError({ statusCode: 400, statusMessage: "Enter your password to confirm." });
-  }
   if (input.bearerToken) {
     const fresh = bearerIsFresh(input.bearerToken, input.nowMs ?? Date.now(), REAUTH_WINDOW_MS);
     if (!fresh) {
       throw createError({ statusCode: 401, statusMessage: "Sign in again to delete your account." });
     }
+  }
+  if (input.checkPassword === false) return;
+  const matches = await supabasePasswordMatches(input.email, input.password);
+  if (!matches) {
+    throw createError({ statusCode: 400, statusMessage: "Enter your password to confirm." });
   }
 }
 
@@ -384,7 +405,7 @@ export async function deleteAccountInTransaction(
   const supabaseUserId = user.supabase_user_id == null ? null : String(user.supabase_user_id);
   if (supabaseUserId) {
     if (!(await relationExists(client, "public.deleted_auth_users"))) {
-      throw createError({ statusCode: 500, statusMessage: "Could not delete the account." });
+      throw missingMigrationError(MIGRATION_TOMBSTONE);
     }
     await client.query(
       `INSERT INTO deleted_auth_users (supabase_user_id, app_user_id)
@@ -395,7 +416,7 @@ export async function deleteAccountInTransaction(
   }
   if (files.length) {
     if (!(await relationExists(client, "public.pending_storage_deletes"))) {
-      throw createError({ statusCode: 500, statusMessage: "Could not delete the account." });
+      throw missingMigrationError(MIGRATION_STORAGE);
     }
     for (const file of files) {
       await client.query(
@@ -496,6 +517,66 @@ export async function retryAuthDeletion(client: QueryClient, supabaseUserId: str
     console.error("[auth/delete-account] auth user removal failed", { userId, supabaseUserId });
     return false;
   }
+}
+
+/** Drains queues left by account deletion. Used by the hourly cron. */
+export async function runAccountCleanup(client: QueryClient) {
+  let filesRemoved = 0;
+  let authUsersRemoved = 0;
+  let attemptsPurged = 0;
+
+  if (await relationExists(client, "public.pending_storage_deletes")) {
+    const pending = await client.query(
+      `SELECT storage_path, storage_backend
+       FROM pending_storage_deletes
+       WHERE deleted_at IS NULL
+       ORDER BY created_at ASC
+       LIMIT 25`,
+    );
+    for (const row of pending.rows) {
+      const backend = String(row.storage_backend ?? "");
+      if (backend !== "disk" && backend !== "supabase") continue;
+      const file = { storagePath: String(row.storage_path ?? ""), backend } as DeletedEstateFile;
+      try {
+        await removeEstateFile(file.storagePath, file.backend);
+        await markStorageAttempt(client, file, true);
+        filesRemoved += 1;
+      } catch {
+        await markStorageAttempt(client, file, false);
+        console.error("[cron/account-cleanup] storage cleanup failed", {
+          backend: file.backend,
+          storagePath: file.storagePath,
+        });
+      }
+    }
+  }
+
+  if (await relationExists(client, "public.deleted_auth_users")) {
+    const pending = await client.query(
+      `SELECT supabase_user_id, app_user_id
+       FROM deleted_auth_users
+       WHERE auth_deleted_at IS NULL
+       ORDER BY created_at ASC
+       LIMIT 25`,
+    );
+    for (const row of pending.rows) {
+      const removed = await retryAuthDeletion(
+        client,
+        String(row.supabase_user_id ?? ""),
+        row.app_user_id == null ? null : Number(row.app_user_id),
+      );
+      if (removed) authUsersRemoved += 1;
+    }
+  }
+
+  if (await relationExists(client, "public.account_deletion_attempts")) {
+    const purged = await client.query(
+      `DELETE FROM account_deletion_attempts WHERE attempted_at < NOW() - INTERVAL '1 day'`,
+    );
+    attemptsPurged = Number(purged.rowCount ?? 0);
+  }
+
+  return { filesRemoved, authUsersRemoved, attemptsPurged };
 }
 
 /** After commit. Storage and Auth failures stay pending and are retried. */

@@ -21,6 +21,7 @@
         <p class="font-semibold text-ink">What is kept afterwards</p>
         <p class="mt-1">{{ retention }}</p>
       </div>
+      <p>{{ passwordless }}</p>
       <template v-if="!auth.user">
         <div>
           <p class="font-semibold text-ink">How to delete it</p>
@@ -53,7 +54,7 @@
 
 <script setup>
 import { useAuthStore } from "~/stores/auth";
-import { ERASED_ON_DELETE, KEPT_ON_DELETE, RETENTION_ON_DELETE } from "~/utils/accountDeletionCopy";
+import { ERASED_ON_DELETE, KEPT_ON_DELETE, PASSWORDLESS_HINT, RETENTION_ON_DELETE } from "~/utils/accountDeletionCopy";
 import { rememberAccountDeleted } from "~/utils/accountDeletedNotice";
 
 useHead({ title: "Delete your account" });
@@ -63,6 +64,7 @@ const { signOut } = useSignOut();
 const erased = ERASED_ON_DELETE;
 const kept = KEPT_ON_DELETE;
 const retention = RETENTION_ON_DELETE;
+const passwordless = PASSWORDLESS_HINT;
 
 async function onAccountDeleted(payload) {
   rememberAccountDeleted(Boolean(payload?.authRemovalPending));

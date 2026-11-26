@@ -137,7 +137,10 @@ export default defineNuxtConfig({
       },
       config: {
         // 01:00 UTC Tuesday–Saturday is 8:00pm Eastern Monday–Friday, after the US close.
-        crons: [{ path: "/api/cron/investment-prices", schedule: "0 1 * * 2-6" }],
+        crons: [
+          { path: "/api/cron/investment-prices", schedule: "0 1 * * 2-6" },
+          { path: "/api/cron/account-cleanup", schedule: "15 * * * *" },
+        ],
         routes: [
           {
             src: "/_nuxt/(.*)",

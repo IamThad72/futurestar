@@ -19,6 +19,7 @@
         <p class="font-semibold text-ink">What is kept afterwards</p>
         <p class="mt-1">{{ retention }}</p>
       </div>
+      <p>{{ passwordless }}</p>
     </div>
 
     <label class="form-control w-full min-w-0" :for="emailId">
@@ -71,7 +72,7 @@
 
 <script setup>
 import { computed, ref, useId, watch } from "vue";
-import { ERASED_ON_DELETE, KEPT_ON_DELETE, RETENTION_ON_DELETE } from "~/utils/accountDeletionCopy";
+import { ERASED_ON_DELETE, KEPT_ON_DELETE, PASSWORDLESS_HINT, RETENTION_ON_DELETE } from "~/utils/accountDeletionCopy";
 import { parseFetchError } from "~/utils/parseFetchError";
 
 const props = defineProps({
@@ -90,6 +91,7 @@ const emit = defineEmits(["deleted", "busy"]);
 const erased = ERASED_ON_DELETE;
 const kept = KEPT_ON_DELETE;
 const retention = RETENTION_ON_DELETE;
+const passwordless = PASSWORDLESS_HINT;
 
 const emailMatches = computed(() => {
   const expected = props.accountEmail.trim().toLowerCase();
@@ -105,6 +107,10 @@ async function submit() {
   if (!canSubmit.value) return;
   busy.value = true;
   try {
+    const supabase = useNuxtApp().$supabase;
+    if (supabase?.auth?.refreshSession) {
+      await supabase.auth.refreshSession();
+    }
     const response = await $fetch("/api/auth/delete-account", {
       method: "POST",
       body: {

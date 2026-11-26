@@ -15,3 +15,15 @@ CREATE TABLE IF NOT EXISTS deleted_auth_users (
 CREATE INDEX IF NOT EXISTS idx_deleted_auth_users_pending
   ON deleted_auth_users (created_at)
   WHERE auth_deleted_at IS NULL;
+
+ALTER TABLE deleted_auth_users ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    EXECUTE 'REVOKE ALL ON TABLE deleted_auth_users FROM anon';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    EXECUTE 'REVOKE ALL ON TABLE deleted_auth_users FROM authenticated';
+  END IF;
+END $$;

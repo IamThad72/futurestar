@@ -1,7 +1,7 @@
 /**
  * Household rule for account deletion. This is the only place to change it.
  *
- * keep-shared (default, waiting on the owner):
+ * keep-shared (proposed default, pending the owner's policy decisions):
  *   Money rows that already belong to a household stay with that household.
  *   A household row is a row in a GROUP_SHARED_TABLES table (server/utils/group.ts)
  *   whose group_id is set, plus the household tax tables below when

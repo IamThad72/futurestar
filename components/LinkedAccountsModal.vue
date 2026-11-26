@@ -110,6 +110,15 @@
                   {{ member.email }} <span class="text-base-content/60">({{ member.role }})</span>
                 </span>
                 <button
+                  v-if="canTransferTo(member)"
+                  type="button"
+                  class="btn btn-ghost btn-xs min-h-8"
+                  :disabled="transferringUserId === member.user_id"
+                  @click="transferOwnership(member)"
+                >
+                  {{ transferringUserId === member.user_id ? "Transferring…" : "Make owner" }}
+                </button>
+                <button
                   v-if="canRemoveMember(member)"
                   type="button"
                   class="btn btn-ghost btn-xs btn-square min-h-11 min-w-11 text-error hover:bg-error/20"
@@ -150,6 +159,7 @@ const newGroupName = ref("");
 const newGroupSecondEmail = ref("");
 const newMemberEmail = ref("");
 const removingUserId = ref(null);
+const transferringUserId = ref(null);
 const addingMember = ref(false);
 
 const loadGroupMembers = async () => {
@@ -217,6 +227,28 @@ const addGroupMember = async () => {
       err?.data?.statusMessage || err?.message || "Failed to add member.";
   } finally {
     addingMember.value = false;
+  }
+};
+
+const canTransferTo = (member) => {
+  return groupInfo.role === "owner" && member.role !== "owner" && member.user_id !== auth.user?.user_id;
+};
+
+const transferOwnership = async (member) => {
+  groupError.value = "";
+  groupSuccess.value = "";
+  transferringUserId.value = member.user_id;
+  try {
+    await $fetch("/api/groups/transfer-ownership", {
+      method: "POST",
+      body: { user_id: member.user_id },
+    });
+    groupSuccess.value = "Ownership transferred. You can leave this household now.";
+    await loadGroupMembers();
+  } catch (err) {
+    groupError.value = err?.data?.statusMessage || err?.message || "Could not transfer ownership.";
+  } finally {
+    transferringUserId.value = null;
   }
 };
 

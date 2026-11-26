@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import addMember from "../server/api/groups/add-member.post";
 import createGroup from "../server/api/groups/create.post";
+import transferOwnership from "../server/api/groups/transfer-ownership.post";
 import { makeEvent } from "./helpers/event";
 import { AccountDeletionDb } from "./helpers/accountDeletionDb";
 
@@ -97,5 +98,23 @@ describe("one household per person", () => {
       "That person is already in a household.",
     );
     expect(db.groups.map((group) => group.group_name)).toEqual(["Other"]);
+  });
+
+  it("lets an owner hand the household to another member and then leave", async () => {
+    const db = install();
+    db.groups.push({ group_id: 10, group_name: "Home", created_by: 1 });
+    db.members.push(
+      { group_id: 10, user_id: 1, role: "owner", created_at: "2024-01-01T00:00:00.000Z" },
+      { group_id: 10, user_id: 2, role: "member", created_at: "2024-02-01T00:00:00.000Z" },
+    );
+    const transferred = await transferOwnership(event({ user_id: 2 })) as { success: boolean };
+    expect(transferred.success).toBe(true);
+    expect(db.groups[0]?.created_by).toBe(2);
+    expect(db.members.find((member) => member.user_id === 2)?.role).toBe("owner");
+    expect(db.members.find((member) => member.user_id === 1)?.role).toBe("member");
+
+    const left = await (await import("../server/api/groups/remove-member.post")).default(event({ user_id: 1 })) as { success: boolean };
+    expect(left.success).toBe(true);
+    expect(db.members.map((member) => member.user_id)).toEqual([2]);
   });
 });
