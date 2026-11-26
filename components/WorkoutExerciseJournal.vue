@@ -310,6 +310,7 @@ function toDatetimeLocalValue(iso) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+const { success } = useHaptics();
 const sessions = ref([]);
 const listLoading = ref(false);
 const listError = ref("");
@@ -590,6 +591,7 @@ async function finishSession() {
   }
   const ok = await saveSession();
   if (!ok) return;
+  success();
   closeEditor();
 }
 

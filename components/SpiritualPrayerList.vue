@@ -123,6 +123,7 @@ import { parseFetchError } from "~/utils/parseFetchError";
 import { todayIsoDate } from "~/utils/liturgicalCalendar";
 import { PRAYER_CATEGORIES } from "~/utils/prayerList";
 
+const { light } = useHaptics();
 const categories = PRAYER_CATEGORIES;
 const views = [
   { key: "active", label: "Active" },
@@ -229,6 +230,7 @@ async function answer(prayer) {
       body: { action: "answer", ...answerForm.value, date: todayIsoDate() },
     });
     answeringId.value = 0;
+    light();
     await load();
   } catch (error) {
     loadError.value = parseFetchError(error, "Could not save the answer.");

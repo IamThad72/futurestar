@@ -101,6 +101,7 @@ import { addDays } from "~/utils/readingPlans";
 import { attendanceLabel, attended, streakMessage, worshipTerms } from "~/utils/worshipCheckin";
 
 const faith = useFaithProfile();
+const { light } = useHaptics();
 const loading = ref(true);
 const loadError = ref("");
 const unavailableMessage = ref("");
@@ -208,6 +209,7 @@ async function save() {
     apply(await $fetch("/api/spiritual/worship", { method: "PUT", body }));
     editWeek(editingWeek.value);
     saveNotice.value = "Saved.";
+    light();
   } catch (error) {
     saveError.value = parseFetchError(error, "Could not save the check-in.");
   } finally {

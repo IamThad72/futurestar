@@ -42,7 +42,7 @@
             class="mobile-area-bar__item"
             :data-pillar="link.pillar || undefined"
             :aria-current="link.current ? 'page' : undefined"
-            @click="go(link.path)"
+            @click="onTab(link)"
           >
             <span class="mobile-area-bar__pill">
               <span class="mobile-area-bar__icon" :class="link.pillar ? `is-${link.pillar}` : 'is-neutral'">
@@ -76,6 +76,7 @@ const {
   screenTitle,
 } = useAppNav();
 const { go } = useAppNavigate();
+const { selection } = useHaptics();
 const showLogin = computed(() => !auth.user && !route.path.startsWith("/login"));
 const contentRef = ref(null);
 const mainRef = ref(null);
@@ -120,6 +121,11 @@ function isTextEntryEl(el) {
     return !NON_TEXT_INPUT_TYPES.has(type);
   }
   return Boolean(el.isContentEditable);
+}
+
+function onTab(link) {
+  if (!link.current) selection();
+  void go(link.path);
 }
 
 function onFocusIn(event) {

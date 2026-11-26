@@ -225,6 +225,7 @@ import { parseFetchError } from "~/utils/parseFetchError";
 import { todayIsoDate } from "~/utils/liturgicalCalendar";
 
 const faith = useFaithProfile();
+const { light } = useHaptics();
 const route = useRoute();
 const router = useRouter();
 
@@ -379,6 +380,7 @@ async function markDay(status) {
       body: { status, date: todayIsoDate() },
     });
     void loadList();
+    if (status === "done") light();
     // After reading, move on to the next unread day when it is due.
     const next = detail.value.plan.progress.nextDay;
     const scheduled = detail.value.plan.progress.scheduledDay;
