@@ -2,11 +2,12 @@ import { createError, getQuery } from "h3";
 import { createDbClient } from "../../../utils/db";
 import { omitGroupScope, requirePrivateUserId } from "../../../utils/privateUserAccess";
 import { todayIsoDate } from "~/utils/liturgicalCalendar";
-import { listDailyScripture } from "../../../utils/bibleCpdv";
+import { listDailyScripture } from "../../../utils/bible";
+import { readFaithProfile, scriptureOptions } from "../../../utils/faithProfile";
 import { parseReviewDate } from "../../../utils/spiritualReview";
 
 export default defineEventHandler(async (event) => {
-  await requirePrivateUserId(event);
+  const userId = await requirePrivateUserId(event);
   const query = omitGroupScope(getQuery(event) as Record<string, unknown>);
   const date = parseReviewDate(query.date || todayIsoDate());
   const refreshRaw = query.refresh != null ? parseInt(String(query.refresh), 10) : 0;
@@ -15,7 +16,8 @@ export default defineEventHandler(async (event) => {
   const client = createDbClient();
   try {
     await client.connect();
-    return await listDailyScripture(client, date, refresh);
+    const { profile } = await readFaithProfile(client, userId);
+    return await listDailyScripture(client, date, refresh, scriptureOptions(profile));
   } catch (error: unknown) {
     if (error && typeof error === "object" && "statusCode" in error) throw error;
     console.error("spiritual daily scripture failed", error);

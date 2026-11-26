@@ -3,7 +3,7 @@ import { physicalTabsForPath } from "~/utils/physicalNav";
 import { spiritualTabsForPath } from "~/utils/spiritualNav";
 
 /** Header label for the screen the person is on. */
-export function screenTitleForRoute(path, query = {}, hash = "") {
+export function screenTitleForRoute(path, query = {}, hash = "", tradition = "") {
   const p = String(path || "");
   if (!p || p === "/") return "Future Star";
   if (p === "/today") return "Today";
@@ -15,7 +15,7 @@ export function screenTitleForRoute(path, query = {}, hash = "") {
   const financial = financialTabsForPath(p, query, hash).find((tab) => tab.current);
   if (financial) return financial.href === "/financial" ? "Money" : financial.name;
 
-  const spiritual = spiritualTabsForPath(p).find((tab) => tab.current);
+  const spiritual = spiritualTabsForPath(p, tradition).find((tab) => tab.current);
   if (spiritual) return spiritual.href === "/spiritual" ? "Faith" : spiritual.name;
 
   const physical = physicalTabsForPath(p).find((tab) => tab.current);

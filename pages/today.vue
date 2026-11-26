@@ -9,7 +9,7 @@
         <p class="sl-caption">{{ dateLabel }}</p>
         <h1 class="sl-display">{{ greeting }}</h1>
         <p v-if="liturgicalLabel" class="sl-scripture mt-3">{{ liturgicalLabel }}</p>
-        <p v-else-if="liturgicalPending" class="mt-3 text-base text-muted">Looking up the liturgical day…</p>
+        <p v-else-if="liturgicalPending" class="mt-3 text-base text-muted">Looking up today in the church year…</p>
       </header>
 
       <AppLink to="/spiritual/morning" class="app-card-link today-prayer">
@@ -23,6 +23,8 @@
           </p>
         </span>
       </AppLink>
+
+      <TodayReadingCard v-if="auth.user" hide-when-empty class="mt-4" />
 
       <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <AppLink to="/financial" class="app-card-link today-summary today-summary--financial">
@@ -61,6 +63,7 @@ import { displayCelebrationTitle, seasonLabel, todayIsoDate } from "~/utils/litu
 useHead({ title: "Today" });
 
 const auth = useAuthStore();
+const faith = useFaithProfile();
 const { loading: estateLoading, loadError: estateError, estateStats, loadSummary } = useEstateSummary();
 
 const liturgicalLabel = ref("");
@@ -102,6 +105,8 @@ async function loadLiturgicalDay() {
   liturgicalPending.value = true;
   liturgicalLabel.value = "";
   try {
+    const faithProfile = await faith.load();
+    if (faith.calendarKind.value === "off" || faithProfile?.show_calendar === false) return;
     const now = new Date();
     const data = await $fetch("/api/spiritual/calendar", {
       query: { year: now.getFullYear(), month: now.getMonth() + 1 },
@@ -110,9 +115,13 @@ async function loadLiturgicalDay() {
     const day = (data?.days || []).find((item) => item.date === iso);
     if (!day) return;
     const celebration = day.celebrations?.[0];
-    const title = celebration ? displayCelebrationTitle(celebration, day) : "";
+    const title = celebration
+      ? String(celebration.displayTitle || "") || displayCelebrationTitle(celebration, day)
+      : "";
     const season = seasonLabel(day.season);
-    liturgicalLabel.value = title && title !== season ? `${title} · ${season}` : title || season;
+    // Church-year weekdays already name the season ("Monday · Advent, week 1").
+    const named = data?.mode === "church_year" && title.includes(season);
+    liturgicalLabel.value = title && title !== season && !named ? `${title} · ${season}` : title || season;
   } catch {
     liturgicalLabel.value = "";
   } finally {

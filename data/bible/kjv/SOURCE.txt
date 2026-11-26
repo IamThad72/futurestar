@@ -1,0 +1,6 @@
+King James Version (KJV), 1769 text
+Source: https://github.com/scrollmapper/bible_databases
+JSON: https://raw.githubusercontent.com/scrollmapper/bible_databases/master/formats/json/KJV.json
+License: Public domain in the United States (Crown patent applies in the UK).
+
+Load with: npm run seed:kjv   (downloads KJV.json here, about 8 MB, git-ignored)

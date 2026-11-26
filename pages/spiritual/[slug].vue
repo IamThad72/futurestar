@@ -21,6 +21,9 @@
       <SpiritualRemembering v-else-if="section.slug === 'remembering'" />
       <SpiritualScripture v-else-if="section.slug === 'scripture'" />
       <SpiritualEveningExamen v-else-if="section.slug === 'examen'" />
+      <SpiritualReadingPlans v-else-if="section.slug === 'plans'" />
+      <SpiritualPrayerList v-else-if="section.slug === 'prayers'" />
+      <SpiritualWorship v-else-if="section.slug === 'worship'" />
     </template>
   </section>
 </template>
@@ -29,9 +32,12 @@
 import { spiritualSectionBySlug } from "~/utils/spiritualNav";
 
 const auth = useAuthStore();
+const faith = useFaithProfile();
 const route = useRoute();
 const slug = computed(() => String(route.params.slug || ""));
-const section = computed(() => spiritualSectionBySlug(slug.value));
+const section = computed(() =>
+  spiritualSectionBySlug(slug.value, faith.loaded.value ? faith.tradition.value : ""),
+);
 
 watch(
   slug,
@@ -48,6 +54,14 @@ onMounted(() => {
     auth.fetchSession();
   }
 });
+
+watch(
+  () => auth.user?.user_id,
+  (userId) => {
+    if (userId) void faith.load();
+  },
+  { immediate: true },
+);
 
 useHead(() => ({
   title: section.value?.name || "Spiritual Health",

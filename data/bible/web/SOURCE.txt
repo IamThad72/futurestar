@@ -1,0 +1,7 @@
+World English Bible (WEB), 2020 stable text, with deuterocanon
+Source: https://ebible.org/find/details.php?id=eng-web
+File: https://ebible.org/Scriptures/eng-web_vpl.zip (verse-per-line text, about 5 MB, git-ignored)
+License: Public domain. "World English Bible" is a trademark of eBible.org; the name may be used
+only for unchanged text. https://ebible.org/web/copyright.htm
+
+Load with: npm run seed:web

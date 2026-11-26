@@ -29,7 +29,7 @@
           <span class="mt-1 flex gap-2">
             <input
               v-model.number="form.durationCount"
-              type="number"
+              type="number" inputmode="numeric"
               min="1"
               :max="form.durationUnit === 'months' ? 6 : 16"
               class="input input-bordered w-20"
@@ -42,11 +42,11 @@
         </label>
         <label class="block text-sm">
           <span class="text-base-content/70">Days each week</span>
-          <input v-model.number="form.daysPerWeek" type="number" min="1" max="5" class="input input-bordered mt-1 w-full" />
+          <input v-model.number="form.daysPerWeek" type="number" inputmode="numeric" min="1" max="5" class="input input-bordered mt-1 w-full" />
         </label>
         <label class="block text-sm">
           <span class="text-base-content/70">Minutes each session</span>
-          <input v-model.number="form.minutes" type="number" min="15" max="90" class="input input-bordered mt-1 w-full" />
+          <input v-model.number="form.minutes" type="number" inputmode="numeric" min="15" max="90" class="input input-bordered mt-1 w-full" />
         </label>
       </div>
 

@@ -19,7 +19,7 @@
           <ion-title>{{ screenTitle }}</ion-title>
           <ion-buttons slot="end">
             <button
-              v-if="!auth.user"
+              v-if="!auth.user && !route.path.startsWith('/login')"
               type="button"
               class="mobile-login-btn"
               @click="go('/login')"
@@ -27,7 +27,7 @@
               Login
             </button>
             <button
-              v-else
+              v-else-if="auth.user"
               type="button"
               class="mobile-user-btn"
               aria-label="Open user menu"
@@ -56,6 +56,7 @@
 
       <ion-content ref="contentRef" class="mobile-ionic-content">
         <div
+          ref="mainRef"
           class="mobile-ionic-main"
           :class="{ 'mobile-ionic-main--flush-end': isSpiritualHome }"
         >
@@ -139,6 +140,7 @@ import {
   IonToolbar,
 } from "@ionic/vue";
 import { homePathForUser } from "~/utils/primaryNav";
+import { isDuplicateScreenTitle } from "~/utils/titleDedupe";
 
 const emit = defineEmits(["open-account", "open-linked"]);
 
@@ -152,6 +154,7 @@ const {
 const { go } = useAppNavigate();
 const homePath = computed(() => homePathForUser(auth.user));
 const contentRef = ref(null);
+const mainRef = ref(null);
 const userMenuOpen = ref(false);
 const textFieldFocused = ref(false);
 let blurHideTimer = 0;
@@ -237,14 +240,51 @@ watch(
   },
 );
 
+/*
+ * One title per screen on phones: when the page's first H1 repeats the
+ * toolbar title (e.g. "Budget Tracker" twice), hide the H1 visually and keep
+ * it for screen readers. Pages whose H1 adds information (Today's greeting,
+ * a vehicle name) keep it.
+ */
+const DUPLICATE_TITLE_CLASS = "mobile-title-duplicate";
+let titleObserver = null;
+let titleFrame = 0;
+
+function syncDuplicateTitle() {
+  titleFrame = 0;
+  const root = mainRef.value;
+  if (!root) return;
+  const first = root.querySelector("h1");
+  root.querySelectorAll(`h1.${DUPLICATE_TITLE_CLASS}`).forEach((h1) => {
+    if (h1 !== first) h1.classList.remove(DUPLICATE_TITLE_CLASS);
+  });
+  if (!first) return;
+  const duplicate = isDuplicateScreenTitle(first.textContent, screenTitle.value, route.path);
+  first.classList.toggle(DUPLICATE_TITLE_CLASS, duplicate);
+}
+
+function scheduleTitleSync() {
+  if (titleFrame) return;
+  titleFrame = window.requestAnimationFrame(syncDuplicateTitle);
+}
+
+watch(() => [route.path, screenTitle.value], () => nextTick(scheduleTitleSync));
+
 onMounted(() => {
   document.addEventListener("focusin", onFocusIn, true);
   document.addEventListener("focusout", onFocusOut, true);
+  if (mainRef.value && typeof MutationObserver !== "undefined") {
+    titleObserver = new MutationObserver(scheduleTitleSync);
+    titleObserver.observe(mainRef.value, { childList: true, subtree: true, characterData: true });
+  }
+  scheduleTitleSync();
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener("focusin", onFocusIn, true);
   document.removeEventListener("focusout", onFocusOut, true);
   window.clearTimeout(blurHideTimer);
+  titleObserver?.disconnect();
+  if (titleFrame) window.cancelAnimationFrame(titleFrame);
 });
 </script>

@@ -9,7 +9,7 @@ import { join } from "path";
 import { Client } from "pg";
 
 const DEMO_EMAIL = "demo@futurestar.app";
-const DEMO_PASSWORD = "demo72";
+const DEMO_PASSWORD = process.env.DEMO_PASSWORD;
 const DEMO_NAME = "Demo User";
 const YEAR = 2026;
 

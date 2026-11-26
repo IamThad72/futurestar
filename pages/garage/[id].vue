@@ -63,12 +63,40 @@
                   </p>
                   <p v-if="svc.notes" class="mt-1 text-xs text-gray-600 dark:text-gray-300">{{ svc.notes }}</p>
                 </div>
-                <div class="flex gap-2">
-                  <button type="button" class="btn btn-ghost btn-xs" @click="openEditModal(svc)">Edit</button>
-                  <button type="button" class="btn btn-ghost btn-xs text-error" :disabled="deleteSavingId === svc.vsr_id" @click="deleteService(svc)">
-                    {{ deleteSavingId === svc.vsr_id ? "..." : "Delete" }}
-                  </button>
-                </div>
+                <HeadlessMenu as="div" class="relative flex-none">
+                  <HeadlessMenuButton
+                    class="budget-row-menu__trigger relative block rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-white"
+                    :disabled="deleteSavingId === svc.vsr_id"
+                  >
+                    <span class="sr-only">Options for {{ svc.service_name }}</span>
+                    <span v-if="deleteSavingId === svc.vsr_id" class="text-xs" aria-hidden="true">...</span>
+                    <EllipsisVerticalIcon v-else class="size-5" aria-hidden="true" />
+                  </HeadlessMenuButton>
+                  <HeadlessMenuItems class="budget-row-menu absolute right-0 z-10 mt-2 w-44 origin-top-right focus:outline-none">
+                    <div class="budget-row-menu__list">
+                      <HeadlessMenuItem v-slot="{ active }" class="w-full">
+                        <button
+                          type="button"
+                          class="budget-row-menu__item"
+                          :class="{ 'budget-row-menu__item--active': active }"
+                          @click="openEditModal(svc)"
+                        >
+                          Edit<span class="sr-only">, {{ svc.service_name }}</span>
+                        </button>
+                      </HeadlessMenuItem>
+                      <HeadlessMenuItem v-slot="{ active }" class="w-full">
+                        <button
+                          type="button"
+                          class="budget-row-menu__item budget-row-menu__item--danger"
+                          :class="{ 'budget-row-menu__item--active': active }"
+                          @click="deleteService(svc)"
+                        >
+                          Delete<span class="sr-only">, {{ svc.service_name }}</span>
+                        </button>
+                      </HeadlessMenuItem>
+                    </div>
+                  </HeadlessMenuItems>
+                </HeadlessMenu>
               </div>
             </li>
           </ul>
@@ -167,7 +195,7 @@
             </label>
             <label class="form-control">
               <span class="label-text text-sm">Mileage</span>
-              <input v-model="form.mileage" class="input input-bordered input-sm w-full" type="number" min="0" step="1" />
+              <input v-model="form.mileage" class="input input-bordered input-sm w-full" type="number" inputmode="numeric" min="0" step="1" />
             </label>
           </div>
           <label class="form-control">
@@ -193,6 +221,7 @@
 </template>
 
 <script setup>
+import { EllipsisVerticalIcon } from "@heroicons/vue/20/solid";
 import { dueServices } from "~/utils/serviceDue";
 
 useHead({ title: "Vehicle Details" });

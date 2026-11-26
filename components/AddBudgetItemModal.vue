@@ -97,7 +97,7 @@
             <input
               v-model.number="form.monthly_amount"
               class="input input-bordered w-full"
-              type="number"
+              type="number" inputmode="decimal"
               min="0"
               step="0.01"
               placeholder="0.00"
@@ -109,7 +109,7 @@
             <input
               v-model.number="form.annual_amount"
               class="input input-bordered w-full"
-              type="number"
+              type="number" inputmode="decimal"
               min="0"
               step="0.01"
               placeholder="0.00"
@@ -137,7 +137,7 @@
                 <input
                   v-model.number="grossAllocationAmounts[line.key]"
                   class="input input-bordered input-sm w-full"
-                  type="number"
+                  type="number" inputmode="decimal"
                   min="0"
                   step="0.01"
                   placeholder="0.00"
@@ -155,7 +155,7 @@
                 <input
                   v-model.number="grossAllocationAmounts[line.key]"
                   class="input input-bordered input-sm w-full"
-                  type="number"
+                  type="number" inputmode="decimal"
                   min="0"
                   step="0.01"
                   placeholder="0.00"
@@ -173,7 +173,7 @@
                 <input
                   v-model.number="grossAllocationAmounts[line.key]"
                   class="input input-bordered input-sm w-full"
-                  type="number"
+                  type="number" inputmode="decimal"
                   min="0"
                   step="0.01"
                   placeholder="0.00"
@@ -191,7 +191,7 @@
                 <input
                   v-model.number="grossAllocationAmounts[line.key]"
                   class="input input-bordered input-sm w-full"
-                  type="number"
+                  type="number" inputmode="decimal"
                   min="0"
                   step="0.01"
                   placeholder="0.00"

@@ -4,15 +4,13 @@ import { omitGroupScope, requirePrivateUserId } from "../../utils/privateUserAcc
 import { todayIsoDate } from "~/utils/liturgicalCalendar";
 import {
   DEFAULT_LITURGICAL_CALENDAR_ID,
-  emptyCatalogMessage,
-  isCatalogUnavailable,
   isIsoDate,
-  listLiturgicalRange,
+  listCalendarRangeForUser,
   sundaySaturdayBounds,
 } from "../../utils/liturgicalCalendar";
 
 export default defineEventHandler(async (event) => {
-  await requirePrivateUserId(event);
+  const userId = await requirePrivateUserId(event);
   const query = omitGroupScope(getQuery(event) as Record<string, unknown>);
   const date = String(query.date || todayIsoDate()).trim();
   const calendarId = String(query.calendar || query.calendar_id || DEFAULT_LITURGICAL_CALENDAR_ID).trim()
@@ -30,36 +28,26 @@ export default defineEventHandler(async (event) => {
   const client = createDbClient();
   try {
     await client.connect();
-    const days = await listLiturgicalRange(client, {
+    const result = await listCalendarRangeForUser(client, userId, {
       calendarId,
       start: bounds.start,
       end: bounds.end,
     });
-    const seeded = days.length > 0;
     return {
       calendarId,
+      mode: result.mode,
+      tradition: result.tradition,
       date,
       start: bounds.start,
       end: bounds.end,
-      seeded,
-      message: seeded ? "" : emptyCatalogMessage("week"),
-      days,
+      seeded: true,
+      message: "",
+      days: result.days,
     };
   } catch (error: unknown) {
     if (error && typeof error === "object" && "statusCode" in error) throw error;
-    if (isCatalogUnavailable(error)) {
-      return {
-        calendarId,
-        date,
-        start: bounds.start,
-        end: bounds.end,
-        seeded: false,
-        message: emptyCatalogMessage("week"),
-        days: [],
-      };
-    }
     console.error("spiritual week failed", error);
-    throw createError({ statusCode: 500, statusMessage: "Failed to load this week's liturgical events." });
+    throw createError({ statusCode: 500, statusMessage: "Failed to load this week's church calendar." });
   } finally {
     await client.end().catch(() => undefined);
   }

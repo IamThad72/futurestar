@@ -79,7 +79,7 @@ const chartPadding = computed(() => ({
   top: 8,
   right: 16,
   bottom: 32,
-  left: isMobile.value ? 132 : 176,
+  left: 0,
 }));
 
 const yDomain = computed(() => {
@@ -117,7 +117,7 @@ function labelTick(tick) {
 }
 
 function barColor(_row, seriesIndex) {
-  if (seriesIndex === 0) return "#8F877A";
+  if (seriesIndex === 0) return "#BCB7AF";
   if (seriesIndex === 2) return "#B3261E";
   return "#1F6F5C";
 }

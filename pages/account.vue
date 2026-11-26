@@ -15,6 +15,8 @@
       </button>
     </div>
 
+    <FaithSettings v-if="auth.user" class="mt-6" />
+
     <LazyAccountManagementModal v-if="showAccountManagement" v-model="showAccountManagement" />
     <LazyLinkedAccountsModal v-if="showLinkedAccounts" v-model="showLinkedAccounts" />
   </div>

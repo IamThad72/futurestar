@@ -30,6 +30,7 @@ db-dump-*.sql
 data/bible/**/*.json
 data/bible/**/*.sql
 data/bible/**/*.csv
+data/bible/**/*.zip
 
 # USDA FoodData Central dumps (multi-GB; never commit zip/json)
 data/usda/

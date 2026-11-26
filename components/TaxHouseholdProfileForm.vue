@@ -25,11 +25,11 @@
       </label>
       <label class="flex flex-col gap-1 text-sm">
         <span>Children under 17</span>
-        <input v-model.number="form.childrenUnder17" type="number" min="0" max="20" class="input input-bordered w-full" :disabled="disabled" />
+        <input v-model.number="form.childrenUnder17" type="number" inputmode="numeric" min="0" max="20" class="input input-bordered w-full" :disabled="disabled" />
       </label>
       <label class="flex flex-col gap-1 text-sm">
         <span>Other dependents</span>
-        <input v-model.number="form.otherDependents" type="number" min="0" max="20" class="input input-bordered w-full" :disabled="disabled" />
+        <input v-model.number="form.otherDependents" type="number" inputmode="numeric" min="0" max="20" class="input input-bordered w-full" :disabled="disabled" />
       </label>
       <label class="flex flex-col gap-1 text-sm">
         <span>Deduction method</span>
@@ -40,7 +40,7 @@
       </label>
       <label v-if="form.deductionMethod === 'itemized'" class="flex flex-col gap-1 text-sm">
         <span>Itemized deduction</span>
-        <input v-model.number="form.itemizedDeduction" type="number" min="0" step="0.01" class="input input-bordered w-full" :disabled="disabled" />
+        <input v-model.number="form.itemizedDeduction" type="number" inputmode="decimal" min="0" step="0.01" class="input input-bordered w-full" :disabled="disabled" />
       </label>
       <label class="flex flex-col gap-1 text-sm">
         <span>Paychecks per year</span>
@@ -69,7 +69,7 @@
       </label>
       <label class="flex flex-col gap-1 text-sm">
         <span>ZIP</span>
-        <input v-model="form.localZip" type="text" class="input input-bordered w-full" :disabled="disabled" />
+        <input v-model="form.localZip" type="text" inputmode="numeric" autocomplete="postal-code" class="input input-bordered w-full" :disabled="disabled" />
       </label>
       <label class="flex flex-col gap-1 text-sm">
         <span>School district</span>
@@ -77,11 +77,11 @@
       </label>
       <label class="flex flex-col gap-1 text-sm">
         <span>City tax rate (%)</span>
-        <input v-model="form.cityPercent" type="number" min="0" max="15" step="0.01" class="input input-bordered w-full" :disabled="disabled" />
+        <input v-model="form.cityPercent" type="number" inputmode="decimal" min="0" max="15" step="0.01" class="input input-bordered w-full" :disabled="disabled" />
       </label>
       <label class="flex flex-col gap-1 text-sm">
         <span>School district rate (%)</span>
-        <input v-model="form.schoolPercent" type="number" min="0" max="15" step="0.01" class="input input-bordered w-full" :disabled="disabled" />
+        <input v-model="form.schoolPercent" type="number" inputmode="decimal" min="0" max="15" step="0.01" class="input input-bordered w-full" :disabled="disabled" />
       </label>
     </div>
     <button type="submit" class="btn btn-primary min-h-11" :disabled="disabled || saving">

@@ -13,7 +13,7 @@
           </select>
         </label>
         <label class="form-control w-full"><span class="label-text text-sm">Title</span><input v-model.trim="addAssetForm.title" class="input input-bordered input-sm w-full" required /></label>
-        <label class="form-control w-full"><span class="label-text text-sm">Value</span><input v-model.number="addAssetForm.value" class="input input-bordered input-sm w-full" type="number" step="0.01" min="0" required /></label>
+        <label class="form-control w-full"><span class="label-text text-sm">Value</span><input v-model.number="addAssetForm.value" class="input input-bordered input-sm w-full" type="number" inputmode="decimal" step="0.01" min="0" required /></label>
         <label class="form-control w-full"><span class="label-text text-sm">Description</span><textarea v-model.trim="addAssetForm.description" class="textarea textarea-bordered textarea-sm w-full" rows="2" required /></label>
         <label class="form-control w-full"><span class="label-text text-sm">Location</span><input v-model.trim="addAssetForm.location" class="input input-bordered input-sm w-full" /></label>
         <div v-if="addError" class="text-sm text-error">{{ addError }}</div>
@@ -32,9 +32,9 @@
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <label class="form-control"><span class="label-text text-sm">City</span><input v-model.trim="addRealEstateForm.city" class="input input-bordered input-sm w-full" required /></label>
           <label class="form-control"><span class="label-text text-sm">State</span><input v-model.trim="addRealEstateForm.state" class="input input-bordered input-sm w-full" required /></label>
-          <label class="form-control"><span class="label-text text-sm">Zipcode</span><input v-model.trim="addRealEstateForm.zipcode" class="input input-bordered input-sm w-full" required /></label>
+          <label class="form-control"><span class="label-text text-sm">Zipcode</span><input v-model.trim="addRealEstateForm.zipcode" inputmode="numeric" autocomplete="postal-code" class="input input-bordered input-sm w-full" required /></label>
         </div>
-        <label class="form-control"><span class="label-text text-sm">Value</span><input v-model.number="addRealEstateForm.value" class="input input-bordered input-sm w-full" type="number" step="0.01" min="0" required /></label>
+        <label class="form-control"><span class="label-text text-sm">Value</span><input v-model.number="addRealEstateForm.value" class="input input-bordered input-sm w-full" type="number" inputmode="decimal" step="0.01" min="0" required /></label>
         <label class="form-control"><span class="label-text text-sm">Trust (Y/N)</span><select v-model="addRealEstateForm.trust_designated" class="select select-bordered select-sm w-full" required><option value="">Select...</option><option value="Y">Y</option><option value="N">N</option></select></label>
         <div v-if="addError" class="text-sm text-error">{{ addError }}</div>
         <div class="modal-action">
@@ -50,7 +50,7 @@
           <label class="form-control"><span class="label-text text-sm">Policy #</span><input v-model.trim="addInsuranceForm.polocy_number" class="input input-bordered input-sm w-full" /></label>
         </div>
         <label class="form-control"><span class="label-text text-sm">Entity Covered</span><input v-model.trim="addInsuranceForm.entity_covered" class="input input-bordered input-sm w-full" /></label>
-        <label class="form-control"><span class="label-text text-sm">Amount</span><input v-model="addInsuranceForm.policy_amt" class="input input-bordered input-sm w-full" type="number" step="0.01" min="0" /></label>
+        <label class="form-control"><span class="label-text text-sm">Amount</span><input v-model="addInsuranceForm.policy_amt" class="input input-bordered input-sm w-full" type="number" inputmode="decimal" step="0.01" min="0" /></label>
         <label class="form-control"><span class="label-text text-sm">Intent</span><input v-model.trim="addInsuranceForm.intent" class="input input-bordered input-sm w-full" placeholder="e.g. Life, Auto, Home" /></label>
         <label class="form-control"><span class="label-text text-sm">Institution URL</span><input v-model.trim="addInsuranceForm.institution_url" class="input input-bordered input-sm w-full" type="url" /></label>
         <div v-if="addError" class="text-sm text-error">{{ addError }}</div>
@@ -79,16 +79,16 @@
           <label class="form-control"><span class="label-text text-sm">Loan #</span><input v-model.trim="addDebtForm.loan_number" class="input input-bordered input-sm w-full" /></label>
           <label class="form-control">
             <span class="label-text text-sm">{{ addDebtForm.is_revolving ? "Current balance" : "Principal balance" }}</span>
-            <input v-model="addDebtForm.loan_ammount" class="input input-bordered input-sm w-full" type="number" step="0.01" min="0" />
+            <input v-model="addDebtForm.loan_ammount" class="input input-bordered input-sm w-full" type="number" inputmode="decimal" step="0.01" min="0" />
           </label>
         </div>
         <div
           v-if="!addDebtForm.is_revolving"
           class="grid grid-cols-1 gap-3 sm:grid-cols-2 rounded-lg border border-base-300 p-3"
         >
-          <label class="form-control"><span class="label-text text-sm">Annual interest rate (%)</span><input v-model="addDebtForm.interest_rate_annual" class="input input-bordered input-sm w-full" type="number" step="0.001" min="0" placeholder="e.g. 6.5" /></label>
-          <label class="form-control"><span class="label-text text-sm">Remaining term (months)</span><input v-model="addDebtForm.term_months" class="input input-bordered input-sm w-full" type="number" step="1" min="1" placeholder="e.g. 351" /></label>
-          <label class="form-control"><span class="label-text text-sm">Scheduled monthly payment</span><input v-model="addDebtForm.scheduled_monthly_payment" class="input input-bordered input-sm w-full" type="number" step="0.01" min="0" /></label>
+          <label class="form-control"><span class="label-text text-sm">Annual interest rate (%)</span><input v-model="addDebtForm.interest_rate_annual" class="input input-bordered input-sm w-full" type="number" inputmode="decimal" step="0.001" min="0" placeholder="e.g. 6.5" /></label>
+          <label class="form-control"><span class="label-text text-sm">Remaining term (months)</span><input v-model="addDebtForm.term_months" class="input input-bordered input-sm w-full" type="number" inputmode="numeric" step="1" min="1" placeholder="e.g. 351" /></label>
+          <label class="form-control"><span class="label-text text-sm">Scheduled monthly payment</span><input v-model="addDebtForm.scheduled_monthly_payment" class="input input-bordered input-sm w-full" type="number" inputmode="decimal" step="0.01" min="0" /></label>
           <label class="form-control"><span class="label-text text-sm">Loan start date</span><input v-model="addDebtForm.loan_start_date" class="input input-bordered input-sm w-full" type="date" /></label>
         </div>
         <label class="form-control"><span class="label-text text-sm">Link to Asset</span>
@@ -134,7 +134,7 @@
           <label class="form-control"><span class="label-text text-sm">Account #</span><input v-model.trim="addCashForm.account_number" class="input input-bordered input-sm w-full" required /></label>
         </div>
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label class="form-control"><span class="label-text text-sm">Value</span><input v-model.number="addCashForm.value" class="input input-bordered input-sm w-full" type="number" step="0.01" min="0" required /></label>
+          <label class="form-control"><span class="label-text text-sm">Value</span><input v-model.number="addCashForm.value" class="input input-bordered input-sm w-full" type="number" inputmode="decimal" step="0.01" min="0" required /></label>
           <label class="form-control"><span class="label-text text-sm">Support #</span><input v-model.trim="addCashForm.account_support_number" class="input input-bordered input-sm w-full" required /></label>
         </div>
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">

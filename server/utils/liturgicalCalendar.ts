@@ -5,6 +5,9 @@ import {
   parseIsoDate,
   sundaySaturdayBounds,
 } from "~/utils/liturgicalCalendar";
+import type { Client } from "pg";
+import { christianYearRange } from "~/utils/christianYear.js";
+import { calendarKind, readFaithProfile } from "./faithProfile";
 
 export { sundaySaturdayBounds };
 
@@ -149,4 +152,41 @@ export async function listLiturgicalRange(
     });
   }
   return [...days.values()];
+}
+
+export type CalendarMode = "roman" | "church_year" | "off";
+
+/**
+ * Days for the signed-in user's calendar setting: the seeded General Roman
+ * Calendar in Catholic mode, the computed Christian year otherwise, or nothing
+ * when the calendar is turned off. Catholic mode falls back to the computed
+ * year if the Roman catalog is missing or not seeded for the range.
+ */
+export async function listCalendarRangeForUser(
+  client: Client,
+  userId: number,
+  options: { calendarId?: string; start: string; end: string },
+) {
+  const { profile } = await readFaithProfile(client, userId);
+  const kind = calendarKind(profile);
+  if (kind === "off") {
+    return { mode: "off" as CalendarMode, tradition: profile.tradition, days: [] as LiturgicalDayDto[], fallback: false };
+  }
+  if (kind === "roman") {
+    try {
+      const days = await listLiturgicalRange(client as unknown as DbClient, options);
+      if (days.length) {
+        return { mode: "roman" as CalendarMode, tradition: profile.tradition, days, fallback: false };
+      }
+    } catch (error) {
+      if (!isCatalogUnavailable(error)) throw error;
+    }
+  }
+  const days = christianYearRange(options.start, options.end, { tradition: profile.tradition }) as LiturgicalDayDto[];
+  return {
+    mode: "church_year" as CalendarMode,
+    tradition: profile.tradition,
+    days,
+    fallback: kind === "roman",
+  };
 }

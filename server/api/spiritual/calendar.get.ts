@@ -3,9 +3,7 @@ import { createDbClient } from "../../utils/db";
 import { omitGroupScope, requirePrivateUserId } from "../../utils/privateUserAccess";
 import {
   DEFAULT_LITURGICAL_CALENDAR_ID,
-  emptyCatalogMessage,
-  isCatalogUnavailable,
-  listLiturgicalRange,
+  listCalendarRangeForUser,
   monthDateBounds,
 } from "../../utils/liturgicalCalendar";
 
@@ -15,7 +13,7 @@ function utcYearMonth() {
 }
 
 export default defineEventHandler(async (event) => {
-  await requirePrivateUserId(event);
+  const userId = await requirePrivateUserId(event);
   const query = omitGroupScope(getQuery(event) as Record<string, unknown>);
   const fallback = utcYearMonth();
   const yearRaw = query.year != null ? parseInt(String(query.year), 10) : fallback.year;
@@ -34,34 +32,23 @@ export default defineEventHandler(async (event) => {
   const client = createDbClient();
   try {
     await client.connect();
-    const days = await listLiturgicalRange(client, { calendarId, start, end });
-    const seeded = days.length > 0;
+    const result = await listCalendarRangeForUser(client, userId, { calendarId, start, end });
     return {
       calendarId,
+      mode: result.mode,
+      tradition: result.tradition,
       year: yearRaw,
       month: monthRaw,
       start,
       end,
-      seeded,
-      message: seeded ? "" : emptyCatalogMessage("month"),
-      days,
+      seeded: true,
+      message: "",
+      days: result.days,
     };
   } catch (error: unknown) {
     if (error && typeof error === "object" && "statusCode" in error) throw error;
-    if (isCatalogUnavailable(error)) {
-      return {
-        calendarId,
-        year: yearRaw,
-        month: monthRaw,
-        start,
-        end,
-        seeded: false,
-        message: emptyCatalogMessage("month"),
-        days: [],
-      };
-    }
     console.error("spiritual calendar failed", error);
-    throw createError({ statusCode: 500, statusMessage: "Failed to load the liturgical calendar." });
+    throw createError({ statusCode: 500, statusMessage: "Failed to load the church calendar." });
   } finally {
     await client.end().catch(() => undefined);
   }

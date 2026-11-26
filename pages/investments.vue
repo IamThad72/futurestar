@@ -88,7 +88,7 @@
           </h2>
           <ul class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-300">
             <li class="inline-flex items-center gap-1.5">
-              <span class="inline-block h-2.5 w-2.5 rounded-sm bg-[#9ca3af]" aria-hidden="true" />
+              <span class="inline-block h-2.5 w-2.5 rounded-sm bg-[#BCB7AF]" aria-hidden="true" />
               Lower of cost basis and current value
             </li>
             <li class="inline-flex items-center gap-1.5">
@@ -448,7 +448,7 @@ function sumCurrentValue(rows) {
 }
 
 function shortDescription(name) {
-  return truncateDescription(name, 8);
+  return truncateDescription(name, 20);
 }
 
 function shares(amount) {

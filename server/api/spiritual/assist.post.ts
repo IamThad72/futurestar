@@ -2,7 +2,7 @@ import { createError, readBody } from "h3";
 import { requirePrivateUserId } from "../../utils/privateUserAccess";
 import { generateJson } from "../../utils/groq";
 import { generateNote } from "../../utils/aiNote";
-import { VIRTUE_GROUPS } from "~/utils/spiritualReview.js";
+import { findVirtueDefinition } from "~/utils/spiritualReview.js";
 
 const FOLLOW_FIELDS = new Set(["grateful", "troubled", "shortfall"]);
 
@@ -10,14 +10,9 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
 }
 
+/** Looks in both the Catholic (Catechism) and Scripture-worded lists. */
 function virtueDefinition(name: string): string {
-  const needle = name.trim().toLowerCase();
-  for (const group of VIRTUE_GROUPS) {
-    for (const virtue of group.virtues) {
-      if (virtue.name.toLowerCase() === needle) return virtue.definition;
-    }
-  }
-  return "";
+  return findVirtueDefinition(name);
 }
 
 function questionsFrom(raw: unknown, citations: string[]): string[] {

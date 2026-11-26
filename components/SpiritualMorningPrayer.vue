@@ -25,8 +25,9 @@
     <section class="app-card px-4 py-4">
       <h2 class="text-sm font-semibold text-gray-900">Prayers from Scripture</h2>
       <p class="mt-1 text-xs text-gray-700">
-        Morning prayers drawn from the Catholic Public Domain Version.
+        {{ translationLine }}
       </p>
+      <p v-if="catalogNotice" class="mt-1 text-xs text-gray-700">{{ catalogNotice }}</p>
       <p v-if="prayerError" class="mt-3 text-sm text-red-600">{{ prayerError }}</p>
       <p v-else-if="prayerLoading" class="mt-3 text-sm text-gray-700">Loading prayers…</p>
       <p v-else-if="catalogMessage" class="mt-3 text-sm text-amber-700 dark:text-amber-400">{{ catalogMessage }}</p>
@@ -36,6 +37,8 @@
         </li>
       </ul>
     </section>
+
+    <SpiritualPrayerReminders :date="reviewOn" title="Carry in prayer today" />
 
     <section class="app-card min-w-0 max-w-full overflow-hidden px-4 py-4">
       <h2 class="text-sm font-semibold text-gray-900">Morning Intention</h2>
@@ -114,20 +117,22 @@ import {
   BE_STILL_LINES,
   BE_STILL_PROMPTS,
   MORNING_INTENTION_FIELDS,
-  VIRTUES,
-  VIRTUE_GROUPS,
   emptySpiritualReview,
+  virtueGroupsForTradition,
+  virtueNamesForTradition,
 } from "~/utils/spiritualReview";
 
 const beStillLines = BE_STILL_LINES;
 const beStillPrompts = BE_STILL_PROMPTS;
 const intentionFields = MORNING_INTENTION_FIELDS;
-const virtueGroups = VIRTUE_GROUPS;
+const faith = useFaithProfile();
+/** Catechism wording in Catholic mode; Scripture wording otherwise. */
+const virtueGroups = computed(() => virtueGroupsForTradition(faith.tradition.value));
 
 function matchListedVirtue(value) {
   const needle = String(value || "").trim().toLowerCase();
   if (!needle) return "";
-  return VIRTUES.find((virtue) => virtue.toLowerCase() === needle) || "";
+  return virtueNamesForTradition(faith.tradition.value).find((virtue) => virtue.toLowerCase() === needle) || "";
 }
 
 const customVirtue = computed(() => {
@@ -141,6 +146,12 @@ const prayers = ref([]);
 const prayerLoading = ref(false);
 const prayerError = ref("");
 const catalogMessage = ref("");
+const catalogNotice = ref("");
+const catalogTranslation = ref("");
+const translationLine = computed(() => {
+  const name = catalogTranslation.value || faith.translationLabel.value;
+  return name ? `Morning prayers from Scripture (${name}).` : "Morning prayers from Scripture.";
+});
 const form = ref(emptySpiritualReview());
 const carriedIntention = ref("");
 const shortenedIntention = ref("");
@@ -156,6 +167,7 @@ watch(reviewOn, () => {
 });
 
 onMounted(() => {
+  void faith.load();
   void loadDay();
 });
 
@@ -163,6 +175,7 @@ async function loadDay() {
   prayerLoading.value = true;
   prayerError.value = "";
   catalogMessage.value = "";
+  catalogNotice.value = "";
   saveError.value = "";
   saveNotice.value = "";
   try {
@@ -173,6 +186,8 @@ async function loadDay() {
     ]);
     prayers.value = verseData?.prayers || [];
     catalogMessage.value = verseData?.catalog?.message || "";
+    catalogNotice.value = verseData?.catalog?.notice || "";
+    catalogTranslation.value = verseData?.catalog?.seeded ? verseData?.catalog?.translation || "" : "";
     form.value = { ...emptySpiritualReview(), ...(reviewData?.review || {}) };
     form.value.virtue = matchListedVirtue(form.value.virtue) || form.value.virtue || "";
     carriedIntention.value = String(previousData?.review?.tomorrow || "").trim();

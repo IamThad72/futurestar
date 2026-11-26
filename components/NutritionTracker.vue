@@ -89,7 +89,7 @@
             </div>
             <label class="form-control">
               <span class="label py-1"><span class="label-text text-sm">Servings</span></span>
-              <input v-model="logForm.servings" type="number" min="0.01" step="0.01" class="input input-bordered w-full" />
+              <input v-model="logForm.servings" type="number" inputmode="decimal" min="0.01" step="0.01" class="input input-bordered w-full" />
             </label>
             <p v-if="selectedFood" class="text-xs text-gray-500 dark:text-gray-400">
               {{ foodMeta(selectedFood) }}
@@ -394,7 +394,7 @@
               </span>
               <input
                 v-model="foodForm.serving_g"
-                type="number"
+                type="number" inputmode="decimal"
                 min="0.1"
                 step="0.1"
                 class="input input-bordered w-full"
@@ -404,20 +404,20 @@
           </div>
           <label class="form-control">
             <span class="label py-1"><span class="label-text text-sm">Calories</span></span>
-            <input v-model="foodForm.kcal" type="number" min="0" step="1" class="input input-bordered w-full" required />
+            <input v-model="foodForm.kcal" type="number" inputmode="numeric" min="0" step="1" class="input input-bordered w-full" required />
           </label>
           <div class="grid grid-cols-3 gap-3">
             <label class="form-control">
               <span class="label py-1"><span class="label-text text-sm">Protein (g)</span></span>
-              <input v-model="foodForm.protein_g" type="number" min="0" step="0.1" class="input input-bordered w-full" required />
+              <input v-model="foodForm.protein_g" type="number" inputmode="decimal" min="0" step="0.1" class="input input-bordered w-full" required />
             </label>
             <label class="form-control">
               <span class="label py-1"><span class="label-text text-sm">Fat (g)</span></span>
-              <input v-model="foodForm.fat_g" type="number" min="0" step="0.1" class="input input-bordered w-full" required />
+              <input v-model="foodForm.fat_g" type="number" inputmode="decimal" min="0" step="0.1" class="input input-bordered w-full" required />
             </label>
             <label class="form-control">
               <span class="label py-1"><span class="label-text text-sm">Carbs (g)</span></span>
-              <input v-model="foodForm.carb_g" type="number" min="0" step="0.1" class="input input-bordered w-full" required />
+              <input v-model="foodForm.carb_g" type="number" inputmode="decimal" min="0" step="0.1" class="input input-bordered w-full" required />
             </label>
           </div>
           <p v-if="foodError" class="text-sm text-red-600 dark:text-red-400">{{ foodError }}</p>
@@ -490,7 +490,7 @@
             <div class="mt-2 grid gap-2 sm:grid-cols-3">
               <label class="form-control">
                 <span class="label py-0"><span class="label-text text-xs">Servings</span></span>
-                <input v-model="row.quantity" type="number" min="0.01" step="0.01" class="input input-bordered input-sm w-full" />
+                <input v-model="row.quantity" type="number" inputmode="decimal" min="0.01" step="0.01" class="input input-bordered input-sm w-full" />
               </label>
               <label class="form-control">
                 <span class="label py-0">
@@ -499,7 +499,7 @@
                     ≈ {{ proposalServingGrams(row) }} g
                   </span>
                 </span>
-                <input v-model="row.servingOz" type="number" min="0.01" step="0.01" class="input input-bordered input-sm w-full" />
+                <input v-model="row.servingOz" type="number" inputmode="decimal" min="0.01" step="0.01" class="input input-bordered input-sm w-full" />
               </label>
               <label class="form-control">
                 <span class="label py-0"><span class="label-text text-xs">Serving</span></span>
@@ -509,19 +509,19 @@
             <div v-if="row.unmatched" class="mt-2 grid gap-2 sm:grid-cols-4">
               <label class="form-control">
                 <span class="label py-0"><span class="label-text text-xs">Calories</span></span>
-                <input v-model="row.kcal" type="number" min="0" step="1" class="input input-bordered input-sm w-full" />
+                <input v-model="row.kcal" type="number" inputmode="numeric" min="0" step="1" class="input input-bordered input-sm w-full" />
               </label>
               <label class="form-control">
                 <span class="label py-0"><span class="label-text text-xs">Protein (g)</span></span>
-                <input v-model="row.protein" type="number" min="0" step="0.1" class="input input-bordered input-sm w-full" />
+                <input v-model="row.protein" type="number" inputmode="decimal" min="0" step="0.1" class="input input-bordered input-sm w-full" />
               </label>
               <label class="form-control">
                 <span class="label py-0"><span class="label-text text-xs">Fat (g)</span></span>
-                <input v-model="row.fat" type="number" min="0" step="0.1" class="input input-bordered input-sm w-full" />
+                <input v-model="row.fat" type="number" inputmode="decimal" min="0" step="0.1" class="input input-bordered input-sm w-full" />
               </label>
               <label class="form-control">
                 <span class="label py-0"><span class="label-text text-xs">Carbs (g)</span></span>
-                <input v-model="row.carb" type="number" min="0" step="0.1" class="input input-bordered input-sm w-full" />
+                <input v-model="row.carb" type="number" inputmode="decimal" min="0" step="0.1" class="input input-bordered input-sm w-full" />
               </label>
               <p class="sm:col-span-4 text-xs text-gray-500 dark:text-gray-400">
                 Per serving. These are saved on the food before it is logged.
@@ -607,28 +607,28 @@
           </label>
           <label class="form-control">
             <span class="label py-1"><span class="label-text text-sm">Calories (kcal)</span></span>
-            <input v-model="planForm.kcal" type="number" min="0" step="1" class="input input-bordered w-full" required />
+            <input v-model="planForm.kcal" type="number" inputmode="numeric" min="0" step="1" class="input input-bordered w-full" required />
           </label>
           <label class="form-control">
             <span class="label py-1">
               <span class="label-text text-sm">Protein (oz)</span>
               <span class="label-text-alt text-xs text-gray-500">≈ {{ formatPlanGrams(planForm.protein_oz) }} g</span>
             </span>
-            <input v-model="planForm.protein_oz" type="number" min="0" step="0.01" class="input input-bordered w-full" required />
+            <input v-model="planForm.protein_oz" type="number" inputmode="decimal" min="0" step="0.01" class="input input-bordered w-full" required />
           </label>
           <label class="form-control">
             <span class="label py-1">
               <span class="label-text text-sm">Fat (oz)</span>
               <span class="label-text-alt text-xs text-gray-500">≈ {{ formatPlanGrams(planForm.fat_oz) }} g</span>
             </span>
-            <input v-model="planForm.fat_oz" type="number" min="0" step="0.01" class="input input-bordered w-full" required />
+            <input v-model="planForm.fat_oz" type="number" inputmode="decimal" min="0" step="0.01" class="input input-bordered w-full" required />
           </label>
           <label class="form-control">
             <span class="label py-1">
               <span class="label-text text-sm">Carbohydrate (oz)</span>
               <span class="label-text-alt text-xs text-gray-500">≈ {{ formatPlanGrams(planForm.carb_oz) }} g</span>
             </span>
-            <input v-model="planForm.carb_oz" type="number" min="0" step="0.01" class="input input-bordered w-full" required />
+            <input v-model="planForm.carb_oz" type="number" inputmode="decimal" min="0" step="0.01" class="input input-bordered w-full" required />
           </label>
           <div class="modal-action sm:col-span-2 mt-0">
             <p v-if="planError" class="mr-auto self-center text-sm text-red-600 dark:text-red-400">{{ planError }}</p>

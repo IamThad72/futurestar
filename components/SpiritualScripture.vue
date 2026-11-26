@@ -15,11 +15,12 @@
     <p v-if="loadError" class="text-sm text-red-600">{{ loadError }}</p>
     <p v-else-if="loading" class="text-sm text-gray-700">Loading Scripture…</p>
     <p v-else-if="catalogMessage" class="text-sm text-amber-700 dark:text-amber-400">{{ catalogMessage }}</p>
+    <p v-if="catalogNotice" class="text-xs text-gray-700">{{ catalogNotice }}</p>
 
     <section v-if="weekly" class="app-card px-4 py-4">
       <h2 class="text-sm font-semibold text-gray-900">Scripture for This Week</h2>
       <div class="mt-3">
-        <SpiritualPassageCard :passage="weekly" attribution="Catholic Public Domain Version" />
+        <SpiritualPassageCard :passage="weekly" :attribution="translation" />
       </div>
     </section>
 
@@ -84,6 +85,8 @@ const reviewOn = ref(todayIsoDate());
 const loading = ref(false);
 const loadError = ref("");
 const catalogMessage = ref("");
+const catalogNotice = ref("");
+const translation = ref("");
 const weekly = ref(null);
 const oldTestament = ref(null);
 const newTestament = ref(null);
@@ -113,6 +116,8 @@ async function loadDay() {
     oldTestament.value = data?.old_testament || null;
     newTestament.value = data?.new_testament || null;
     catalogMessage.value = data?.catalog?.message || "";
+    catalogNotice.value = data?.catalog?.notice || "";
+    translation.value = data?.catalog?.seeded ? data?.catalog?.translation || "" : "";
     questions.value = [];
     questionsError.value = "";
   } catch (error) {

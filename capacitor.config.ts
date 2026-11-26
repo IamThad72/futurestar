@@ -27,13 +27,16 @@ const config: CapacitorConfig = {
     SplashScreen: {
       launchAutoHide: true,
       launchShowDuration: 0,
-      backgroundColor: "#fafafa",
+      backgroundColor: "#FBF8F3",
       androidSplashResourceName: "splash",
       showSpinner: false,
     },
+    // Matches the parchment app background. "LIGHT" means dark text for a light bar;
+    // plugins/status-bar.client.ts switches it at runtime for dark mode.
     StatusBar: {
-      style: "DARK",
-      backgroundColor: "#fafafa",
+      style: "LIGHT",
+      backgroundColor: "#FBF8F3",
+      overlaysWebView: false,
     },
   },
 };

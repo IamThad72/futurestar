@@ -1601,3 +1601,88 @@ ion-app .textarea:focus-visible {
 .bg-violet-tint { background-color: var(--sl-violet-tint); }
 .bg-evergreen-tint { background-color: var(--sl-evergreen-tint); }
 .bg-ember-tint { background-color: var(--sl-ember-tint); }
+
+/* ------------------------------------------------------------------
+ * Phone quick wins. Scoped to the mobile shell (phones and the native
+ * app), so the desktop layout is unchanged.
+ * ------------------------------------------------------------------ */
+
+/* Gutters: page containers use `px-1` (4 px) on phones; give them 16 px from
+   the screen edge, plus the landscape notch inset when there is one. */
+.mobile-ionic-shell :is(.app-page, .app-page-wide),
+.mobile-ionic-shell .mobile-ionic-main :is(.max-w-7xl.px-1, .max-w-7xl.px-4) {
+  padding-left: calc(1rem + env(safe-area-inset-left, 0px));
+  padding-right: calc(1rem + env(safe-area-inset-right, 0px));
+}
+
+/* Nested page containers don't add a second gutter. */
+.mobile-ionic-shell :is(.app-page, .app-page-wide, .max-w-7xl.px-1) :is(.app-page, .app-page-wide, .max-w-7xl.px-1, .max-w-7xl.px-4) {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* One title per screen: MobileIonicShell marks a page H1 that repeats the
+   toolbar title; keep it for screen readers only. */
+.mobile-ionic-shell h1.mobile-title-duplicate {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* 44 px minimum tap size (Apple HIG 44 pt, Material 48 dp). */
+.mobile-ionic-shell :is(.btn-xs, .btn-sm, .btn-square, .btn-circle) {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.mobile-ionic-shell .mobile-brand,
+.mobile-ionic-shell .mobile-user-btn,
+.mobile-ionic-shell .budget-row-menu__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.mobile-ionic-shell .estate-record-list__sort-btn,
+.mobile-ionic-shell .investment-edit-btn,
+.mobile-ionic-shell .budget-row-menu__item,
+.mobile-ionic-shell .app-user-menu__item {
+  min-height: 44px;
+}
+
+.mobile-ionic-shell :is(.checkbox-sm, .radio-sm, .toggle-sm) {
+  --size: 1.5rem;
+}
+
+/* The label around a checkbox or radio is the tap target. */
+.mobile-ionic-shell label:has(> input:is([type="checkbox"], [type="radio"])) {
+  min-height: 44px;
+}
+
+/* Text links and small custom buttons: an invisible hit area that grows the
+   tap target to 44 px without moving anything. In the base layer, so any
+   utility or component that positions the element still wins. */
+@layer base {
+  :where(.mobile-ionic-shell .mobile-ionic-main)
+    :where(a, button):where(:not(.btn, .tab, .app-card-link, .menu *)) {
+    position: relative;
+  }
+
+  :where(.mobile-ionic-shell .mobile-ionic-main)
+    :where(a, button):where(:not(.btn, .tab, .app-card-link, .menu *))::after {
+    content: "";
+    position: absolute;
+    top: min(0px, calc((100% - 44px) / 2));
+    bottom: min(0px, calc((100% - 44px) / 2));
+    left: min(0px, calc((100% - 44px) / 2));
+    right: min(0px, calc((100% - 44px) / 2));
+  }
+}

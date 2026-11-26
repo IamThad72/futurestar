@@ -333,7 +333,7 @@
                 <input
                   v-model.number="txForm.amount"
                   class="input input-bordered w-full"
-                  type="number"
+                  type="number" inputmode="decimal"
                   min="0"
                   step="0.01"
                   placeholder="0.00"
@@ -369,7 +369,7 @@
                     <input
                       v-model.number="grossAllocationAmounts[line.key]"
                       class="input input-bordered input-sm w-full"
-                      type="number"
+                      type="number" inputmode="decimal"
                       min="0"
                       step="0.01"
                       placeholder="0.00"
@@ -387,7 +387,7 @@
                     <input
                       v-model.number="grossAllocationAmounts[line.key]"
                       class="input input-bordered input-sm w-full"
-                      type="number"
+                      type="number" inputmode="decimal"
                       min="0"
                       step="0.01"
                       placeholder="0.00"
@@ -405,7 +405,7 @@
                     <input
                       v-model.number="grossAllocationAmounts[line.key]"
                       class="input input-bordered input-sm w-full"
-                      type="number"
+                      type="number" inputmode="decimal"
                       min="0"
                       step="0.01"
                       placeholder="0.00"
@@ -423,7 +423,7 @@
                     <input
                       v-model.number="grossAllocationAmounts[line.key]"
                       class="input input-bordered input-sm w-full"
-                      type="number"
+                      type="number" inputmode="decimal"
                       min="0"
                       step="0.01"
                       placeholder="0.00"
@@ -567,7 +567,7 @@
                       </label>
                       <label class="form-control">
                         <span class="label-text text-sm">Amount</span>
-                        <input v-model.number="editTxForm.amount" class="input input-bordered input-sm w-full" type="number" min="0" step="0.01" required />
+                        <input v-model.number="editTxForm.amount" class="input input-bordered input-sm w-full" type="number" inputmode="decimal" min="0" step="0.01" required />
                       </label>
                     </div>
                     <label class="form-control">

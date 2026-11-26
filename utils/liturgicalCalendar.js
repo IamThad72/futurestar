@@ -1,3 +1,5 @@
+import { christianYearSeasonLabel } from "./christianYear.js";
+
 /** Default Inadiutorium English General Roman catalog. */
 export const LITURGICAL_CALENDAR_ID = "en-default";
 
@@ -127,7 +129,7 @@ export function seasonLabel(season) {
     case "easter":
       return "Easter";
     default:
-      return capitalizeWord(season) || "Liturgical season";
+      return christianYearSeasonLabel(season) || capitalizeWord(season) || "Liturgical season";
   }
 }
 

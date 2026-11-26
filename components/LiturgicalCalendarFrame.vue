@@ -35,7 +35,7 @@
         <div class="flex min-w-0 flex-1 items-center justify-between gap-2">
           <button
             type="button"
-            class="rounded-md px-2 py-1 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-gray-200"
+            class="inline-flex h-11 w-11 items-center justify-center rounded-md text-lg text-gray-500 sm:h-auto sm:w-auto sm:px-2 sm:py-1 sm:text-sm hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-gray-200"
             aria-label="Previous month"
             @click="changeMonth(-1)"
           >
@@ -48,7 +48,7 @@
             <button
               v-if="!isCurrentMonth"
               type="button"
-              class="mt-0.5 text-[11px] font-medium text-primary hover:text-primary/80"
+              class="mt-0.5 min-h-8 px-2 text-xs font-medium text-primary hover:text-primary/80 sm:min-h-0 sm:px-0 sm:text-[11px]"
               @click="goToCurrentMonth"
             >
               Today
@@ -56,7 +56,7 @@
           </div>
           <button
             type="button"
-            class="rounded-md px-2 py-1 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-gray-200"
+            class="inline-flex h-11 w-11 items-center justify-center rounded-md text-lg text-gray-500 sm:h-auto sm:w-auto sm:px-2 sm:py-1 sm:text-sm hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-gray-200"
             aria-label="Next month"
             @click="changeMonth(1)"
           >
@@ -69,7 +69,7 @@
         <span v-for="label in weekdayLabels" :key="label">{{ label }}</span>
       </div>
 
-      <div class="mt-1 space-y-0.5" role="grid" aria-label="Liturgical month">
+      <div class="mt-1 space-y-0.5" role="grid" :aria-label="mode === 'roman' ? 'Liturgical month' : 'Church calendar month'">
         <div
           v-for="week in monthWeeks"
           :key="week.sunday"
@@ -89,7 +89,7 @@
             <button
               v-if="cell"
               type="button"
-              class="flex h-9 w-9 flex-col items-center justify-center rounded-md"
+              class="flex h-11 w-11 flex-col items-center justify-center rounded-md sm:h-9 sm:w-9"
               :class="cellTone(cell)"
               :aria-current="cell.iso === today ? 'date' : undefined"
               :aria-label="dayButtonLabel(cell)"
@@ -131,7 +131,7 @@
       />
 
       <p v-else-if="loading || weekLoading" class="mt-3 text-xs text-gray-500 dark:text-gray-400">
-        Loading liturgical days...
+        {{ mode === "roman" ? "Loading liturgical days..." : "Loading the church calendar..." }}
       </p>
 
       <p v-else-if="weekMessage" class="mt-3 text-xs text-gray-500 dark:text-gray-400">
@@ -155,16 +155,20 @@
               <span
                 class="mt-1.5 size-2 shrink-0 rounded-full"
                 :class="liturgicalColorClass(celebration.color)"
-                :title="celebration.color || 'liturgical color'"
+                :title="celebration.color || 'season color'"
               />
               <div class="min-w-0">
                 <p class="text-sm leading-5 text-gray-900 dark:text-white">
                   {{ celebration.displayTitle }}
                 </p>
-                <p class="text-[11px] text-gray-500 dark:text-gray-400">
+                <!-- Ranks and the full color set are shown for the General Roman Calendar (Catholic mode) only. -->
+                <p v-if="mode === 'roman'" class="text-[11px] text-gray-500 dark:text-gray-400">
                   <span v-if="celebration.rank">{{ capitalizeWord(celebration.rank) }}</span>
                   <span v-if="celebration.rank && celebration.color"> · </span>
                   <span v-if="celebration.color">{{ capitalizeWord(celebration.color) }}</span>
+                </p>
+                <p v-else-if="celebration.major" class="text-[11px] text-gray-500 dark:text-gray-400">
+                  {{ seasonLabel(day.season) }}
                 </p>
               </div>
             </li>
@@ -188,6 +192,7 @@ import {
   liturgicalColorClass,
   monthLabel,
   parseIsoDate,
+  seasonLabel,
   shiftYearMonth,
   sundaySaturdayBounds,
   todayIsoDate,
@@ -217,6 +222,8 @@ const weekDays = ref([]);
 const weekStart = ref("");
 const weekEnd = ref("");
 const weekMessage = ref("");
+/** "roman" (General Roman Calendar) or "church_year" (computed seasons and major days). */
+const mode = ref("roman");
 
 const isCurrentMonth = computed(
   () => viewYear.value === currentYear && viewMonth.value === currentMonth,
@@ -313,6 +320,7 @@ async function loadMonth() {
   const data = await $fetch("/api/spiritual/calendar", {
     query: { year: viewYear.value, month: viewMonth.value },
   });
+  mode.value = data.mode || mode.value;
   monthDays.value = data.days || [];
   monthMessage.value = data.seeded ? "" : data.message || "";
 }
@@ -321,6 +329,7 @@ async function loadWeek(date = selectedDate.value) {
   const data = await $fetch("/api/spiritual/week", {
     query: { date },
   });
+  mode.value = data.mode || mode.value;
   weekDays.value = data.days || [];
   weekStart.value = data.start || "";
   weekEnd.value = data.end || "";
@@ -335,7 +344,7 @@ async function selectWeek(iso) {
   try {
     await loadWeek(iso);
   } catch (error) {
-    loadError.value = parseFetchError(error, "Could not load that week's liturgical events.");
+    loadError.value = parseFetchError(error, "Could not load that week's calendar.");
     weekDays.value = [];
     weekMessage.value = "";
   } finally {
@@ -349,7 +358,7 @@ async function loadAll() {
   try {
     await Promise.all([loadMonth(), loadWeek()]);
   } catch (error) {
-    loadError.value = parseFetchError(error, "Could not load the liturgical calendar.");
+    loadError.value = parseFetchError(error, "Could not load the calendar.");
     monthDays.value = [];
     weekDays.value = [];
     weekMessage.value = "";

@@ -6,9 +6,9 @@
         v-if="!loading && (expenseData.length || otherData.length)"
         class="mt-3 flex flex-col gap-2 lg:flex-row lg:items-stretch lg:gap-4"
       >
-        <dl class="grid min-w-0 flex-1 grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
+        <dl class="grid min-w-0 flex-1 grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
           <div class="rounded-md border border-base-300 bg-base-100 px-3 py-2">
-            <dt class="text-[0.65rem] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
               Income total
             </dt>
             <dd class="mt-0.5 text-base font-semibold tabular-nums text-gray-900 md:text-lg dark:text-white">
@@ -16,15 +16,15 @@
             </dd>
           </div>
           <div class="rounded-md border border-base-300 bg-base-100 px-3 py-2">
-            <dt class="text-[0.65rem] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
               Expense total
             </dt>
             <dd class="mt-0.5 text-base font-semibold tabular-nums text-gray-900 md:text-lg dark:text-white">
               ${{ formatChartMoneyRounded(expenseTotal) }}
             </dd>
           </div>
-          <div class="rounded-md border border-base-300 bg-base-100 px-3 py-2">
-            <dt class="text-[0.65rem] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          <div class="col-span-2 rounded-md border border-base-300 bg-base-100 px-3 py-2 sm:col-span-1">
+            <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
               Difference
             </dt>
             <dd
@@ -39,7 +39,7 @@
         <div
           class="rounded-md border border-base-300 bg-base-100 px-3 py-2 lg:min-w-[16rem] lg:max-w-sm lg:flex-1"
         >
-          <p class="text-[0.65rem] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Over budget
           </p>
           <ul v-if="overBudgetCategories.length" class="mt-1.5 space-y-1">

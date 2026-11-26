@@ -97,7 +97,7 @@
             <input
               v-model.number="editForm.monthly_amount"
               class="input input-bordered w-full"
-              type="number"
+              type="number" inputmode="decimal"
               min="0"
               step="0.01"
               @input="syncEditAnnualFromMonthly"
@@ -108,7 +108,7 @@
             <input
               v-model.number="editForm.annual_amount"
               class="input input-bordered w-full"
-              type="number"
+              type="number" inputmode="decimal"
               min="0"
               step="0.01"
               @input="syncEditMonthlyFromAnnual"

@@ -1,7 +1,7 @@
 <template>
  
   <div
-    class="-mx-1 -mt-4 min-h-[calc(100dvh-8.5rem)] bg-base-200 px-1 py-12 pb-safe sm:-mx-0 sm:mt-0 sm:px-6 sm:py-16 lg:px-8"
+    class="-mt-4 min-h-[calc(100dvh-8.5rem)] bg-base-200 px-4 py-12 pb-safe sm:mt-0 sm:px-6 sm:py-16 lg:px-8"
   >
     <div class="sm:mx-auto sm:w-full sm:max-w-sm">
       <NuxtLink
@@ -48,6 +48,9 @@
               type="email"
               name="email"
               autocomplete="email"
+              autocapitalize="off"
+              spellcheck="false"
+              :enterkeyhint="forgotMode ? 'send' : 'next'"
               required
               placeholder="you@example.com"
               class="input input-bordered w-full bg-base-100 text-base-content"
@@ -73,6 +76,7 @@
               type="password"
               name="password"
               autocomplete="current-password"
+              enterkeyhint="go"
               required
               placeholder="••••••••"
               class="input input-bordered w-full bg-base-100 text-base-content"

@@ -6,7 +6,7 @@
           Spiritual Health
         </h1>
         <p class="mt-2 text-base leading-6 text-muted">
-          A daily review: be still, remember, hear Scripture, and close the day with examen.
+          {{ introText }}
           Anything you write stays private to your account.
         </p>
         <div v-if="auth.user" class="mt-4">
@@ -18,19 +18,26 @@
         </div>
       </header>
 
-      <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <li v-for="item in homeLinks" :key="item.href">
-          <AppLink :to="item.href" class="app-card-link">
-            <h2 class="text-ink">{{ item.name }}</h2>
-            <p class="mt-2 flex-1 text-base leading-6 text-muted">
-              {{ item.description }}
-            </p>
-          </AppLink>
-        </li>
-      </ul>
+      <FaithTraditionPrompt v-if="auth.user" />
+
+      <TodayReadingCard v-if="auth.user" class="mb-4" />
+
+      <template v-for="group in homeGroups" :key="group.key">
+        <h2 v-if="group.key !== 'daily'" class="sl-caption mb-2 mt-6">{{ group.name }}</h2>
+        <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <li v-for="item in group.links" :key="item.href">
+            <AppLink :to="item.href" class="app-card-link">
+              <h2 class="text-ink">{{ item.name }}</h2>
+              <p class="mt-2 flex-1 text-base leading-6 text-muted">
+                {{ item.description }}
+              </p>
+            </AppLink>
+          </li>
+        </ul>
+      </template>
     </div>
 
-    <div class="spiritual-page__dock">
+    <div v-if="showDock" class="spiritual-page__dock">
       <div
         v-if="!auth.ready"
         class="app-card px-4 py-6 text-sm text-base-content/60"
@@ -41,20 +48,37 @@
         v-else-if="!auth.user"
         class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
       >
-        You must be logged in to view the liturgical calendar.
+        Sign in to see the {{ faith.calendarName.value }}.
       </div>
-      <LiturgicalCalendarFrame v-else />
+      <LiturgicalCalendarFrame v-else-if="faith.loaded.value" :key="calendarKey" />
     </div>
   </section>
 </template>
 
 <script setup>
-import { SPIRITUAL_HOME_LINKS } from "~/utils/spiritualNav";
+import { SPIRITUAL_GROUPS, spiritualHomeLinks } from "~/utils/spiritualNav";
 
 useHead({ title: "Spiritual" });
 
 const auth = useAuthStore();
-const homeLinks = SPIRITUAL_HOME_LINKS;
+const faith = useFaithProfile();
+const homeLinks = computed(() => spiritualHomeLinks(faith.loaded.value ? faith.tradition.value : ""));
+/** The daily rhythm, then ongoing practices (reading plans, prayer list, worship). */
+const homeGroups = computed(() =>
+  SPIRITUAL_GROUPS.map((group) => ({
+    ...group,
+    links: homeLinks.value.filter((link) => link.group === group.key),
+  })).filter((group) => group.links.length),
+);
+const introText = computed(() =>
+  faith.loaded.value && faith.tradition.value !== "catholic"
+    ? "A daily rhythm: be still, remember, read Scripture, and close the day in reflection."
+    : "A daily review: be still, remember, hear Scripture, and close the day with examen.",
+);
+/** Hidden when the calendar is turned off in Faith settings. */
+const showDock = computed(() => !auth.user || !faith.loaded.value || faith.calendarKind.value !== "off");
+/** Reload the panel when the tradition changes (Roman vs church-year days). */
+const calendarKey = computed(() => `${faith.tradition.value}-${faith.calendarKind.value}`);
 const mirrorText = ref("");
 const mirrorError = ref("");
 const mirrorLoading = ref(false);
@@ -78,6 +102,14 @@ onMounted(() => {
     auth.fetchSession();
   }
 });
+
+watch(
+  () => auth.user?.user_id,
+  (userId) => {
+    if (userId) void faith.load();
+  },
+  { immediate: true },
+);
 </script>
 
 <style scoped>

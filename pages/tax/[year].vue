@@ -1,10 +1,22 @@
 <template>
   <section class="app-page-wide space-y-4 sm:space-y-6">
-    <header class="flex flex-wrap items-center gap-4 sm:gap-6">
-      <div class="min-w-0">
-        <h1 class="text-lg sm:text-xl font-semibold text-base-content">Tax</h1>
-        <p class="mt-0.5 text-xs text-base-content/60">Fiscal year {{ selectedYear }}</p>
-      </div>
+    <header class="flex flex-wrap items-center gap-3 sm:gap-4">
+      <h1 class="text-lg sm:text-xl font-semibold text-base-content">Tax</h1>
+      <p v-if="auth.ready && auth.user && !loading && model.profileMissing" class="min-w-0 text-sm text-base-content/80">
+        Federal, state, and local estimates wait until you save a filing status for {{ selectedYear }}. Nothing is assumed. Withholding and paycheck totals stay visible either way.
+      </p>
+      <p v-else-if="auth.ready && auth.user && profileSummary" class="min-w-0 text-sm text-base-content/80">
+        {{ profileSummary }}
+      </p>
+      <button
+        v-if="auth.ready && auth.user"
+        type="button"
+        class="estate-action-btn"
+        :disabled="loading"
+        @click="openProfileModal"
+      >
+        {{ model.profileMissing || profileUnavailable ? "Set up your tax profile" : "Edit tax profile" }}
+      </button>
     </header>
 
     <div v-if="!auth.ready" class="rounded-lg border border-base-200 bg-base-300 p-4">
@@ -27,11 +39,11 @@
           v-for="year in fiscalYears"
           :key="year"
           :to="`/tax/${year}`"
-          class="rounded-md px-3 py-1.5 text-sm font-medium no-underline transition-colors"
+          class="rounded-md px-3 py-1.5 text-sm transition-colors"
           :class="
             year === selectedYear
-              ? 'bg-primary text-primary-content'
-              : 'text-base-content/70 hover:bg-base-100 hover:text-base-content'
+              ? 'font-bold text-base-content underline'
+              : 'font-medium text-base-content/70 no-underline hover:bg-base-100 hover:text-base-content'
           "
           :aria-current="year === selectedYear ? 'page' : undefined"
         >
@@ -39,17 +51,9 @@
         </NuxtLink>
       </nav>
 
-      <p class="rounded-lg border border-primary/30 bg-base-200/40 px-3 py-3 text-sm text-base-content">
+      <p class="text-sm text-warning">
         {{ disclaimer }}
       </p>
-
-      <div v-if="auth.user" class="max-w-3xl">
-        <button type="button" class="btn btn-ghost btn-sm min-h-11" :disabled="explaining || loading" @click="explainYear">
-          {{ explaining ? "Writing…" : "Why this number" }}
-        </button>
-        <p v-if="explainError" class="mt-2 text-sm text-error">{{ explainError }}</p>
-        <p v-else-if="explainText" class="mt-2 text-sm leading-6 text-base-content/80">{{ explainText }}</p>
-      </div>
 
       <p v-if="loadError" class="rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-sm text-error">
         {{ loadError }}
@@ -58,36 +62,35 @@
         {{ profileNotice }}
       </p>
 
-      <section class="overflow-hidden rounded-lg border border-primary bg-transparent">
-        <div class="border-b border-primary px-3 py-3 sm:px-4">
-          <h2 class="text-lg font-semibold text-base-content">
-            {{ loading ? "Tax profile" : model.profileMissing || profileUnavailable ? "Set up your tax profile" : "Tax profile" }}
-          </h2>
-          <p v-if="!loading && model.profileMissing" class="mt-1 text-sm text-base-content/80">
-            Federal, state, and local estimates wait until you save a filing status for {{ selectedYear }}. Nothing is assumed. Withholding and paycheck totals stay visible either way.
+      <dialog ref="profileDialogRef" class="modal" @close="onProfileModalClose">
+        <div class="modal-box max-h-[90vh] max-w-3xl overflow-y-auto">
+          <h3 class="text-lg font-semibold text-base-content">
+            {{ model.profileMissing || profileUnavailable ? "Set up your tax profile" : "Edit tax profile" }}
+          </h3>
+          <p v-if="model.profileMissing" class="mt-1 text-sm text-base-content/70">
+            Save a filing status for {{ selectedYear }}. Estimates use only what you enter here.
           </p>
-          <p v-else-if="profileSummary" class="mt-1 text-sm text-base-content/80">{{ profileSummary }}</p>
-        </div>
-        <div class="px-3 py-3 sm:px-4">
-          <button
-            v-if="!model.profileMissing && !profileUnavailable"
-            type="button"
-            class="btn btn-ghost btn-sm mb-3 min-h-11"
-            @click="showProfileForm = !showProfileForm"
-          >
-            {{ showProfileForm ? "Hide tax profile" : "Edit tax profile" }}
-          </button>
-          <TaxHouseholdProfileForm
-            v-if="!loading && (showProfileForm || model.profileMissing || profileUnavailable)"
-            :profile="profileRow"
-            :household-key="householdKey"
-            :disabled="profileUnavailable || savingProfile"
-            :saving="savingProfile"
-            @save="saveProfile"
-          />
+          <div class="mt-4">
+            <TaxHouseholdProfileForm
+              v-if="profileModalOpen"
+              :profile="profileRow"
+              :household-key="householdKey"
+              :disabled="profileUnavailable || savingProfile"
+              :saving="savingProfile"
+              @save="saveProfile"
+            />
+          </div>
           <p v-if="profileSaveError" class="mt-2 text-sm text-error">{{ profileSaveError }}</p>
+          <div class="modal-action">
+            <button type="button" class="btn btn-ghost" :disabled="savingProfile" @click="closeProfileModal">
+              Cancel
+            </button>
+          </div>
         </div>
-      </section>
+        <form method="dialog" class="modal-backdrop">
+          <button type="submit" :disabled="savingProfile">close</button>
+        </form>
+      </dialog>
 
       <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <section class="overflow-hidden rounded-lg border border-primary bg-transparent">
@@ -175,58 +178,6 @@
         </section>
       </div>
 
-      <section class="overflow-hidden rounded-lg border border-primary bg-transparent">
-        <div class="border-b border-primary px-3 py-3 sm:px-4">
-          <h2 class="text-lg font-semibold text-base-content">How taxable wages were figured</h2>
-          <p class="mt-1 text-xs text-base-content/60">Gross − traditional retirement − Section 125 = W-2 Box 1.</p>
-        </div>
-        <ul class="divide-y divide-base-200">
-          <li
-            v-for="row in model.wageFigure"
-            :key="row.key"
-            class="flex items-center justify-between gap-3 px-3 py-3 sm:px-4"
-            :class="[row.emphasis ? 'bg-base-200/40' : '', row.detail ? 'pl-8' : '']"
-          >
-            <span class="text-sm" :class="row.emphasis ? 'font-medium text-base-content' : 'text-base-content/80'">
-              {{ row.label }}
-            </span>
-            <span class="text-sm font-semibold tabular-nums text-base-content">
-              <span v-if="loading" class="text-base-content/40">…</span>
-              <template v-else>{{ formatSignedAmount(row.amount, row.signed) }}</template>
-            </span>
-          </li>
-        </ul>
-      </section>
-
-      <section v-if="model.comparison.length" class="overflow-hidden rounded-lg border border-primary bg-transparent">
-        <div class="border-b border-primary px-3 py-3 sm:px-4">
-          <h2 class="text-lg font-semibold text-base-content">Owed or refund</h2>
-          <p class="mt-1 text-xs text-base-content/60">{{ model.projected.label }}</p>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="border-b border-base-200 text-left text-base-content/60">
-                <th class="px-3 py-2 font-medium sm:px-4">Tax</th>
-                <th class="px-3 py-2 font-medium sm:px-4">Year to date</th>
-                <th class="px-3 py-2 font-medium sm:px-4">Full year</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in model.comparison" :key="row.key" class="border-b border-base-200 last:border-0">
-                <td class="px-3 py-3 sm:px-4">{{ row.label }}</td>
-                <td class="px-3 py-3 font-semibold tabular-nums sm:px-4" :class="balanceClass(row.ytdBalance)">
-                  {{ row.ytdAvailable ? balanceText(row.ytdBalance) : "Not available" }}
-                </td>
-                <td class="px-3 py-3 font-semibold tabular-nums sm:px-4" :class="balanceClass(row.projectedBalance)">
-                  {{ row.projectedAvailable ? balanceText(row.projectedBalance) : "Not available" }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
       <div v-if="estimateSections.length" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <section
           v-for="section in estimateSections"
@@ -267,24 +218,59 @@
         </section>
       </div>
 
-      <section class="overflow-hidden rounded-lg border border-primary bg-transparent">
-        <div class="border-b border-primary px-3 py-3 sm:px-4">
+      <div class="grid items-start gap-4 md:grid-cols-2">
+      <details class="group overflow-hidden rounded-lg border border-primary bg-transparent [&:not([open])>:not(summary)]:hidden">
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 sm:px-4">
+          <h2 class="text-lg font-semibold text-base-content">How taxable wages were figured</h2>
+          <svg class="size-5 shrink-0 transition-transform group-open:rotate-180" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+          </svg>
+        </summary>
+        <div class="border-t border-primary">
+          <p class="px-3 pt-3 text-xs text-base-content/60 sm:px-4">Gross − traditional retirement − Section 125 = W-2 Box 1.</p>
+          <ul class="divide-y divide-base-200">
+            <li
+              v-for="row in model.wageFigure"
+              :key="row.key"
+              class="flex items-center justify-between gap-3 px-3 py-3 sm:px-4"
+              :class="[row.emphasis ? 'bg-base-200/40' : '', row.detail ? 'pl-8' : '']"
+            >
+              <span class="text-sm" :class="row.emphasis ? 'font-medium text-base-content' : 'text-base-content/80'">
+                {{ row.label }}
+              </span>
+              <span class="text-sm font-semibold tabular-nums text-base-content">
+                <span v-if="loading" class="text-base-content/40">…</span>
+                <template v-else>{{ formatSignedAmount(row.amount, row.signed) }}</template>
+              </span>
+            </li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="group overflow-hidden rounded-lg border border-primary bg-transparent [&:not([open])>:not(summary)]:hidden">
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 sm:px-4">
           <h2 class="text-lg font-semibold text-base-content">Social Security and Medicare check</h2>
-          <p class="mt-1 text-xs text-base-content/60">
+          <svg class="size-5 shrink-0 transition-transform group-open:rotate-180" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+          </svg>
+        </summary>
+        <div class="border-t border-primary">
+          <p class="px-3 pt-3 text-xs text-base-content/60 sm:px-4">
             Expected employee tax is 6.2% of Box 3 and 1.45% of Box 5, plus Additional Medicare when a profile is saved.
             Box 3 stops at the Social Security wage base. A gap above ${{ formatAmount(model.ytd.fica.overTolerance) }} is flagged.
           </p>
+          <ul class="divide-y divide-base-200">
+            <li v-for="row in ficaRows" :key="row.key" class="flex items-center justify-between gap-3 px-3 py-3 sm:px-4">
+              <span class="text-sm" :class="row.warn ? 'font-medium text-warning' : 'text-base-content/80'">{{ row.label }}</span>
+              <span class="text-sm font-semibold tabular-nums" :class="row.warn ? 'text-warning' : 'text-base-content'">
+                <span v-if="loading" class="text-base-content/40">…</span>
+                <template v-else>{{ row.text || formatSignedAmount(row.amount, row.signed) }}</template>
+              </span>
+            </li>
+          </ul>
         </div>
-        <ul class="divide-y divide-base-200">
-          <li v-for="row in ficaRows" :key="row.key" class="flex items-center justify-between gap-3 px-3 py-3 sm:px-4">
-            <span class="text-sm" :class="row.warn ? 'font-medium text-warning' : 'text-base-content/80'">{{ row.label }}</span>
-            <span class="text-sm font-semibold tabular-nums" :class="row.warn ? 'text-warning' : 'text-base-content'">
-              <span v-if="loading" class="text-base-content/40">…</span>
-              <template v-else>{{ row.text || formatSignedAmount(row.amount, row.signed) }}</template>
-            </span>
-          </li>
-        </ul>
-      </section>
+      </details>
+      </div>
     </template>
   </section>
 </template>
@@ -309,7 +295,8 @@ const profileRow = ref(null);
 const profileUnavailable = ref(false);
 const profileNotice = ref("");
 const householdKey = ref("");
-const showProfileForm = ref(false);
+const profileDialogRef = ref(null);
+const profileModalOpen = ref(false);
 const savingProfile = ref(false);
 const profileSaveError = ref("");
 const paychecksSoFar = ref(null);
@@ -470,10 +457,6 @@ function balanceClass(balance) {
   return "text-base-content";
 }
 
-function balanceText(balance) {
-  return `${balanceLabel(balance)} $${formatAmount(Math.abs(balance))}`;
-}
-
 function amountsByKind(rows, key) {
   const out = {};
   for (const row of rows ?? []) out[row[key]] = Number(row.total_amount) || 0;
@@ -535,6 +518,20 @@ async function loadTotals() {
   }
 }
 
+function openProfileModal() {
+  profileSaveError.value = "";
+  profileModalOpen.value = true;
+  nextTick(() => profileDialogRef.value?.showModal());
+}
+
+function closeProfileModal() {
+  profileDialogRef.value?.close();
+}
+
+function onProfileModalClose() {
+  profileModalOpen.value = false;
+}
+
 async function saveProfile(payload) {
   savingProfile.value = true;
   profileSaveError.value = "";
@@ -547,47 +544,11 @@ async function saveProfile(payload) {
     profileUnavailable.value = false;
     householdKey.value = saved?.household_key || householdKey.value;
     profileNotice.value = "";
-    showProfileForm.value = false;
+    closeProfileModal();
   } catch (err) {
     profileSaveError.value = err?.data?.statusMessage || err?.message || "Could not save the tax profile.";
   } finally {
     savingProfile.value = false;
-  }
-}
-
-const explainText = ref("");
-const explainError = ref("");
-const explaining = ref(false);
-
-async function explainYear() {
-  if (explaining.value) return;
-  explaining.value = true;
-  explainError.value = "";
-  const rows = [
-    ...model.value.incomeRows,
-    ...model.value.taxRows,
-    ...model.value.preTaxRows,
-    ...model.value.postTaxRows,
-    ...model.value.wageFigure,
-    ...model.value.comparison.map((row) => ({ label: `${row.label} year to date`, amount: row.ytdBalance })),
-    ...estimateSections.value.flatMap((section) => [
-      { label: section.title, amount: section.balance },
-      ...(section.rows || []).map((row) => ({ label: `${section.title}: ${row.label}`, amount: row.amount })),
-    ]),
-  ]
-    .filter((row) => Number.isFinite(Number(row.amount)))
-    .slice(0, 24)
-    .map((row) => ({ label: row.label, amount: Math.round(Number(row.amount) * 100) / 100 }));
-  try {
-    const data = await $fetch("/api/tax/explain", {
-      method: "POST",
-      body: { year: selectedYear.value, rows },
-    });
-    explainText.value = String(data?.text || "");
-  } catch (error) {
-    explainError.value = error?.data?.statusMessage || error?.statusMessage || "Could not explain this year.";
-  } finally {
-    explaining.value = false;
   }
 }
 

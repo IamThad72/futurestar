@@ -1,13 +1,14 @@
 import { financialSidebarGroups, financialTabsForPath, isFinancialPath } from "~/utils/financialNav";
 import { primaryNavForPath } from "~/utils/primaryNav";
 import { isPhysicalPath, physicalTabsForPath } from "~/utils/physicalNav";
-import { isSpiritualHomePath, isSpiritualPath, spiritualTabsForPath } from "~/utils/spiritualNav";
+import { isSpiritualHomePath, isSpiritualPath, spiritualSidebarGroups } from "~/utils/spiritualNav";
 import { screenTitleForRoute } from "~/utils/screenTitle";
 
 /** Life-area links, the current screen name, and desktop sidebar groups. */
 export function useAppNav() {
   const auth = useAuthStore();
   const route = useRoute();
+  const faith = useFaithProfile();
 
   const isFinancialSection = computed(() => isFinancialPath(route.path));
   const isPhysicalSection = computed(() => isPhysicalPath(route.path));
@@ -27,7 +28,20 @@ export function useAppNav() {
     ];
   });
 
-  const screenTitle = computed(() => screenTitleForRoute(route.path, route.query, route.hash));
+  /** Tradition-specific names (e.g. Evening Examen vs Evening Reflection) once the profile has loaded. */
+  const faithTradition = computed(() => (faith.loaded.value ? faith.tradition.value : ""));
+
+  watch(
+    () => [auth.user?.user_id, isSpiritualSection.value],
+    ([userId, inSpiritual]) => {
+      if (userId && inSpiritual) void faith.load();
+    },
+    { immediate: true },
+  );
+
+  const screenTitle = computed(() =>
+    screenTitleForRoute(route.path, route.query, route.hash, faithTradition.value),
+  );
 
   const sidebarGroups = computed(() => {
     if (!auth.user) return [];
@@ -35,8 +49,7 @@ export function useAppNav() {
       return financialSidebarGroups(financialTabsForPath(route.path, route.query, route.hash));
     }
     if (isSpiritualSection.value) {
-      const tabs = spiritualTabsForPath(route.path).filter((tab) => tab.href !== "/spiritual");
-      return tabs.length ? [{ name: "Today", tabs }] : [];
+      return spiritualSidebarGroups(route.path, faithTradition.value);
     }
     if (isPhysicalSection.value) {
       const tabs = physicalTabsForPath(route.path).filter((tab) => tab.href !== "/physical");

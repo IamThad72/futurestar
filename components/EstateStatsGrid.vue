@@ -5,19 +5,21 @@
     </div>
     <div v-else class="border-b border-base-300">
       <dl
-        class="grid grid-cols-1 sm:grid-cols-2"
+        class="grid grid-cols-2"
         :class="stats.length > 3 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'"
       >
         <div
           v-for="(stat, statIdx) in stats"
           :key="stat.name"
           :class="[
-            statIdx % 2 === 1 ? 'sm:border-l' : statIdx === 2 ? 'lg:border-l' : '',
-            'flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-base-300 px-3 py-6 sm:px-6 md:gap-x-4 md:gap-y-2 md:py-10 lg:border-t-0',
+            statIdx % 2 === 1 ? 'border-l' : statIdx === 2 ? 'lg:border-l' : '',
+            statIdx < 2 ? 'border-t-0' : 'border-t',
+            stats.length % 2 === 1 && statIdx === stats.length - 1 ? 'col-span-2 lg:col-span-1' : '',
+            'flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-base-300 px-3 py-4 sm:px-6 sm:py-6 md:gap-x-4 md:gap-y-2 md:py-10 lg:border-t-0',
           ]"
         >
           <dt class="text-xs font-medium text-base-content/60 md:text-sm">{{ stat.name }}</dt>
-          <dd class="w-full flex-none text-xl font-medium tracking-tight text-base-content tabular-nums md:text-3xl">
+          <dd class="w-full flex-none text-lg font-medium sm:text-xl tracking-tight text-base-content tabular-nums md:text-3xl">
             {{ stat.value }}
           </dd>
         </div>

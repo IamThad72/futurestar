@@ -17,7 +17,11 @@ export default defineNuxtConfig({
   app: {
     head: {
       viewport: "width=device-width, initial-scale=1, viewport-fit=cover",
-      meta: [{ name: "theme-color", content: "#FBF8F3" }],
+      meta: [
+        { name: "theme-color", content: "#FBF8F3", media: "(prefers-color-scheme: light)" },
+        { name: "theme-color", content: "#0F1621", media: "(prefers-color-scheme: dark)" },
+        { name: "color-scheme", content: "light dark" },
+      ],
       link: [
         { rel: "preconnect", href: "https://fonts.googleapis.com" },
         { rel: "preconnect", href: "https://fonts.gstatic.com", crossorigin: "" },

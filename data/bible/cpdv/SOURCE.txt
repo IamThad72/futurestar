@@ -5,3 +5,6 @@ Source: https://github.com/scrollmapper/bible_databases
 JSON: https://raw.githubusercontent.com/scrollmapper/bible_databases/master/formats/json/CPDV.json
 SQL:  https://raw.githubusercontent.com/scrollmapper/bible_databases/master/formats/sql/CPDV.sql
 License: Public Domain
+
+Load with: npm run seed:cpdv   (downloads CPDV.json here, about 10 MB, git-ignored, into bible_books/bible_verses)
+Legacy single-table loader: npm run seed:cpdv:legacy

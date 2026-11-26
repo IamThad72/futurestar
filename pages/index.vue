@@ -64,7 +64,7 @@ const healthAreas = [
     href: "/spiritual",
     pillar: "spiritual",
     description:
-      "Stay grounded in faith, purpose, and inner life. Begin with morning prayer, remember what is true, hear Scripture, and close the day with examen.",
+      "Stay grounded in faith, purpose, and inner life. Begin with morning prayer, remember what is true, read Scripture, and close the day in reflection.",
   },
   {
     name: "Physical",

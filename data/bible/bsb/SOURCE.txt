@@ -1,0 +1,9 @@
+Berean Standard Bible (BSB)
+Modern English, 66 books. Default translation for new FutureStar accounts.
+
+Source: https://github.com/scrollmapper/bible_databases
+JSON: https://raw.githubusercontent.com/scrollmapper/bible_databases/master/formats/json/BSB.json
+License: Public domain. The Berean Bible texts were dedicated to the public domain on April 30, 2023.
+Terms: https://berean.bible/terms.htm ("All uses are freely permitted." Keep the Berean name only for verbatim text.)
+
+Load with: npm run seed:bsb   (downloads BSB.json here, about 8 MB, git-ignored)

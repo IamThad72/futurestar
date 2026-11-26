@@ -38,17 +38,18 @@
           </div>
         </header>
         <div class="border-b border-gray-900/10 lg:border-t lg:border-t-gray-900/5 dark:border-white/10 dark:lg:border-t-white/5">
-          <dl class="mx-auto grid max-w-7xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 lg:px-2 xl:px-0">
+          <dl class="mx-auto grid max-w-7xl grid-cols-2 lg:grid-cols-4 lg:px-2 xl:px-0">
             <div
               v-for="(stat, statIdx) in estateStats"
               :key="stat.name"
               :class="[
-                statIdx % 2 === 1 ? 'sm:border-l' : statIdx === 2 ? 'lg:border-l' : '',
-                'flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-gray-900/5 px-3 py-6 sm:px-6 md:gap-x-4 md:gap-y-2 md:py-10 lg:border-t-0 xl:px-8 dark:border-white/5',
+                statIdx % 2 === 1 ? 'border-l' : statIdx === 2 ? 'lg:border-l' : '',
+                statIdx < 2 ? 'border-t-0' : 'border-t',
+                'flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-gray-900/5 px-3 py-4 sm:px-6 sm:py-6 md:gap-x-4 md:gap-y-2 md:py-10 lg:border-t-0 xl:px-8 dark:border-white/5',
               ]"
             >
               <dt class="text-xs font-medium text-gray-500 md:text-sm dark:text-gray-400">{{ stat.name }}</dt>
-              <dd class="w-full flex-none text-xl font-medium tracking-tight text-gray-900 tabular-nums md:text-3xl dark:text-white">{{ stat.value }}</dd>
+              <dd class="w-full flex-none text-lg font-medium tracking-tight text-gray-900 sm:text-xl tabular-nums md:text-3xl dark:text-white">{{ stat.value }}</dd>
             </div>
           </dl>
         </div>

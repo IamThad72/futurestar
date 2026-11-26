@@ -13,7 +13,7 @@
     </div>
 
     <section class="app-card min-w-0 max-w-full overflow-hidden px-4 py-4">
-      <h2 class="text-sm font-semibold text-gray-900">Evening Examen</h2>
+      <h2 class="text-sm font-semibold text-gray-900">{{ faith.evening.value }}</h2>
       <p v-if="loadError" class="mt-2 text-sm text-red-600">{{ loadError }}</p>
       <form class="mt-4 grid min-w-0 gap-3" @submit.prevent="saveExamen">
         <label v-for="(field, index) in examenFields" :key="field.key" class="form-control min-w-0">
@@ -42,10 +42,12 @@
         <p v-if="saveError" class="text-sm text-red-600 dark:text-red-400">{{ saveError }}</p>
         <p v-else-if="saveNotice" class="text-sm text-emerald-700 dark:text-emerald-400">{{ saveNotice }}</p>
         <button type="submit" class="training-chip btn btn-primary btn-sm rounded-full w-fit" :disabled="saving">
-          {{ saving ? "Saving…" : "Save examen" }}
+          {{ saving ? "Saving…" : `Save ${faith.eveningWord.value}` }}
         </button>
       </form>
     </section>
+
+    <SpiritualPrayerReminders :date="reviewOn" title="Bring before God tonight" />
 
     <section class="app-card min-w-0 max-w-full px-4 py-4">
       <h2 class="text-sm font-semibold text-gray-900">Closing Prayer</h2>
@@ -61,6 +63,7 @@ import { parseFetchError } from "~/utils/parseFetchError";
 import { todayIsoDate } from "~/utils/liturgicalCalendar";
 import { CLOSING_PRAYER_LINES, EXAMEN_FIELDS, emptySpiritualReview } from "~/utils/spiritualReview";
 
+const faith = useFaithProfile();
 const examenFields = EXAMEN_FIELDS;
 const followFields = new Set(["grateful", "troubled", "shortfall"]);
 const closingLines = CLOSING_PRAYER_LINES;
@@ -80,6 +83,7 @@ watch(reviewOn, () => {
 });
 
 onMounted(() => {
+  void faith.load();
   void loadDay();
 });
 
@@ -93,7 +97,7 @@ async function loadDay() {
     followQuestions.value = {};
     form.value = { ...emptySpiritualReview(), ...(data?.review || {}) };
   } catch (error) {
-    loadError.value = parseFetchError(error, "Failed to load this day’s examen.");
+    loadError.value = parseFetchError(error, `Failed to load this day’s ${faith.eveningWord.value}.`);
   } finally {
     loading.value = false;
   }
@@ -136,9 +140,9 @@ async function saveExamen() {
       },
     });
     form.value = { ...form.value, ...(data?.review || {}) };
-    saveNotice.value = "Examen saved.";
+    saveNotice.value = faith.eveningWord.value === "examen" ? "Examen saved." : "Reflection saved.";
   } catch (error) {
-    saveError.value = parseFetchError(error, "Failed to save examen.");
+    saveError.value = parseFetchError(error, `Failed to save ${faith.eveningWord.value}.`);
   } finally {
     saving.value = false;
   }

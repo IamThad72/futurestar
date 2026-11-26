@@ -7,16 +7,16 @@
         <div v-if="editRecordType === 'asset_inventory'" class="grid grid-cols-1 gap-3 sm:grid-cols-2" :key="'ai-' + (editRecord?.ai_id ?? '')">
           <label class="form-control sm:col-span-2"><span class="label-text text-sm">Title</span><input v-model="editRecord.title" class="input input-bordered input-sm w-full" /></label>
           <label class="form-control"><span class="label-text text-sm">Classification</span><input v-model="editRecord.classification" class="input input-bordered input-sm w-full" /></label>
-          <label class="form-control"><span class="label-text text-sm">Value</span><input :value="editRecord.assetValue" @input="e => { const v = e.target.value; editRecord.assetValue = v === '' ? '' : (parseFloat(v) || '') }" class="input input-bordered input-sm w-full" type="number" step="0.01" /></label>
+          <label class="form-control"><span class="label-text text-sm">Value</span><input :value="editRecord.assetValue" @input="e => { const v = e.target.value; editRecord.assetValue = v === '' ? '' : (parseFloat(v) || '') }" class="input input-bordered input-sm w-full" type="number" inputmode="decimal" step="0.01" /></label>
           <label class="form-control sm:col-span-2"><span class="label-text text-sm">Description</span><textarea v-model="editRecord.description" class="textarea textarea-bordered textarea-sm w-full" rows="2" /></label>
           <label class="form-control sm:col-span-2"><span class="label-text text-sm">Location</span><input v-model="editRecord.location" class="input input-bordered input-sm w-full" /></label>
         </div>
         <div v-else-if="editRecordType === 'asset_vehicles'" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label class="form-control"><span class="label-text text-sm">Year</span><input v-model.number="editRecord.year" class="input input-bordered input-sm w-full" type="number" /></label>
+          <label class="form-control"><span class="label-text text-sm">Year</span><input v-model.number="editRecord.year" class="input input-bordered input-sm w-full" type="number" inputmode="numeric" /></label>
           <label class="form-control"><span class="label-text text-sm">Make</span><input v-model="editRecord.make" class="input input-bordered input-sm w-full" /></label>
           <label class="form-control"><span class="label-text text-sm">Model</span><input v-model="editRecord.model" class="input input-bordered input-sm w-full" /></label>
           <label class="form-control"><span class="label-text text-sm">VIN</span><input v-model="editRecord.vin" class="input input-bordered input-sm w-full" /></label>
-          <label class="form-control"><span class="label-text text-sm">Value</span><input v-model.number="editRecord.value" class="input input-bordered input-sm w-full" type="number" step="0.01" /></label>
+          <label class="form-control"><span class="label-text text-sm">Value</span><input v-model.number="editRecord.value" class="input input-bordered input-sm w-full" type="number" inputmode="decimal" step="0.01" /></label>
           <label class="form-control"><span class="label-text text-sm">Trust (Y/N)</span><select v-model="editRecord.trust_designated" class="select select-bordered select-sm w-full"><option :value="true">Y</option><option :value="false">N</option></select></label>
           <label class="form-control sm:col-span-2"><span class="label-text text-sm">Description</span><textarea v-model="editRecord.description" class="textarea textarea-bordered textarea-sm w-full" rows="2" /></label>
         </div>
@@ -24,7 +24,7 @@
           <label class="form-control"><span class="label-text text-sm">Institution</span><input v-model="editRecord.institution" class="input input-bordered input-sm w-full" /></label>
           <label class="form-control"><span class="label-text text-sm">Account #</span><input v-model="editRecord.acct_number" class="input input-bordered input-sm w-full" /></label>
           <label class="form-control"><span class="label-text text-sm">Type</span><input v-model="editRecord.acct_type" class="input input-bordered input-sm w-full" /></label>
-          <label class="form-control"><span class="label-text text-sm">Value</span><input :value="editRecord.cashValue" @input="e => { const v = e.target.value; editRecord.cashValue = v === '' ? '' : (parseFloat(v) || '') }" class="input input-bordered input-sm w-full" type="number" step="0.01" /></label>
+          <label class="form-control"><span class="label-text text-sm">Value</span><input :value="editRecord.cashValue" @input="e => { const v = e.target.value; editRecord.cashValue = v === '' ? '' : (parseFloat(v) || '') }" class="input input-bordered input-sm w-full" type="number" inputmode="decimal" step="0.01" /></label>
           <label class="form-control"><span class="label-text text-sm">Trust (Y/N)</span><select v-model="editRecord.trust_designated" class="select select-bordered select-sm w-full"><option :value="true">Y</option><option :value="false">N</option></select></label>
           <label class="form-control"><span class="label-text text-sm">Support #</span><input v-model="editRecord.acct_support_number" class="input input-bordered input-sm w-full" /></label>
           <label class="form-control sm:col-span-2"><span class="label-text text-sm">URL</span><input v-model="editRecord.institution_url" class="input input-bordered input-sm w-full" type="url" /></label>
@@ -41,11 +41,11 @@
           </label>
           <label class="form-control">
             <span class="label-text text-sm">{{ editRecord.is_revolving ? "Current balance" : "Principal balance" }}</span>
-            <input v-model="editRecord.debtLoanAmmount" class="input input-bordered input-sm w-full" type="number" step="0.01" min="0" />
+            <input v-model="editRecord.debtLoanAmmount" class="input input-bordered input-sm w-full" type="number" inputmode="decimal" step="0.01" min="0" />
           </label>
-          <label v-if="!editRecord.is_revolving" class="form-control"><span class="label-text text-sm">Annual interest rate (%)</span><input v-model="editRecord.interest_rate_annual" class="input input-bordered input-sm w-full" type="number" step="0.001" min="0" /></label>
-          <label v-if="!editRecord.is_revolving" class="form-control"><span class="label-text text-sm">Remaining term (months)</span><input v-model="editRecord.term_months" class="input input-bordered input-sm w-full" type="number" step="1" min="1" /></label>
-          <label v-if="!editRecord.is_revolving" class="form-control"><span class="label-text text-sm">Scheduled monthly payment</span><input v-model="editRecord.scheduled_monthly_payment" class="input input-bordered input-sm w-full" type="number" step="0.01" min="0" /></label>
+          <label v-if="!editRecord.is_revolving" class="form-control"><span class="label-text text-sm">Annual interest rate (%)</span><input v-model="editRecord.interest_rate_annual" class="input input-bordered input-sm w-full" type="number" inputmode="decimal" step="0.001" min="0" /></label>
+          <label v-if="!editRecord.is_revolving" class="form-control"><span class="label-text text-sm">Remaining term (months)</span><input v-model="editRecord.term_months" class="input input-bordered input-sm w-full" type="number" inputmode="numeric" step="1" min="1" /></label>
+          <label v-if="!editRecord.is_revolving" class="form-control"><span class="label-text text-sm">Scheduled monthly payment</span><input v-model="editRecord.scheduled_monthly_payment" class="input input-bordered input-sm w-full" type="number" inputmode="decimal" step="0.01" min="0" /></label>
           <label v-if="!editRecord.is_revolving" class="form-control"><span class="label-text text-sm">Loan start date</span><input v-model="editRecord.loan_start_date" class="input input-bordered input-sm w-full" type="date" /></label>
           <label class="form-control sm:col-span-2"><span class="label-text text-sm">Link to Asset</span><select v-model="editRecord.linked_asset" class="select select-bordered select-sm w-full"><option value="">None (no link)</option><option v-for="a in linkedAssets" :key="a.type + ':' + a.id" :value="a.type + ':' + a.id">{{ a.label }}</option></select></label>
           <label class="form-control"><span class="label-text text-sm">Borrower</span><input v-model="editRecord.borrower" class="input input-bordered input-sm w-full" /></label>
@@ -57,15 +57,15 @@
           <label class="form-control"><span class="label-text text-sm">Street</span><input v-model="editRecord.street" class="input input-bordered input-sm w-full" /></label>
           <label class="form-control"><span class="label-text text-sm">City</span><input v-model="editRecord.city" class="input input-bordered input-sm w-full" /></label>
           <label class="form-control"><span class="label-text text-sm">State</span><input v-model="editRecord.state" class="input input-bordered input-sm w-full" /></label>
-          <label class="form-control"><span class="label-text text-sm">Zipcode</span><input v-model="editRecord.zipcode" class="input input-bordered input-sm w-full" /></label>
-          <label class="form-control"><span class="label-text text-sm">Value</span><input v-model.number="editRecord.value" class="input input-bordered input-sm w-full" type="number" step="0.01" /></label>
+          <label class="form-control"><span class="label-text text-sm">Zipcode</span><input v-model="editRecord.zipcode" inputmode="numeric" autocomplete="postal-code" class="input input-bordered input-sm w-full" /></label>
+          <label class="form-control"><span class="label-text text-sm">Value</span><input v-model.number="editRecord.value" class="input input-bordered input-sm w-full" type="number" inputmode="decimal" step="0.01" /></label>
           <label class="form-control"><span class="label-text text-sm">Trust (Y/N)</span><select v-model="editRecord.trust_designated" class="select select-bordered select-sm w-full"><option :value="true">Y</option><option :value="false">N</option></select></label>
         </div>
         <div v-else-if="editRecordType === 'insurance'" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label class="form-control"><span class="label-text text-sm">Policy Holder</span><input v-model="editRecord.policy_holder" class="input input-bordered input-sm w-full" /></label>
           <label class="form-control"><span class="label-text text-sm">Policy #</span><input v-model="editRecord.polocy_number" class="input input-bordered input-sm w-full" /></label>
           <label class="form-control"><span class="label-text text-sm">Entity Covered</span><input v-model="editRecord.entity_covered" class="input input-bordered input-sm w-full" /></label>
-          <label class="form-control"><span class="label-text text-sm">Amount</span><input :value="editRecord.insurancePolicyAmt" @input="e => { const v = e.target.value; editRecord.insurancePolicyAmt = v === '' ? '' : (parseFloat(v) || ''); editRecord.policy_amt = editRecord.insurancePolicyAmt !== '' && !Number.isNaN(Number(editRecord.insurancePolicyAmt)) ? Number(editRecord.insurancePolicyAmt) : null }" class="input input-bordered input-sm w-full" type="number" step="0.01" /></label>
+          <label class="form-control"><span class="label-text text-sm">Amount</span><input :value="editRecord.insurancePolicyAmt" @input="e => { const v = e.target.value; editRecord.insurancePolicyAmt = v === '' ? '' : (parseFloat(v) || ''); editRecord.policy_amt = editRecord.insurancePolicyAmt !== '' && !Number.isNaN(Number(editRecord.insurancePolicyAmt)) ? Number(editRecord.insurancePolicyAmt) : null }" class="input input-bordered input-sm w-full" type="number" inputmode="decimal" step="0.01" /></label>
           <label class="form-control sm:col-span-2"><span class="label-text text-sm">Intent</span><input v-model="editRecord.intent" class="input input-bordered input-sm w-full" /></label>
         </div>
       </div>

@@ -72,7 +72,7 @@
             <input
               v-model.number="cashInvestmentForm.value"
               class="input input-bordered w-full"
-              type="number"
+              type="number" inputmode="decimal"
               min="0"
               step="0.01"
               required
@@ -169,7 +169,7 @@
             <input
               v-model.number="form.value"
               class="input input-bordered w-full"
-              type="number"
+              type="number" inputmode="decimal"
               min="0"
               step="0.01"
               placeholder="0.00"
@@ -248,6 +248,8 @@
               v-model.trim="realEstateForm.zipcode"
               class="input input-bordered w-full"
               type="text"
+              inputmode="numeric"
+              autocomplete="postal-code"
               required
             />
           </label>
@@ -258,7 +260,7 @@
           <input
             v-model.number="realEstateForm.value"
             class="input input-bordered w-full"
-            type="number"
+            type="number" inputmode="decimal"
             min="0"
             step="0.01"
             required
@@ -321,7 +323,7 @@
           <input
             v-model.trim="debtForm.loan_ammount"
             class="input input-bordered w-full"
-            type="number"
+            type="number" inputmode="decimal"
             step="0.01"
             placeholder="0.00"
           />
@@ -531,7 +533,7 @@
             <input
               v-model.trim="insuranceForm.policy_amt"
               class="input input-bordered w-full"
-              type="number"
+              type="number" inputmode="decimal"
               min="0"
               step="0.01"
               placeholder="0.00"
