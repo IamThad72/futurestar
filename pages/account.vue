@@ -32,6 +32,24 @@
       </ion-list>
     </div>
 
+    <section class="mt-4" aria-labelledby="privacy-and-data-heading">
+      <h2 id="privacy-and-data-heading" class="text-base font-semibold text-ink">Privacy and data</h2>
+      <div class="you-menu app-card">
+        <ion-list lines="none" class="you-menu__list">
+          <ion-item
+            button
+            detail
+            class="you-menu__item"
+            data-testid="delete-account-open"
+            @click="showDeleteAccount = true"
+          >
+            <ion-icon slot="start" :icon="trashOutline" aria-hidden="true" />
+            <ion-label>Delete account</ion-label>
+          </ion-item>
+        </ion-list>
+      </div>
+    </section>
+
     <FaithSettings v-if="auth.user" class="mt-4" />
 
     <div class="you-page__logout">
@@ -49,14 +67,21 @@
 
     <LazyAccountManagementModal v-if="showAccountManagement" v-model="showAccountManagement" />
     <LazyLinkedAccountsModal v-if="showLinkedAccounts" v-model="showLinkedAccounts" />
+    <LazyDeleteAccountModal
+      v-if="showDeleteAccount"
+      v-model="showDeleteAccount"
+      :account-email="auth.user?.email || ''"
+      @deleted="onAccountDeleted"
+    />
   </div>
 </template>
 
 <script setup>
 import { computed, ref, watch } from "vue";
 import { IonIcon, IonItem, IonLabel, IonList } from "@ionic/vue";
-import { peopleOutline, personOutline } from "ionicons/icons";
+import { peopleOutline, personOutline, trashOutline } from "ionicons/icons";
 import { useAuthStore } from "~/stores/auth";
+import { rememberAccountDeleted } from "~/utils/accountDeletedNotice";
 import { profileIdentity, profilePhotoUrl, showProfileAvatar } from "~/utils/profileAvatar";
 import { runGuardedSignOut } from "~/utils/signOutGuard";
 
@@ -65,6 +90,7 @@ const router = useRouter();
 const { signOut } = useSignOut();
 const showAccountManagement = ref(false);
 const showLinkedAccounts = ref(false);
+const showDeleteAccount = ref(false);
 const avatarFailed = ref(false);
 const signingOut = ref(false);
 
@@ -78,6 +104,12 @@ watch(
     avatarFailed.value = false;
   },
 );
+
+async function onAccountDeleted() {
+  rememberAccountDeleted();
+  showDeleteAccount.value = false;
+  await signOut();
+}
 
 async function handleLogout() {
   try {

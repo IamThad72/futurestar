@@ -120,6 +120,7 @@
 </template>
 
 <script setup>
+import { takeAccountDeletedNotice } from "~/utils/accountDeletedNotice";
 import { isPasswordRecoveryRedirect, parseSupabaseAuthParams } from "~/utils/supabaseAuthHash";
 
 const { go } = useAppNavigate();
@@ -148,6 +149,9 @@ function switchToSignIn() {
 }
 
 onMounted(() => {
+  const deletedNotice = takeAccountDeletedNotice();
+  if (deletedNotice) success.value = deletedNotice;
+
   if (import.meta.client && sessionStorage.getItem("loginForgotPassword") === "1") {
     sessionStorage.removeItem("loginForgotPassword");
     switchToForgot();

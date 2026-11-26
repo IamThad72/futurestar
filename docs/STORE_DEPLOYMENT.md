@@ -98,6 +98,12 @@ The permanent app identifier is `com.futurestar.app` on Capacitor, Android, and 
 - **Backups:** `android:allowBackup="false"` (session tokens not backed up)
 - **Native login:** Supabase only (JWT); legacy cookie login skipped on Capacitor
 
+## Account deletion
+
+A signed-in person deletes their account from You → Privacy and data → Delete account, or from the public page `/delete-account` (that page explains the steps when nobody is signed in). Use `https://<production-host>/delete-account` as the web deletion link in App Store Connect and Play Console.
+
+Shared household money records stay with the household. Private Faith and Body rows, the profile, sessions, and the sign-in are erased. The rule is `keep-shared` in `utils/accountDeletionPolicy.js` and is waiting on the owner before this ships. Deleting the app does not delete the account.
+
 ## Store console requirements (manual)
 
 - [ ] Apple Developer / Google Play developer accounts
