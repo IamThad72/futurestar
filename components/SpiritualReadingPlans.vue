@@ -226,6 +226,7 @@ import { todayIsoDate } from "~/utils/liturgicalCalendar";
 
 const faith = useFaithProfile();
 const { light } = useHaptics();
+const { confirm: askUser } = useConfirm();
 const route = useRoute();
 const router = useRouter();
 
@@ -413,10 +414,14 @@ async function planAction(action) {
   }
 }
 
-function confirmRestart() {
-  if (window.confirm("Start this plan again from day 1 today? Your marks for this plan will be cleared.")) {
-    void planAction("restart");
-  }
+async function confirmRestart() {
+  const ok = await askUser({
+    header: "Start again?",
+    message: "Start this plan again from day 1 today? Your marks for this plan will be cleared.",
+    confirmText: "Start again",
+    destructive: true,
+  });
+  if (ok) void planAction("restart");
 }
 
 watch(

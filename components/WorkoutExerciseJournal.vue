@@ -311,6 +311,7 @@ function toDatetimeLocalValue(iso) {
 }
 
 const { success } = useHaptics();
+const { confirm: askUser } = useConfirm();
 const sessions = ref([]);
 const listLoading = ref(false);
 const listError = ref("");
@@ -629,7 +630,13 @@ async function saveSession() {
 
 async function deleteSession() {
   if (!draft.value.sessionId) return;
-  if (!window.confirm("Delete this journal session? This cannot be undone.")) return;
+  const ok = await askUser({
+    header: "Delete session?",
+    message: "Delete this journal session? This cannot be undone.",
+    confirmText: "Delete",
+    destructive: true,
+  });
+  if (!ok) return;
   saving.value = true;
   saveError.value = "";
   try {

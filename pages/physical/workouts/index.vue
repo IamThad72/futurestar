@@ -42,6 +42,8 @@
 <script setup>
 useHead({ title: "Workout Manager" });
 
+const { confirm: askUser } = useConfirm();
+
 const editing = ref(false);
 const auth = useAuthStore();
 const {
@@ -84,6 +86,11 @@ watch(
 
 onBeforeRouteLeave(() => {
   if (!editing.value || !dirty.value) return true;
-  return window.confirm("This workout has unsaved changes. Discard them?");
+  return askUser({
+    header: "Discard changes?",
+    message: "This workout has unsaved changes. Discard them?",
+    confirmText: "Discard",
+    destructive: true,
+  });
 });
 </script>

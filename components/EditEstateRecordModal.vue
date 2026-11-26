@@ -94,6 +94,7 @@
 import { inferIsRevolvingDebt } from "~/utils/debtPayment";
 
 const emit = defineEmits(["saved", "deleted"]);
+const { confirm: askUser } = useConfirm();
 
 const updateModalRef = ref(null);
 const updateSaving = ref(false);
@@ -274,7 +275,13 @@ async function saveEdit() {
 
 async function deleteRecord() {
   if (!editRecord.value || !editRecordType.value) return;
-  if (!confirm("Are you sure you want to delete this record? This cannot be undone.")) return;
+  const ok = await askUser({
+    header: "Delete record?",
+    message: "Are you sure you want to delete this record? This cannot be undone.",
+    confirmText: "Delete",
+    destructive: true,
+  });
+  if (!ok) return;
 
   const type = editRecordType.value;
   const idKey = ID_KEY_MAP[type];

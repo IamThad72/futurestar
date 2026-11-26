@@ -146,6 +146,8 @@
 import { IonItem, IonLabel, IonList } from "@ionic/vue";
 import { parseFetchError } from "~/utils/parseFetchError";
 
+const { confirm: askUser } = useConfirm();
+
 const acceptTypes = [
   ".pdf",
   ".jpg",
@@ -328,7 +330,13 @@ function openPreviewInNewTab() {
 }
 
 async function deleteDocument(doc) {
-  if (!confirm(`Delete “${displayName(doc)}”? This cannot be undone.`)) return;
+  const ok = await askUser({
+    header: "Delete document?",
+    message: `Delete “${displayName(doc)}”? This cannot be undone.`,
+    confirmText: "Delete",
+    destructive: true,
+  });
+  if (!ok) return;
   try {
     await $fetch(`/api/estate-mgmt/documents/${doc.doc_id}`, { method: "DELETE" });
     await loadDocuments();

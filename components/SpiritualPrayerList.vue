@@ -124,6 +124,7 @@ import { todayIsoDate } from "~/utils/liturgicalCalendar";
 import { PRAYER_CATEGORIES } from "~/utils/prayerList";
 
 const { light } = useHaptics();
+const { confirm: askUser } = useConfirm();
 const categories = PRAYER_CATEGORIES;
 const views = [
   { key: "active", label: "Active" },
@@ -253,7 +254,13 @@ async function act(prayer, action) {
 }
 
 async function remove(prayer) {
-  if (!window.confirm(`Delete "${prayer.title}" for good?`)) return;
+  const ok = await askUser({
+    header: "Delete prayer?",
+    message: `Delete "${prayer.title}" for good?`,
+    confirmText: "Delete",
+    destructive: true,
+  });
+  if (!ok) return;
   busyId.value = prayer.prayer_id;
   try {
     await $fetch(`/api/spiritual/prayers/${prayer.prayer_id}`, { method: "DELETE" });

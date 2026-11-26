@@ -1212,6 +1212,17 @@ ion-app .account-map-budget-bar button.btn:focus-visible {
   background: var(--sl-bg);
 }
 
+/* In-app confirms. Variables inherit into the alert shadow tree.
+   Surface and ink follow the active theme; a destructive button uses
+   the existing error color. */
+ion-alert {
+  --background: var(--sl-elevated);
+  --ion-text-color: var(--sl-ink);
+  --ion-color-primary: var(--sl-primary);
+  --ion-color-danger: var(--color-error);
+  --ion-color-danger-contrast: var(--color-error-content, #ffffff);
+}
+
 [data-pillar="financial"] {
   --color-pillar: var(--sl-evergreen);
   --color-pillar-tint: var(--sl-evergreen-tint);

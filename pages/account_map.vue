@@ -476,6 +476,7 @@ useHead({ title: "Account Map" });
 const auth = useAuthStore();
 const { isNarrow } = useMobileShell();
 const { go } = useAppNavigate();
+const { confirm: askUser } = useConfirm();
 
 watch(
   isNarrow,
@@ -1177,9 +1178,13 @@ async function clearMonthAssignment(year, month) {
 
 async function deleteSelectedBudget() {
   if (!selectedBudget.value || selectedBudget.value.is_active) return;
-  if (!window.confirm(`Delete budget “${selectedBudget.value.name}”? Its plan lines and map will be removed.`)) {
-    return;
-  }
+  const ok = await askUser({
+    header: "Delete budget?",
+    message: `Delete budget “${selectedBudget.value.name}”? Its plan lines and map will be removed.`,
+    confirmText: "Delete",
+    destructive: true,
+  });
+  if (!ok) return;
   budgetBusy.value = true;
   error.value = "";
   try {

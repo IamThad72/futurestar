@@ -228,6 +228,8 @@ import { overflowIconName } from "~/utils/iconRegistry";
 
 useHead({ title: "Vehicle Details" });
 
+const { confirm: askUser } = useConfirm();
+
 const auth = useAuthStore();
 const overflowIcon = overflowIconName(Capacitor.getPlatform());
 const route = useRoute();
@@ -401,7 +403,13 @@ async function saveService() {
 
 async function deleteService(svc) {
   if (!svc?.vsr_id) return;
-  if (!confirm(`Delete "${svc.service_name}"?`)) return;
+  const ok = await askUser({
+    header: "Delete service?",
+    message: `Delete "${svc.service_name}"?`,
+    confirmText: "Delete",
+    destructive: true,
+  });
+  if (!ok) return;
   deleteSavingId.value = svc.vsr_id;
   try {
     await $fetch(`/api/garage/services/${svc.vsr_id}`, { method: "DELETE" });

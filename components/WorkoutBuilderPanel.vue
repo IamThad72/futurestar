@@ -29,18 +29,33 @@
 
 <script setup>
 const emit = defineEmits(["back"]);
+const { confirm: askUser } = useConfirm();
 
 const { draft, dirty, saving, listError, saveError, saveNotice, startNew, saveWorkout, deleteWorkout } =
   useWorkoutDraft();
 
-function onBack() {
-  if (dirty.value && !window.confirm("This workout has unsaved changes. Discard them?")) return;
+async function onBack() {
+  if (dirty.value) {
+    const discard = await askUser({
+      header: "Discard changes?",
+      message: "This workout has unsaved changes. Discard them?",
+      confirmText: "Discard",
+      destructive: true,
+    });
+    if (!discard) return;
+  }
   startNew();
   emit("back");
 }
 
 async function onDelete() {
-  if (!window.confirm("Delete this workout? This cannot be undone.")) return;
+  const remove = await askUser({
+    header: "Delete workout?",
+    message: "Delete this workout? This cannot be undone.",
+    confirmText: "Delete",
+    destructive: true,
+  });
+  if (!remove) return;
   const ok = await deleteWorkout();
   if (ok) emit("back");
 }
