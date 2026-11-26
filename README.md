@@ -84,6 +84,16 @@ Until those tables exist, the app tells people that faith settings (or the readi
 and worship check-in) are not set up yet. The script names above are for operators: they appear in
 this documentation and in the server log, not in the app.
 
+## Tax data
+
+A household tax profile needs `tax_household_profiles`. Line classification needs `tax_deduction_overrides`.
+`npm run migrate` applies `scripts/create_tax_household_profiles.sql`, which creates both tables and does not drop a table or delete rows.
+Details are in [data/tax/README.md](data/tax/README.md).
+
+Until those tables exist, the Tax page tells people "Tax profile storage is not set up yet. Withholding below is unchanged."
+Saving a line classification tells them "Line classification storage is not set up yet."
+The script name above is for operators: it appears in this documentation and in the server log, not in the app.
+
 ## iOS & Android
 
 Native apps use **Ionic + Capacitor** with the [@nuxtjs/ionic](https://ionic.nuxtjs.org/) module.

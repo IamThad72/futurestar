@@ -51,6 +51,8 @@ The calculator does not hard-code a household. Saving this profile for the house
 
 The commented `INSERT` in `scripts/create_tax_household_profiles.sql` is the same seed. Replace `YOUR_USER_ID` with the app user id. A linked-account key is `g:GROUP_ID` instead of `u:YOUR_USER_ID`. The script creates `tax_household_profiles` and `tax_deduction_overrides`, widens the allowed fiscal deduction kinds, and does not drop a table or delete rows. Run it in the Supabase SQL editor, or with `npm run migrate`.
 
+People using the app never see that script path. When the table is missing, the Tax page says "Tax profile storage is not set up yet. Withholding below is unchanged." Saving a profile returns the same sentence. Line classification says "Line classification storage is not set up yet." The server log names `scripts/create_tax_household_profiles.sql` (or `npm run migrate`).
+
 ## Known gaps
 
 - Graduated state income taxes other than Ohio are not calculated.

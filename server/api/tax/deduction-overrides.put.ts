@@ -5,6 +5,8 @@ import { getUserGroupId } from "../../utils/group";
 import {
   listTaxDeductionOverrides,
   saveTaxDeductionOverride,
+  TAX_DEDUCTION_SETUP_MESSAGE,
+  taxProfileSetupError,
   taxProfileUnavailable,
 } from "../../utils/taxHouseholdProfile";
 
@@ -19,12 +21,7 @@ export default defineEventHandler(async (event) => {
     const listed = await listTaxDeductionOverrides(client, userId, groupId);
     return { success: true, ...listed };
   } catch (error: unknown) {
-    if (taxProfileUnavailable(error)) {
-      throw createError({
-        statusCode: 503,
-        statusMessage: "Line classification storage is not set up. Run scripts/create_tax_household_profiles.sql in Supabase.",
-      });
-    }
+    if (taxProfileUnavailable(error)) throw taxProfileSetupError(error, TAX_DEDUCTION_SETUP_MESSAGE);
     if (error && typeof error === "object" && "statusCode" in error) throw error;
     console.error("deduction override save failed", error);
     throw createError({ statusCode: 500, statusMessage: "Failed to save deduction override." });

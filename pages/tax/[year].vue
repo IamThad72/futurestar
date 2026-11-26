@@ -498,7 +498,7 @@ async function loadTotals() {
     profileUnavailable.value = Boolean(profileData?.unavailable);
     householdKey.value = profileData?.household_key || "";
     profileNotice.value = profileData?.unavailable
-      ? "Tax profile storage is not set up yet. Withholding below is unchanged. Run scripts/create_tax_household_profiles.sql in Supabase. It does not drop any table."
+      ? "Tax profile storage is not set up yet. Withholding below is unchanged."
       : "";
   } catch (err) {
     profileRow.value = null;

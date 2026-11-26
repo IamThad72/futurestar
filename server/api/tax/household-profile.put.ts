@@ -2,7 +2,7 @@ import { createError, getQuery, readBody } from "h3";
 import { createDbClient } from "../../utils/db";
 import { getSessionUserId } from "../../utils/auth";
 import { getUserGroupId } from "../../utils/group";
-import { saveTaxHouseholdProfile, taxProfileUnavailable } from "../../utils/taxHouseholdProfile";
+import { saveTaxHouseholdProfile, taxProfileSetupError, taxProfileUnavailable } from "../../utils/taxHouseholdProfile";
 
 export default defineEventHandler(async (event) => {
   const userId = await getSessionUserId(event);
@@ -22,12 +22,7 @@ export default defineEventHandler(async (event) => {
       unavailable: false,
     };
   } catch (error: unknown) {
-    if (taxProfileUnavailable(error)) {
-      throw createError({
-        statusCode: 503,
-        statusMessage: "Tax profile storage is not set up. Run scripts/create_tax_household_profiles.sql in Supabase.",
-      });
-    }
+    if (taxProfileUnavailable(error)) throw taxProfileSetupError(error);
     if (error && typeof error === "object" && "statusCode" in error) throw error;
     console.error("tax household profile save failed", error);
     throw createError({ statusCode: 500, statusMessage: "Failed to save tax profile." });
