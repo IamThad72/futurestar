@@ -656,6 +656,7 @@
 <script setup>
 import { Combobox, ComboboxButton, ComboboxInput, ComboboxOption, ComboboxOptions } from "@headlessui/vue";
 import { ChevronDownIcon } from "@heroicons/vue/24/outline";
+import { finishBarcodeScan, releaseBarcodeHardware } from "~/utils/barcodeScan";
 import { parseFetchError } from "~/utils/parseFetchError";
 import {
   formatPortionGrams,
@@ -874,6 +875,7 @@ const barcodeScanning = ref(false);
 const barcodeBusy = ref(false);
 const barcodeError = ref("");
 let barcodeControls = null;
+let barcodeScanId = 0;
 const logCardEl = ref(null);
 const deletingId = ref(null);
 const { isNarrow } = useMobileShell();
@@ -1248,25 +1250,20 @@ function startEditFood(food) {
 }
 
 function stopBarcodeScan() {
+  barcodeScanId += 1;
   barcodeScanning.value = false;
-  try {
-    barcodeControls?.stop();
-  } catch {
-    /* the camera may already be stopped */
-  }
+  releaseBarcodeHardware(barcodeControls, barcodeVideo.value);
   barcodeControls = null;
-  const video = barcodeVideo.value;
-  const stream = video?.srcObject;
-  if (stream && typeof stream.getTracks === "function") {
-    for (const track of stream.getTracks()) track.stop();
-  }
-  if (video) video.srcObject = null;
 }
 
 async function startBarcodeScan() {
   barcodeError.value = "";
+  releaseBarcodeHardware(barcodeControls, barcodeVideo.value);
+  barcodeControls = null;
+  const scanId = ++barcodeScanId;
   barcodeScanning.value = true;
   await nextTick();
+  if (scanId !== barcodeScanId) return;
   const video = barcodeVideo.value;
   if (!video) {
     barcodeScanning.value = false;
@@ -1276,14 +1273,23 @@ async function startBarcodeScan() {
   try {
     const { BrowserMultiFormatReader } = await import("@zxing/browser");
     const reader = new BrowserMultiFormatReader();
-    barcodeControls = await reader.decodeFromVideoDevice(undefined, video, (result) => {
-      if (!result) return;
+    const controls = await reader.decodeFromVideoDevice(undefined, video, (result) => {
+      if (scanId !== barcodeScanId || !result) return;
       const text = result.getText();
       stopBarcodeScan();
       barcodeText.value = text;
       lookupBarcode(text);
     });
+    const settled = finishBarcodeScan({
+      scanId,
+      currentScanId: barcodeScanId,
+      controls,
+      video,
+    });
+    if (!settled) return;
+    barcodeControls = settled;
   } catch {
+    if (scanId !== barcodeScanId) return;
     stopBarcodeScan();
     barcodeError.value = "The camera could not start. Type the barcode instead.";
   }
