@@ -3,11 +3,7 @@
     class="app-layout-root"
     :class="useMobileChrome ? 'mobile-shell' : 'app-drawer'"
   >
-    <MobileIonicShell
-      v-if="useMobileChrome"
-      @open-account="openAccountManagement"
-      @open-linked="openLinkedAccounts"
-    >
+    <MobileIonicShell v-if="useMobileChrome">
       <slot />
     </MobileIonicShell>
 

@@ -6,47 +6,14 @@
     <div id="main-content" class="ion-page">
       <ion-header>
         <ion-toolbar>
-          <ion-buttons slot="start">
-            <button
-              type="button"
-              class="mobile-brand"
-              aria-label="Home"
-              @click="go(homePath)"
-            >
-              <AppIcon name="star" :size="24" :stroke-width="1.75" class="mobile-brand__icon" />
-            </button>
-          </ion-buttons>
           <ion-title>{{ screenTitle }}</ion-title>
-          <ion-buttons slot="end">
+          <ion-buttons v-if="showLogin" slot="end">
             <button
-              v-if="!auth.user && !route.path.startsWith('/login')"
               type="button"
               class="mobile-login-btn"
               @click="go('/login')"
             >
               Login
-            </button>
-            <button
-              v-else-if="auth.user"
-              type="button"
-              class="mobile-user-btn"
-              aria-label="Open user menu"
-              aria-haspopup="menu"
-              :aria-expanded="userMenuOpen"
-              @click="userMenuOpen = !userMenuOpen"
-            >
-              <img
-                v-if="auth.user?.profile_photo"
-                :src="auth.user.profile_photo"
-                alt="Profile"
-                class="mobile-user-btn__photo"
-              />
-              <span
-                v-else
-                class="mobile-user-btn__fallback"
-              >
-                <AppIcon name="person" :size="20" />
-              </span>
             </button>
           </ion-buttons>
         </ion-toolbar>
@@ -87,44 +54,6 @@
         </nav>
       </ion-footer>
     </div>
-
-    <button
-      v-if="userMenuOpen"
-      type="button"
-      class="mobile-user-menu-backdrop"
-      aria-label="Close user menu"
-      @click="userMenuOpen = false"
-    />
-    <div
-      v-if="auth.user && userMenuOpen"
-      class="app-user-menu mobile-user-menu-panel"
-      role="menu"
-    >
-      <button
-        type="button"
-        class="app-user-menu__item"
-        role="menuitem"
-        @click="onOpenAccount"
-      >
-        Account Management
-      </button>
-      <button
-        type="button"
-        class="app-user-menu__item"
-        role="menuitem"
-        @click="onOpenLinked"
-      >
-        Linked Accounts
-      </button>
-      <button
-        type="button"
-        class="app-user-menu__item"
-        role="menuitem"
-        @click="logout"
-      >
-        Logout
-      </button>
-    </div>
   </div>
 </template>
 
@@ -137,10 +66,7 @@ import {
   IonTitle,
   IonToolbar,
 } from "@ionic/vue";
-import { homePathForUser } from "~/utils/primaryNav";
 import { isDuplicateScreenTitle } from "~/utils/titleDedupe";
-
-const emit = defineEmits(["open-account", "open-linked"]);
 
 const {
   auth,
@@ -150,10 +76,9 @@ const {
   screenTitle,
 } = useAppNav();
 const { go } = useAppNavigate();
-const homePath = computed(() => homePathForUser(auth.user));
+const showLogin = computed(() => !auth.user && !route.path.startsWith("/login"));
 const contentRef = ref(null);
 const mainRef = ref(null);
-const userMenuOpen = ref(false);
 const textFieldFocused = ref(false);
 let blurHideTimer = 0;
 
@@ -210,26 +135,9 @@ function onFocusOut() {
   }, 50);
 }
 
-function onOpenAccount() {
-  userMenuOpen.value = false;
-  emit("open-account");
-}
-
-function onOpenLinked() {
-  userMenuOpen.value = false;
-  emit("open-linked");
-}
-
-async function logout() {
-  userMenuOpen.value = false;
-  const { signOut } = useSignOut();
-  await signOut();
-}
-
 watch(
   () => route.fullPath,
   () => {
-    userMenuOpen.value = false;
     textFieldFocused.value = false;
     const el = contentRef.value?.$el;
     if (el && typeof el.scrollToTop === "function") {
