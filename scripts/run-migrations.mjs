@@ -108,6 +108,7 @@ const migrations = [
   "create_bible.sql",
   "create_faith_profiles.sql",
   "create_faith_common.sql",
+  "alter_groups_created_by_restrict.sql",
 ];
 
 async function run() {
