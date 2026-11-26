@@ -3,6 +3,11 @@ import type { CapacitorConfig } from "@capacitor/cli";
 /**
  * CAPACITOR_DEV=true → HTTP scheme + cleartext (Android emulator + local API only).
  * Default (store builds) → HTTPS WebView scheme, no mixed content.
+ *
+ * Stay on this TypeScript file. @capacitor/cli 8.3 loads it with transpileModule,
+ * and the dev branch above cannot be expressed in capacitor.config.json.
+ * typescript ~5.9 is a direct devDependency so a hoisted TypeScript 7
+ * (optional peer of Vue and Pinia) cannot take that API away.
  */
 const isDev = process.env.CAPACITOR_DEV === "true" || process.env.MOBILE_DEV === "true";
 
