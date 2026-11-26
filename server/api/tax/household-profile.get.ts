@@ -3,7 +3,7 @@ import { createDbClient } from "../../utils/db";
 import { getSessionUserId } from "../../utils/auth";
 import { getUserGroupId } from "../../utils/group";
 import { annualTotalsHouseholdKey } from "../../utils/taxAnnualTotals";
-import { readTaxHouseholdProfile, taxProfileUnavailable } from "../../utils/taxHouseholdProfile";
+import { logTaxProfileSetup, readTaxHouseholdProfile, taxProfileUnavailable } from "../../utils/taxHouseholdProfile";
 
 export default defineEventHandler(async (event) => {
   const userId = await getSessionUserId(event);
@@ -25,6 +25,7 @@ export default defineEventHandler(async (event) => {
       };
     } catch (error) {
       if (taxProfileUnavailable(error)) {
+        logTaxProfileSetup(error);
         return {
           household_key: householdKey,
           tax_year: taxYear,

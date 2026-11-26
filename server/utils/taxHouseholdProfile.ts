@@ -55,6 +55,25 @@ export function taxProfileUnavailable(error: unknown) {
   return isMissingRelationError(error, "tax_household_profiles") || isMissingRelationError(error, "tax_deduction_overrides");
 }
 
+/** Shown to people using the app. The script path stays in the server log. */
+export const TAX_PROFILE_SETUP_MESSAGE =
+  "Tax profile storage is not set up yet. Withholding below is unchanged.";
+
+/** Shown when line classification is saved before its table exists. */
+export const TAX_DEDUCTION_SETUP_MESSAGE = "Line classification storage is not set up yet.";
+
+const TAX_PROFILE_SETUP_HINT =
+  "Tax profile storage is not set up. Run scripts/create_tax_household_profiles.sql in Supabase (or npm run migrate). It does not drop any table.";
+
+export function logTaxProfileSetup(error?: unknown) {
+  console.error(TAX_PROFILE_SETUP_HINT, error ?? "");
+}
+
+export function taxProfileSetupError(error?: unknown, statusMessage = TAX_PROFILE_SETUP_MESSAGE) {
+  logTaxProfileSetup(error);
+  return createError({ statusCode: 503, statusMessage });
+}
+
 export async function readTaxHouseholdProfile(
   client: DbClient,
   userId: number,
