@@ -34,14 +34,19 @@ If tabs still fail after a correct sync, use Chrome **Remote debugging** (`chrom
 
 ## Mobile tab bar
 
-When signed in on a phone or native app, a bottom tab bar appears with:
+When someone is signed in on a phone (viewport at most 767px) or in the native app, `components/MobileIonicShell.vue` shows a header and a bottom tab bar. The destinations come from `utils/primaryNav.js`. Wider web layouts use a left sidebar for the same five destinations (`composables/useMobileShell.js`). The phone header has no hamburger. It has a star that goes home, and either a Login button or an avatar that opens Account Management, Linked Accounts, and Logout. A later change is expected to remove the star and the avatar.
 
-- **Estate** → `/estate_mgmt`
-- **Budget** → `/cash_flow_mgmt`
-- **Tracker** → `/cash_flow_tracker`
-- **Account** → `/account`
+The tab bar is hidden until the person is signed in.
 
-The hamburger nav and footer are hidden in this mode; the top bar keeps the logo and user menu.
+| Tab | Path | Icon color |
+|-----|------|------------|
+| Today | `/today` | neutral ink |
+| Money | `/financial` | evergreen (`--sl-evergreen`) |
+| Faith | `/spiritual` | violet (`--sl-violet`) |
+| Body | `/physical` | ember (`--sl-ember`) |
+| You | `/account` | neutral ink |
+
+Money, Faith, and Body stay highlighted for the pages under those areas, not only the exact path in the table. Estate, budget, and the cash-flow tracker are still pages inside Money. They are not tabs.
 
 ## Icons & splash screen
 
