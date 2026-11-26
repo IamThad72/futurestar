@@ -86,13 +86,22 @@ this documentation and in the server log, not in the app.
 
 ## Tax data
 
-A household tax profile needs `tax_household_profiles`. Line classification needs `tax_deduction_overrides`.
+A household tax profile needs `tax_household_profiles`. Fiscal totals still read stored line overrides from `tax_deduction_overrides`.
 `npm run migrate` applies `scripts/create_tax_household_profiles.sql`, which creates both tables and does not drop a table or delete rows.
 Details are in [data/tax/README.md](data/tax/README.md).
 
-Until those tables exist, the Tax page tells people "Tax profile storage is not set up yet. Withholding below is unchanged."
-Saving a line classification tells them "Line classification storage is not set up yet."
+Until the profile table exists, the Tax page tells people "Tax profile storage is not set up yet. Withholding below is unchanged."
+The Tax page no longer asks someone to classify a line. Overrides already stored still apply the next time a line is saved.
+`GET` and `PUT /api/tax/deduction-overrides` remain for that table. If the table is missing, those routes return "Line classification storage is not set up yet." People using the Tax page do not see that sentence.
 The script name above is for operators: it appears in this documentation and in the server log, not in the app.
+
+## Budget data
+
+Budget setup and the budget tracker read the budget tables.
+`npm run migrate` applies `scripts/create_budgets.sql`, `scripts/create_budget_transactions.sql`, and the later budget scripts in `scripts/run-migrations.mjs`.
+
+If a page cannot load, people see "The budget could not be loaded. Try again in a moment." on Budget setup, or "The budget tracker could not be loaded. Try again in a moment." on the tracker.
+The migrate command is for operators: it appears in this documentation and in the browser console, not in the app.
 
 ## iOS & Android
 
