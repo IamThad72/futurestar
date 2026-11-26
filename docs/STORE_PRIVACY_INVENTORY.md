@@ -4,7 +4,7 @@ Draft for the owner. It matches the draft privacy policy in `utils/legalText.js`
 
 Account deletion, when the app includes it, follows the rule the owner confirmed: `keep-shared`. Shared household money stays with the household. Private data is erased. The screens are in pull request 10 and are not on `main` until that change is merged. The policy says to look for You → Privacy and data → Delete account, and for `/delete-account`, only when that copy of the app includes them.
 
-No advertising SDK, analytics SDK, or advertising-identifier request was found in the app code. Third-party calls below are for the named feature. Confirm “no tracking” and “no advertising” on the store forms before submitting. This inventory does not say personal information is sold, and it does not say it is never sold.
+No advertising SDK, analytics SDK, or advertising-identifier request was found in the app code. Third-party calls below are for the named feature. Confirm “no tracking” and “no advertising” on the store forms before submitting. The owner has said personal information is not sold, and that it is not shared for cross-context behavioral advertising. Confirm “no tracking” and “no advertising” on the store forms before submitting.
 
 ## Do not promote a preview while this text is a draft
 

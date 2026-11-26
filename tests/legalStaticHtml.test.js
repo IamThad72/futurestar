@@ -1,43 +1,62 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { legalReleaseBlocked, legalTextStillDraft } from "../utils/legalDraftGuard.js";
+import { legalPlaceholdersRemain, legalReleaseBlocked, legalTextStillDraft, ownerToFillExpected } from "../utils/legalDraftGuard.js";
+import { checkLegalHtml } from "../utils/legalHtmlCheck.js";
 import { legalStaticHtml } from "../utils/legalStaticHtml.js";
 import { privacyPolicy, termsOfService } from "../utils/legalText.js";
-import { SUPPORT_EMAIL_UNSET, supportEmailInnerHtml } from "../utils/supportEmail.js";
+import { DEFAULT_SUPPORT_EMAIL, supportEmailInnerHtml } from "../utils/supportEmail.js";
 
 const root = new URL("../", import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), "utf8");
 
-test("privacy and terms HTML is in the page before JavaScript runs", () => {
+function withoutPlaceholders(document) {
+  return {
+    ...document,
+    sections: document.sections.map((section) => ({
+      ...section,
+      blocks: (section.blocks || []).filter((block) => block.type !== "placeholder"),
+    })),
+  };
+}
+
+test("draft HTML keeps Owner to fill notes and the required sections", () => {
   const privacy = legalStaticHtml(privacyPolicy);
   const terms = legalStaticHtml(termsOfService);
-  assert.match(privacy, /<noscript><article id="legal-static-privacy">/);
-  assert.match(terms, /<noscript><article id="legal-static-terms">/);
-  assert.match(privacy, /street number, street, city, state, and ZIP code/);
-  assert.match(privacy, /VIN you type/);
-  assert.match(privacy, /account number and the account holder/);
-  assert.match(privacy, /policy number and the policy holder/);
-  assert.match(privacy, /loan number and the borrower/);
-  assert.match(privacy, /myfin\.investment-holdings\.2026-10-31/);
-  assert.match(privacy, /futurestar\.faithPromptDismissed/);
-  assert.match(privacy, /loginForgotPassword/);
-  assert.match(privacy, /If you do not see that section or that page/);
+  assert.equal(ownerToFillExpected(), true);
+  assert.equal(legalPlaceholdersRemain(), true);
+  assert.deepEqual(checkLegalHtml(privacy, terms, { expectPlaceholders: true }), []);
+  assert.match(privacy, /mailto:support@me.com/);
+  assert.match(terms, /mailto:info@me.com/);
   assert.equal(privacy.includes('href="/delete-account"'), false);
-  assert.match(terms, /Limitation of liability/);
-  assert.match(terms, /Owner to fill/);
   assert.equal(terms.includes('href="/delete-account"'), false);
-  assert.match(privacy, new RegExp(SUPPORT_EMAIL_UNSET.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-  assert.equal(privacy.includes("mailto:"), false);
 
-  const withEmail = legalStaticHtml(privacyPolicy, "owner@example.com");
-  assert.match(withEmail, /href="mailto:owner@example.com"/);
-  assert.match(withEmail, />owner@example.com</);
-  assert.equal(withEmail.includes(SUPPORT_EMAIL_UNSET), false);
-  assert.equal(supportEmailInnerHtml("not-an-email"), SUPPORT_EMAIL_UNSET);
+  const overridden = legalStaticHtml(privacyPolicy, "owner@example.com");
+  assert.match(overridden, /href="mailto:owner@example.com"/);
+  assert.equal(overridden.includes(`mailto:${DEFAULT_SUPPORT_EMAIL}`), false);
+  assert.match(supportEmailInnerHtml(""), new RegExp(`mailto:${DEFAULT_SUPPORT_EMAIL}`));
+  assert.match(supportEmailInnerHtml("not-an-email"), new RegExp(`mailto:${DEFAULT_SUPPORT_EMAIL}`));
   const page = read("components/LegalDocument.vue");
   assert.match(page, /supportEmailInnerHtml/);
-  assert.equal(page.includes(SUPPORT_EMAIL_UNSET), false);
+});
+
+test("filled HTML drops Owner to fill and still checks the real sections", () => {
+  const filledPrivacy = withoutPlaceholders(privacyPolicy);
+  const filledTerms = withoutPlaceholders(termsOfService);
+  assert.equal(legalPlaceholdersRemain([filledPrivacy, filledTerms]), false);
+  assert.equal(ownerToFillExpected([filledPrivacy, filledTerms], false), false);
+  assert.equal(ownerToFillExpected([filledPrivacy, filledTerms], true), true);
+  const privacy = legalStaticHtml(filledPrivacy, "owner@example.com");
+  const terms = legalStaticHtml(filledTerms, "owner@example.com");
+  assert.equal(privacy.includes("Owner to fill"), false);
+  assert.equal(terms.includes("Owner to fill"), false);
+  assert.deepEqual(
+    checkLegalHtml(privacy, terms, { supportEmail: "owner@example.com", expectPlaceholders: false }),
+    [],
+  );
+  assert.match(terms, /Limitation of liability/);
+  assert.match(terms, /Wayne County, Ohio/);
+  assert.match(privacy, /We do not sell personal information/);
 });
 
 test("the web build prerenders privacy and terms, and the phone build does not", () => {

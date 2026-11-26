@@ -18,8 +18,7 @@ export function isProductionRelease(env = process.env) {
   return env.GITHUB_REF === "refs/heads/main";
 }
 
-export function legalTextStillDraft(documents = legalDocuments) {
-  if (LEGAL_DRAFT) return true;
+export function legalPlaceholdersRemain(documents = legalDocuments) {
   for (const document of documents || []) {
     for (const section of document.sections || []) {
       for (const block of section.blocks || []) {
@@ -30,6 +29,15 @@ export function legalTextStillDraft(documents = legalDocuments) {
     }
   }
   return false;
+}
+
+/** True while the draft flag is on or any Owner to fill note is still in the text. */
+export function ownerToFillExpected(documents = legalDocuments, draft = LEGAL_DRAFT) {
+  return Boolean(draft) || legalPlaceholdersRemain(documents);
+}
+
+export function legalTextStillDraft(documents = legalDocuments) {
+  return ownerToFillExpected(documents, LEGAL_DRAFT);
 }
 
 export function legalReleaseBlocked(env = process.env) {

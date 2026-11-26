@@ -48,7 +48,7 @@ export const privacyPolicy = {
       blocks: [
         {
           type: "p",
-          text: "Future Star is a personal app for money, faith practice, and physical training. The footer of the app names the publisher as Marcelli Enterprises LLC. This draft uses that name.",
+          text: "Future Star is published by Marcelli Enterprises LLC. It is a personal app for money, faith practice, and physical training.",
         },
         {
           type: "placeholder",
@@ -86,6 +86,10 @@ export const privacyPolicy = {
         {
           type: "p",
           text: "You can upload files. We store the file, its original name, its type, its size, and any title or note you add. Files sit on the server disk, or in Supabase Storage when that is configured. Household members can see household documents.",
+        },
+        {
+          type: "placeholder",
+          text: "Say whether production stores estate files on the server disk or in Supabase Storage. The code uses Supabase Storage when a service-role key is set, and the server disk otherwise.",
         },
         { type: "h3", text: "Vehicles" },
         {
@@ -129,8 +133,8 @@ export const privacyPolicy = {
           text: "The app code does not include an advertising SDK or an analytics SDK, and it does not ask for an advertising identifier.",
         },
         {
-          type: "placeholder",
-          text: "Say whether personal information is sold. This draft does not say that it is sold, and it does not say that it is never sold.",
+          type: "p",
+          text: "We do not sell personal information. We do not share it for cross-context behavioral advertising.",
         },
       ],
     },
@@ -158,6 +162,10 @@ export const privacyPolicy = {
         {
           type: "p",
           text: "Fonts are bundled with the app. The app does not load fonts from Google.",
+        },
+        {
+          type: "placeholder",
+          text: "Say which ExerciseDB host production uses. The code calls oss.exercisedb.dev unless a RapidAPI key is set, and the browser loads images from static.exercisedb.dev.",
         },
       ],
     },
@@ -198,6 +206,10 @@ export const privacyPolicy = {
         {
           type: "p",
           text: "The weekly mirror does not send your prayer requests, and it does not send the full text of a review. It sends counts: how many days have a review, which virtues you named and how often, how many times tomorrow was filled, and words that appear more than once in the troubled and shortfall answers.",
+        },
+        {
+          type: "placeholder",
+          text: "Say whether the weekly mirror should keep sending words that repeat in the troubled and shortfall answers to Groq. The code does that today. It does not send prayer requests or the full review.",
         },
         {
           type: "p",
@@ -262,11 +274,7 @@ export const privacyPolicy = {
       blocks: [
         {
           type: "p",
-          text: "The app does not ask for a date of birth. The code does not set a minimum age.",
-        },
-        {
-          type: "placeholder",
-          text: "Decide the minimum age, if any. This draft does not guess one.",
+          text: "You must be 14 or older to use Future Star. If you are under 18, you need a parent or guardian's consent where the law requires it. We do not knowingly collect personal information from children under 14. If we learn that we have, we will delete it.",
         },
       ],
     },
@@ -284,6 +292,14 @@ export const privacyPolicy = {
       id: "contact",
       heading: "Contact",
       blocks: [
+        {
+          type: "p",
+          parts: [
+            "For general questions, write to ",
+            { href: "mailto:info@me.com", label: "info@me.com" },
+            ".",
+          ],
+        },
         { type: "supportEmail" },
         {
           type: "placeholder",
@@ -329,7 +345,7 @@ export const termsOfService = {
       blocks: [
         {
           type: "p",
-          text: "You need an account to use the tools. You are responsible for your sign-in. If you link a household, money records are visible to the other members, as the privacy policy describes. Faith practice and body data stay on your account.",
+          text: "You need an account to use the tools. You must be 14 or older. If you are under 18, you need a parent or guardian's consent where the law requires it. You are responsible for your sign-in. If you link a household, money records are visible to the other members, as the privacy policy describes. Faith practice and body data stay on your account.",
         },
       ],
     },
@@ -392,8 +408,16 @@ export const termsOfService = {
       heading: "Limitation of liability",
       blocks: [
         {
-          type: "placeholder",
-          text: "State any limit on liability, and any warranty language, that the owner or counsel approves. This draft does not.",
+          type: "p",
+          text: "Sample text for the owner's review. This is not approved legal language. It is written for Marcelli Enterprises LLC as a small company in Wooster, Ohio.",
+        },
+        {
+          type: "p",
+          text: "The app is provided as is and as available. Marcelli Enterprises LLC disclaims warranties of merchantability, fitness for a particular purpose, and non-infringement, to the extent the law allows.",
+        },
+        {
+          type: "p",
+          text: "To the extent the law allows, Marcelli Enterprises LLC is not liable for indirect, incidental, special, consequential, or punitive damages, or for lost profits or data. Its total liability for a claim arising out of the app is limited to the greater of the fees you paid for the app in the 12 months before the claim, or $100.",
         },
       ],
     },
@@ -402,8 +426,12 @@ export const termsOfService = {
       heading: "Governing law",
       blocks: [
         {
-          type: "placeholder",
-          text: "Name the state or country, and the court, that should govern these terms. This draft does not guess.",
+          type: "p",
+          text: "Sample text for the owner's review. This is not approved legal language. It is written for Marcelli Enterprises LLC as a small company in Wooster, Ohio.",
+        },
+        {
+          type: "p",
+          text: "These terms are governed by the laws of the State of Ohio, without regard to conflict-of-law rules. You and Marcelli Enterprises LLC agree that the state courts in Wayne County, Ohio, and the United States District Court for the Northern District of Ohio, are the venues for disputes arising out of these terms or the app.",
         },
       ],
     },
@@ -421,6 +449,14 @@ export const termsOfService = {
       id: "contact",
       heading: "Contact",
       blocks: [
+        {
+          type: "p",
+          parts: [
+            "For general questions, write to ",
+            { href: "mailto:info@me.com", label: "info@me.com" },
+            ".",
+          ],
+        },
         { type: "supportEmail" },
         {
           type: "placeholder",

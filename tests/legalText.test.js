@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  LEGAL_DRAFT,
   LEGAL_UPDATED,
   legalDocuments,
   legalUpdatedLabel,
@@ -37,10 +38,22 @@ test("every table-of-contents id is a section id", () => {
   }
 });
 
-test("the draft does not invent an email, a sale promise, or end-to-end encryption", () => {
+test("the owner's answers are in the draft and the open items stay placeholders", () => {
   const blob = JSON.stringify(legalDocuments);
-  assert.equal(blob.includes("@"), false);
-  assert.equal(blob.toLowerCase().includes("we never sell"), false);
+  assert.equal(LEGAL_DRAFT, true);
+  assert.match(blob, /Marcelli Enterprises LLC/);
+  assert.match(blob, /info@me.com/);
+  assert.match(blob, /We do not sell personal information/);
+  assert.match(blob, /cross-context behavioral advertising/);
+  assert.match(blob, /14 or older/);
+  assert.match(blob, /children under 14/);
+  assert.match(blob, /Wayne County, Ohio/);
+  assert.match(blob, /Northern District of Ohio/);
+  assert.match(blob, /\$100/);
+  assert.match(blob, /Sample text for the owner's review/);
+  assert.match(blob, /postal address for Marcelli Enterprises LLC/);
+  assert.match(blob, /which ExerciseDB host production uses/);
+  assert.match(blob, /estate files on the server disk or in Supabase Storage/);
+  assert.match(blob, /weekly mirror should keep sending/);
   assert.equal(blob.toLowerCase().includes("end-to-end"), false);
-  assert.equal(blob.toLowerCase().includes("do not sell"), false);
 });

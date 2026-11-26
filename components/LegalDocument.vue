@@ -49,8 +49,13 @@
         <p v-else-if="block.type === 'p'" class="mt-3 break-words text-base leading-6 text-ink">
           <template v-if="block.parts">
             <template v-for="(part, partIndex) in block.parts" :key="partIndex">
+              <a
+                v-if="part && part.href && String(part.href).startsWith('mailto:')"
+                :href="part.href"
+                class="font-semibold text-navy underline underline-offset-2"
+              >{{ part.label }}</a>
               <AppLink
-                v-if="part && part.href"
+                v-else-if="part && part.href"
                 :to="part.href"
                 class="font-semibold text-navy underline underline-offset-2"
               >

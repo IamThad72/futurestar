@@ -3,6 +3,7 @@ import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { bundledFontPublicPath, bundledFonts, copyBundledFonts } from "./scripts/copy-bundled-fonts.mjs";
 import { assertLegalReleaseAllowed } from "./utils/legalDraftGuard.js";
+import { DEFAULT_SUPPORT_EMAIL } from "./utils/supportEmail.js";
 
 copyBundledFonts();
 assertLegalReleaseAllowed();
@@ -71,8 +72,8 @@ export default defineNuxtConfig({
       nativeApiBase,
       /** Baked in when NUXT_CAPACITOR=true; used by native hash-router plugin */
       isCapacitorBuild,
-      /** Shown on /privacy and /terms only when set. Do not invent an address. */
-      supportEmail: process.env.NUXT_PUBLIC_SUPPORT_EMAIL || "",
+      /** NUXT_PUBLIC_SUPPORT_EMAIL overrides support@me.com. Do not invent a postal address. */
+      supportEmail: process.env.NUXT_PUBLIC_SUPPORT_EMAIL || DEFAULT_SUPPORT_EMAIL,
     },
   },
 
