@@ -1,13 +1,19 @@
+import { createHash } from "node:crypto";
 import { createError } from "h3";
-import { GROUP_SHARED_TABLES, getUserGroupMembership } from "./group";
+import { GROUP_SHARED_TABLES, countUserGroups, getUserGroupMembership } from "./group";
 import { verifyPassword } from "./password";
 import { getSupabaseAdmin } from "./supabaseAdmin";
+import { supabasePasswordMatches } from "./supabasePassword";
 import { removeEstateFile, type EstateDocBackend } from "./estateDocuments";
 import { planAccountDeletion } from "~/utils/accountDeletionPlan.js";
+import { bearerIsFresh, deletionAttemptBlocked } from "~/utils/deletionGuards.js";
 import {
+  DELETION_ATTEMPT_IP_LIMIT,
+  DELETION_ATTEMPT_USER_LIMIT,
   DISSOLVE_DELETE_ORDER,
   HOUSEHOLD_DELETION_POLICY,
   HOUSEHOLD_TAX_TABLES,
+  REAUTH_WINDOW_MS,
   REOWN_HOUSEHOLD_TAX,
   REOWN_NAME_COLUMNS,
   householdKeyForGroup,
@@ -32,7 +38,16 @@ export type AccountDeletionOutcome = {
   userId: number;
   supabaseUserId: string | null;
   files: DeletedEstateFile[];
+  verifiedPasswordHash: string;
 };
+
+export type CleanupResult = {
+  authUserRemoved: boolean;
+  authRemovalPending: boolean;
+};
+
+export const MULTIPLE_HOUSEHOLDS_MESSAGE =
+  "This account is in more than one household. Leave the extra household before deleting the account.";
 
 const SHARED_TABLES = new Set<string>(GROUP_SHARED_TABLES);
 const TAX_TABLES = new Map(HOUSEHOLD_TAX_TABLES.map((item) => [item.table, item.match]));
@@ -48,11 +63,11 @@ function canTouch(table: string) {
   return isSafeIdentifier(table) && (SHARED_TABLES.has(table) || TAX_TABLES.has(table));
 }
 
-/**
- * Returns the fixed 400 message, or null when the typed email (and password,
- * when this account has one) matches. Supabase-only accounts have no
- * password_hash; the session already proved who they are.
- */
+export function deletionIpHash(ip: string) {
+  return createHash("sha256").update(`futurestar-delete:${ip || "unknown"}`).digest("hex");
+}
+
+/** Email must match. A password is always required. Local hashes are checked here. */
 export function confirmAccountDeletion(input: {
   email: string;
   confirmEmail: unknown;
@@ -64,9 +79,9 @@ export function confirmAccountDeletion(input: {
   if (!expected || typed !== expected) {
     return "Type your account email to confirm.";
   }
+  const password = typeof input.password === "string" ? input.password : "";
+  if (!password) return "Enter your password to confirm.";
   if (input.passwordHash) {
-    const password = typeof input.password === "string" ? input.password : "";
-    if (!password) return "Enter your password to confirm.";
     let matches = false;
     try {
       matches = verifyPassword(password, input.passwordHash);
@@ -76,6 +91,65 @@ export function confirmAccountDeletion(input: {
     if (!matches) return "Enter your password to confirm.";
   }
   return null;
+}
+
+async function relationExists(client: QueryClient, name: string) {
+  const result = await client.query(`SELECT to_regclass($1) AS rel`, [name]);
+  return Boolean(result.rows[0]?.rel);
+}
+
+export async function assertDeletionNotThrottled(client: QueryClient, userId: number, ipHash: string) {
+  if (!(await relationExists(client, "public.account_deletion_attempts"))) return;
+  const byUser = await client.query(
+    `SELECT COUNT(*)::int AS failures
+     FROM account_deletion_attempts
+     WHERE user_id = $1 AND succeeded = FALSE AND attempted_at > NOW() - INTERVAL '15 minutes'`,
+    [userId],
+  );
+  const byIp = await client.query(
+    `SELECT COUNT(*)::int AS failures
+     FROM account_deletion_attempts
+     WHERE ip_hash = $1 AND succeeded = FALSE AND attempted_at > NOW() - INTERVAL '15 minutes'`,
+    [ipHash],
+  );
+  const blocked = deletionAttemptBlocked(byUser.rows[0]?.failures, byIp.rows[0]?.failures, {
+    userLimit: DELETION_ATTEMPT_USER_LIMIT,
+    ipLimit: DELETION_ATTEMPT_IP_LIMIT,
+  });
+  if (blocked) {
+    throw createError({ statusCode: 429, statusMessage: "Too many attempts. Try again later." });
+  }
+}
+
+export async function recordDeletionFailure(client: QueryClient, userId: number, ipHash: string) {
+  if (!(await relationExists(client, "public.account_deletion_attempts"))) return;
+  await client.query(
+    `INSERT INTO account_deletion_attempts (user_id, ip_hash) VALUES ($1, $2)`,
+    [userId, ipHash],
+  );
+}
+
+/**
+ * Fresh credential for a Supabase-only account (no local password_hash).
+ * Uses the existing Supabase project's password sign-in. A bearer token, when
+ * present, must also have been issued within REAUTH_WINDOW_MS.
+ */
+export async function assertSupabaseReauth(input: {
+  email: string;
+  password: string;
+  bearerToken: string | null;
+  nowMs?: number;
+}) {
+  const matches = await supabasePasswordMatches(input.email, input.password);
+  if (!matches) {
+    throw createError({ statusCode: 400, statusMessage: "Enter your password to confirm." });
+  }
+  if (input.bearerToken) {
+    const fresh = bearerIsFresh(input.bearerToken, input.nowMs ?? Date.now(), REAUTH_WINDOW_MS);
+    if (!fresh) {
+      throw createError({ statusCode: 401, statusMessage: "Sign in again to delete your account." });
+    }
+  }
 }
 
 function orderedDissolveTables(present: string[]) {
@@ -159,7 +233,7 @@ async function collectEstateFiles(
 export async function deleteAccountInTransaction(
   client: QueryClient,
   userId: number,
-  input: { confirmEmail: unknown; password: unknown },
+  input: { confirmEmail: unknown; verifiedPasswordHash: string },
 ): Promise<AccountDeletionOutcome> {
   if (HOUSEHOLD_DELETION_POLICY !== "keep-shared") {
     throw createError({ statusCode: 500, statusMessage: "Account deletion is not available." });
@@ -177,14 +251,23 @@ export async function deleteAccountInTransaction(
     throw createError({ statusCode: 404, statusMessage: "Account not found." });
   }
 
-  const problem = confirmAccountDeletion({
+  const currentHash = user.password_hash == null || user.password_hash === "" ? "" : String(user.password_hash);
+  if (currentHash !== input.verifiedPasswordHash) {
+    throw createError({ statusCode: 400, statusMessage: "Enter your password to confirm." });
+  }
+  const emailProblem = confirmAccountDeletion({
     email: String(user.email ?? ""),
     confirmEmail: input.confirmEmail,
-    password: input.password,
-    passwordHash: user.password_hash == null || user.password_hash === "" ? null : String(user.password_hash),
+    password: "already-checked",
+    passwordHash: null,
   });
-  if (problem) {
-    throw createError({ statusCode: 400, statusMessage: problem });
+  if (emailProblem) {
+    throw createError({ statusCode: 400, statusMessage: emailProblem });
+  }
+
+  const households = await countUserGroups(client as Parameters<typeof countUserGroups>[0], userId);
+  if (households > 1) {
+    throw createError({ statusCode: 409, statusMessage: MULTIPLE_HOUSEHOLDS_MESSAGE });
   }
 
   const membership = await getUserGroupMembership(client as Parameters<typeof getUserGroupMembership>[0], userId);
@@ -298,38 +381,129 @@ export async function deleteAccountInTransaction(
     await client.query(`DELETE FROM groups WHERE group_id = $1`, [dissolveGroupId]);
   }
 
+  const supabaseUserId = user.supabase_user_id == null ? null : String(user.supabase_user_id);
+  if (supabaseUserId) {
+    if (!(await relationExists(client, "public.deleted_auth_users"))) {
+      throw createError({ statusCode: 500, statusMessage: "Could not delete the account." });
+    }
+    await client.query(
+      `INSERT INTO deleted_auth_users (supabase_user_id, app_user_id)
+       VALUES ($1, $2)
+       ON CONFLICT (supabase_user_id) DO NOTHING`,
+      [supabaseUserId, userId],
+    );
+  }
+  if (files.length) {
+    if (!(await relationExists(client, "public.pending_storage_deletes"))) {
+      throw createError({ statusCode: 500, statusMessage: "Could not delete the account." });
+    }
+    for (const file of files) {
+      await client.query(
+        `INSERT INTO pending_storage_deletes (storage_path, storage_backend)
+         VALUES ($1, $2)
+         ON CONFLICT (storage_backend, storage_path) DO NOTHING`,
+        [file.storagePath, file.backend],
+      );
+    }
+  }
+
   await client.query(`DELETE FROM app_users WHERE user_id = $1`, [userId]);
 
   return {
     userId,
-    supabaseUserId: user.supabase_user_id == null ? null : String(user.supabase_user_id),
+    supabaseUserId,
     files,
+    verifiedPasswordHash: input.verifiedPasswordHash,
   };
 }
 
-/** Best effort after commit. A storage or auth failure does not undo the deletion. */
-export async function cleanupDeletedAccount(outcome: AccountDeletionOutcome): Promise<boolean> {
+async function markStorageAttempt(client: QueryClient, file: DeletedEstateFile, removed: boolean) {
+  if (!(await relationExists(client, "public.pending_storage_deletes"))) return;
+  if (removed) {
+    await client.query(
+      `UPDATE pending_storage_deletes
+       SET deleted_at = NOW(), last_attempt_at = NOW(), attempt_count = attempt_count + 1
+       WHERE storage_path = $1 AND storage_backend = $2 AND deleted_at IS NULL`,
+      [file.storagePath, file.backend],
+    );
+    return;
+  }
+  await client.query(
+    `UPDATE pending_storage_deletes
+     SET last_attempt_at = NOW(), attempt_count = attempt_count + 1
+     WHERE storage_path = $1 AND storage_backend = $2 AND deleted_at IS NULL`,
+    [file.storagePath, file.backend],
+  );
+}
+
+async function retryStorageDeletes(client: QueryClient, outcome: AccountDeletionOutcome) {
   for (const file of outcome.files) {
     try {
       await removeEstateFile(file.storagePath, file.backend);
+      await markStorageAttempt(client, file, true);
     } catch {
-      console.error("[auth/delete-account] storage cleanup failed", { userId: outcome.userId });
+      await markStorageAttempt(client, file, false);
+      console.error("[auth/delete-account] storage cleanup failed", {
+        userId: outcome.userId,
+        backend: file.backend,
+        storagePath: file.storagePath,
+      });
     }
   }
+}
 
-  if (!outcome.supabaseUserId) return false;
-
+/** Removes one Supabase Auth user and records the attempt on the tombstone. */
+export async function retryAuthDeletion(client: QueryClient, supabaseUserId: string, userId: number | null) {
+  const hasTable = await relationExists(client, "public.deleted_auth_users");
   try {
     const admin = getSupabaseAdmin();
-    if (!admin) return false;
-    const { error } = await admin.auth.admin.deleteUser(outcome.supabaseUserId, false);
+    if (!admin) {
+      if (hasTable) {
+        await client.query(
+          `UPDATE deleted_auth_users
+           SET last_attempt_at = NOW(), attempt_count = attempt_count + 1
+           WHERE supabase_user_id = $1 AND auth_deleted_at IS NULL`,
+          [supabaseUserId],
+        );
+      }
+      console.error("[auth/delete-account] auth user removal pending", {
+        userId,
+        supabaseUserId,
+        reason: "no-service-role",
+      });
+      return false;
+    }
+    const { error } = await admin.auth.admin.deleteUser(supabaseUserId, false);
     if (error) throw error;
+    if (hasTable) {
+      await client.query(
+        `UPDATE deleted_auth_users
+         SET auth_deleted_at = NOW(), last_attempt_at = NOW(), attempt_count = attempt_count + 1
+         WHERE supabase_user_id = $1 AND auth_deleted_at IS NULL`,
+        [supabaseUserId],
+      );
+    }
     return true;
   } catch {
-    console.error("[auth/delete-account] auth user removal failed", {
-      userId: outcome.userId,
-      supabaseUserId: outcome.supabaseUserId,
-    });
+    if (hasTable) {
+      await client.query(
+        `UPDATE deleted_auth_users
+         SET last_attempt_at = NOW(), attempt_count = attempt_count + 1
+         WHERE supabase_user_id = $1 AND auth_deleted_at IS NULL`,
+        [supabaseUserId],
+      ).catch(() => undefined);
+    }
+    console.error("[auth/delete-account] auth user removal failed", { userId, supabaseUserId });
     return false;
   }
+}
+
+/** After commit. Storage and Auth failures stay pending and are retried. */
+export async function cleanupDeletedAccount(client: QueryClient, outcome: AccountDeletionOutcome): Promise<CleanupResult> {
+  await retryStorageDeletes(client, outcome);
+  if (!outcome.supabaseUserId) {
+    return { authUserRemoved: false, authRemovalPending: false };
+  }
+  const authUserRemoved = await retryAuthDeletion(client, outcome.supabaseUserId, outcome.userId);
+  return { authUserRemoved, authRemovalPending: !authUserRemoved };
 }

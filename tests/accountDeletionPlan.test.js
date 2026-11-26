@@ -9,9 +9,18 @@ import {
 } from "../utils/accountDeletionPolicy.js";
 import {
   ACCOUNT_DELETED_NOTICE,
+  ACCOUNT_DELETED_PENDING_NOTICE,
   rememberAccountDeleted,
   takeAccountDeletedNotice,
 } from "../utils/accountDeletedNotice.js";
+import { KEPT_ON_DELETE, RETENTION_ON_DELETE, deleteAccountStaticHtml } from "../utils/accountDeletionCopy.js";
+import {
+  bearerIsFresh,
+  deletionAttemptBlocked,
+  deletionDialogDismissAllowed,
+  nextDialogFocusIndex,
+  safeDeleteAccountNext,
+} from "../utils/deletionGuards.js";
 
 const owner = { user_id: 1, role: "owner", created_at: "2024-01-01T00:00:00.000Z" };
 const earlyMember = { user_id: 2, role: "member", created_at: "2024-02-01T00:00:00.000Z" };
@@ -43,6 +52,33 @@ test("a member leaving other people hands shared rows to the owner", () => {
     newOwnerId: null,
     reownToUserId: 1,
   });
+});
+
+test("an owner leaving promotes an existing co-owner before an earlier member", () => {
+  const plan = planAccountDeletion(
+    1,
+    [
+      owner,
+      earlyMember,
+      { user_id: 9, role: "owner", created_at: "2024-08-01T00:00:00.000Z" },
+    ],
+    { createdBy: 1 },
+  );
+  assert.deepEqual(plan, { mode: "promote", newOwnerId: 9, reownToUserId: 9 });
+});
+
+test("two co-owners: the earlier co-owner is promoted", () => {
+  const plan = planAccountDeletion(
+    1,
+    [
+      owner,
+      { user_id: 6, role: "owner", created_at: "2024-07-01T00:00:00.000Z" },
+      { user_id: 3, role: "owner", created_at: "2024-03-01T00:00:00.000Z" },
+      earlyMember,
+    ],
+    { createdBy: 1 },
+  );
+  assert.equal(plan.newOwnerId, 3);
 });
 
 test("an owner leaving promotes the earliest other member", () => {
@@ -125,6 +161,33 @@ test("the default household policy is keep-shared and tax rows are included", ()
   assert.equal(isSafeIdentifier(""), false);
 });
 
+test("deletion guards cover re-auth, throttle, focus, and the login return path", () => {
+  assert.equal(deletionAttemptBlocked(4, 0), false);
+  assert.equal(deletionAttemptBlocked(5, 0), true);
+  assert.equal(deletionAttemptBlocked(0, 30), true);
+  assert.equal(safeDeleteAccountNext("/delete-account"), "/delete-account");
+  assert.equal(safeDeleteAccountNext("/delete-account/extra"), "");
+  assert.equal(safeDeleteAccountNext("//evil.example"), "");
+  assert.equal(safeDeleteAccountNext("/today"), "");
+  assert.equal(deletionDialogDismissAllowed(false), true);
+  assert.equal(deletionDialogDismissAllowed(true), false);
+  assert.equal(nextDialogFocusIndex(2, 3, false), 0);
+  assert.equal(nextDialogFocusIndex(0, 3, true), 2);
+  const now = Date.now();
+  const fresh = Buffer.from(JSON.stringify({ iat: Math.floor(now / 1000) })).toString("base64url");
+  const stale = Buffer.from(JSON.stringify({ iat: Math.floor(now / 1000) - 600 })).toString("base64url");
+  assert.equal(bearerIsFresh(`h.${fresh}.s`, now, 5 * 60 * 1000), true);
+  assert.equal(bearerIsFresh(`h.${stale}.s`, now, 5 * 60 * 1000), false);
+  assert.equal(bearerIsFresh("not-a-jwt", now, 5 * 60 * 1000), false);
+  assert.match(KEPT_ON_DELETE, /household/);
+  assert.match(RETENTION_ON_DELETE, /sign-in id/);
+  const html = deleteAccountStaticHtml();
+  assert.match(html, /id="delete-account-static"/);
+  assert.match(html, /Stays with the household/);
+  assert.match(html, /What is kept afterwards/);
+  assert.match(html, /href="\/login\?next=\/delete-account"/);
+});
+
 test("the login notice is one line and is read once", () => {
   const store = new Map();
   const previous = globalThis.sessionStorage;
@@ -136,8 +199,11 @@ test("the login notice is one line and is read once", () => {
   try {
     rememberAccountDeleted();
     assert.equal(takeAccountDeletedNotice(), ACCOUNT_DELETED_NOTICE);
+    rememberAccountDeleted(true);
+    assert.equal(takeAccountDeletedNotice(), ACCOUNT_DELETED_PENDING_NOTICE);
     assert.equal(takeAccountDeletedNotice(), "");
     assert.equal(ACCOUNT_DELETED_NOTICE.includes("\n"), false);
+    assert.equal(ACCOUNT_DELETED_PENDING_NOTICE.includes("\n"), false);
   } finally {
     if (previous === undefined) delete globalThis.sessionStorage;
     else globalThis.sessionStorage = previous;

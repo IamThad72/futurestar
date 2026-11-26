@@ -1,26 +1,103 @@
-import { createError, readBody, setCookie } from "h3";
+import { createError, getHeader, getRequestIP, readBody, setCookie } from "h3";
 import { createDbClient } from "../../utils/db";
 import { getSessionUserId } from "../../utils/auth";
 import { getSessionCookieOptions, SESSION_COOKIE_NAME } from "../../utils/session";
-import { cleanupDeletedAccount, deleteAccountInTransaction } from "../../utils/accountDeletion";
+import {
+  MULTIPLE_HOUSEHOLDS_MESSAGE,
+  assertDeletionNotThrottled,
+  assertSupabaseReauth,
+  cleanupDeletedAccount,
+  confirmAccountDeletion,
+  deleteAccountInTransaction,
+  deletionIpHash,
+  recordDeletionFailure,
+} from "../../utils/accountDeletion";
+import { countUserGroups } from "../../utils/group";
+
+function requestIp(event: Parameters<typeof getRequestIP>[0]) {
+  const forwarded = getHeader(event, "x-forwarded-for");
+  const first = forwarded?.split(",")[0]?.trim();
+  return first || getRequestIP(event) || "unknown";
+}
+
+function bearerToken(event: Parameters<typeof getHeader>[0]) {
+  const header = getHeader(event, "authorization");
+  return header?.startsWith("Bearer ") ? header.slice(7).trim() : null;
+}
 
 /**
- * Deletes the signed-in account only. A user id in the body is ignored, so
- * one person cannot delete another person's account.
+ * Deletes the signed-in account only. A user id in the body is ignored.
+ * The password is checked before the deletion transaction starts.
  */
 export default defineEventHandler(async (event) => {
   const userId = await getSessionUserId(event);
   const body = await readBody(event);
+  const ipHash = deletionIpHash(requestIp(event));
   const client = createDbClient();
   let outcome = null;
 
   try {
     await client.connect();
+
+    const preview = await client.query(
+      `SELECT user_id, email, password_hash, supabase_user_id
+       FROM app_users
+       WHERE user_id = $1`,
+      [userId],
+    );
+    const previewUser = preview.rows[0];
+    if (!previewUser) {
+      throw createError({ statusCode: 404, statusMessage: "Account not found." });
+    }
+
+    const households = await countUserGroups(client, userId);
+    if (households > 1) {
+      throw createError({ statusCode: 409, statusMessage: MULTIPLE_HOUSEHOLDS_MESSAGE });
+    }
+
+    await assertDeletionNotThrottled(client, userId, ipHash);
+
+    const passwordHash =
+      previewUser.password_hash == null || previewUser.password_hash === "" ? null : String(previewUser.password_hash);
+    const supabaseUserId = previewUser.supabase_user_id == null ? null : String(previewUser.supabase_user_id);
+    const problem = confirmAccountDeletion({
+      email: String(previewUser.email ?? ""),
+      confirmEmail: body?.confirmEmail,
+      password: body?.password,
+      passwordHash,
+    });
+    if (problem) {
+      if (problem === "Enter your password to confirm.") {
+        await recordDeletionFailure(client, userId, ipHash);
+      }
+      throw createError({ statusCode: 400, statusMessage: problem });
+    }
+
+    if (!passwordHash && !supabaseUserId) {
+      await recordDeletionFailure(client, userId, ipHash);
+      throw createError({ statusCode: 400, statusMessage: "Enter your password to confirm." });
+    }
+
+    if (!passwordHash && supabaseUserId) {
+      try {
+        await assertSupabaseReauth({
+          email: String(previewUser.email ?? "").trim().toLowerCase(),
+          password: String(body?.password ?? ""),
+          bearerToken: bearerToken(event),
+        });
+      } catch (error) {
+        const statusCode =
+          error && typeof error === "object" && "statusCode" in error ? Number((error as { statusCode?: number }).statusCode) : 0;
+        if (statusCode === 400) await recordDeletionFailure(client, userId, ipHash);
+        throw error;
+      }
+    }
+
     await client.query("BEGIN");
     try {
       outcome = await deleteAccountInTransaction(client, userId, {
         confirmEmail: body?.confirmEmail,
-        password: body?.password,
+        verifiedPasswordHash: passwordHash ?? "",
       });
       await client.query("COMMIT");
     } catch (error) {
@@ -30,18 +107,38 @@ export default defineEventHandler(async (event) => {
   } catch (error) {
     const statusCode =
       error && typeof error === "object" && "statusCode" in error ? Number((error as { statusCode?: number }).statusCode) : 0;
-    if (statusCode >= 400 && statusCode < 500) throw error;
+    if (statusCode >= 400 && statusCode < 500) {
+      await client.end().catch(() => undefined);
+      throw error;
+    }
     const code = error && typeof error === "object" && "code" in error ? (error as { code?: unknown }).code : null;
     console.error("[auth/delete-account] failed", { userId, code: code ?? null });
-    throw createError({ statusCode: 500, statusMessage: "Could not delete the account." });
-  } finally {
     await client.end().catch(() => undefined);
+    throw createError({ statusCode: 500, statusMessage: "Could not delete the account." });
   }
 
-  const authUserRemoved = outcome ? await cleanupDeletedAccount(outcome) : false;
+  if (!outcome) {
+    await client.end().catch(() => undefined);
+    throw createError({ statusCode: 500, statusMessage: "Could not delete the account." });
+  }
+
+  let cleanup = { authUserRemoved: false, authRemovalPending: false };
+  if (outcome) {
+    try {
+      cleanup = await cleanupDeletedAccount(client, outcome);
+    } catch {
+      console.error("[auth/delete-account] cleanup failed", { userId: outcome.userId });
+      cleanup = {
+        authUserRemoved: false,
+        authRemovalPending: Boolean(outcome.supabaseUserId),
+      };
+    }
+  }
+
+  await client.end().catch(() => undefined);
   setCookie(event, SESSION_COOKIE_NAME, "", {
     ...getSessionCookieOptions(),
     maxAge: 0,
   });
-  return { success: true, authUserRemoved };
+  return { success: true, authUserRemoved: cleanup.authUserRemoved, authRemovalPending: cleanup.authRemovalPending };
 });

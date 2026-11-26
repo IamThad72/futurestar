@@ -1,5 +1,6 @@
 import { createError, getHeader } from "h3";
 import { createDbClient } from "../../utils/db";
+import { retryAuthDeletion } from "../../utils/accountDeletion";
 import { supabase } from "../../utils/superbase";
 
 /**
@@ -52,6 +53,29 @@ export default defineEventHandler(async (event) => {
 
   try {
     await client.connect();
+
+    let tombstone: { auth_deleted_at?: unknown } | null = null;
+    try {
+      const tomb = await client.query(
+        `SELECT supabase_user_id, auth_deleted_at
+         FROM deleted_auth_users
+         WHERE supabase_user_id = $1`,
+        [supabaseUser.id],
+      );
+      tombstone = tomb.rows[0] ?? null;
+    } catch (error) {
+      const code = error && typeof error === "object" && "code" in error ? String((error as { code?: string }).code) : "";
+      if (code !== "42P01") throw error;
+    }
+    if (tombstone) {
+      if (!tombstone.auth_deleted_at) {
+        await retryAuthDeletion(client, supabaseUser.id, null);
+      }
+      throw createError({
+        statusCode: 403,
+        statusMessage: "This sign-in was deleted and cannot open an account.",
+      });
+    }
 
     // Check if already linked
     const existing = await client.query(

@@ -206,3 +206,45 @@ export const assertGroupOwner = async (
 
   return membership;
 };
+
+type GroupQueryClient = {
+  query: (
+    queryText: string,
+    values: unknown[],
+  ) => Promise<{ rows: Array<Record<string, unknown>> }>;
+};
+
+/** How many distinct households this person belongs to. */
+export async function countUserGroups(client: GroupQueryClient, userId: number) {
+  const result = await client.query(
+    `SELECT COUNT(DISTINCT group_id)::int AS groups
+     FROM group_members
+     WHERE user_id = $1`,
+    [userId],
+  );
+  return Number(result.rows[0]?.groups ?? 0);
+}
+
+/**
+ * A person belongs to one household. allowedGroupId is the household they may
+ * already be in (adding them to it again is harmless). Any other membership blocks.
+ */
+export async function assertNoOtherHousehold(
+  client: GroupQueryClient,
+  userId: number,
+  allowedGroupId: number | null = null,
+) {
+  const result = await client.query(
+    `SELECT group_id
+     FROM group_members
+     WHERE user_id = $1 AND ($2::int IS NULL OR group_id <> $2)
+     LIMIT 1`,
+    [userId, allowedGroupId],
+  );
+  if (result.rows[0]) {
+    throw createError({
+      statusCode: 409,
+      statusMessage: "That person is already in a household.",
+    });
+  }
+}

@@ -47,6 +47,8 @@ export class AccountDeletionDb {
   members: MemberRow[] = [];
   rows: Record<string, Row[]> = {};
   columns: Record<string, string[]> = clone(DEFAULT_COLUMNS);
+  queries: string[] = [];
+  relations = new Set(["deleted_auth_users", "pending_storage_deletes", "account_deletion_attempts"]);
   failDeleteUser = false;
   private jwtToSupabase = new Map<string, string>();
   private snapshots: string[] = [];
@@ -61,6 +63,9 @@ export class AccountDeletionDb {
 
   constructor() {
     for (const table of Object.keys(this.columns)) this.rows[table] = [];
+    this.rows.deleted_auth_users = [];
+    this.rows.pending_storage_deletes = [];
+    this.rows.account_deletion_attempts = [];
   }
 
   client() {
@@ -73,6 +78,7 @@ export class AccountDeletionDb {
 
   query(sql: string, params: unknown[] = []) {
     const text = sql.replace(/\s+/g, " ").trim();
+    this.queries.push(text);
     if (text === "BEGIN") {
       this.snapshots.push(JSON.stringify(this.capture()));
       return result([]);
@@ -86,6 +92,23 @@ export class AccountDeletionDb {
       if (saved) this.restore(JSON.parse(saved));
       return result([]);
     }
+    if (text.includes("to_regclass")) return this.regclass(params);
+    if (text.includes("COUNT(DISTINCT group_id)")) return this.groupCount(params);
+    if (text.includes("COUNT(*)") && text.includes("FROM group_members")) return this.memberCount(params);
+    if (text.includes("FROM group_members") && text.includes("group_id <>")) return this.otherHousehold(params);
+    if (text.includes("FROM account_deletion_attempts") && text.includes("ip_hash =")) return this.attemptCount("ip", params);
+    if (text.includes("FROM account_deletion_attempts") && text.includes("user_id =")) return this.attemptCount("user", params);
+    if (text.startsWith("INSERT INTO account_deletion_attempts")) return this.insertAttempt(params);
+    if (text.startsWith("INSERT INTO deleted_auth_users")) return this.insertTombstone(params);
+    if (text.startsWith("INSERT INTO pending_storage_deletes")) return this.insertPendingFile(params);
+    if (text.startsWith("UPDATE deleted_auth_users")) return this.touchTombstone(text, params);
+    if (text.startsWith("UPDATE pending_storage_deletes")) return this.touchPendingFile(text, params);
+    if (text.includes("FROM deleted_auth_users")) return this.selectTombstone(params);
+    if (text.includes("FROM pending_storage_deletes")) return this.selectPendingFiles();
+    if (text.includes("FROM app_users") && text.includes("WHERE email")) return this.userByEmail(params);
+    if (text.startsWith("INSERT INTO app_users")) return this.insertAppUser(params);
+    if (text.startsWith("INSERT INTO groups")) return this.insertGroup(params);
+    if (text.startsWith("INSERT INTO group_members")) return this.insertMembers(params);
     if (text.includes("information_schema.columns")) return this.columnRows(params);
     if (text.includes("FROM app_sessions")) return this.sessionUser(params);
     if (text.includes("password_hash") && text.includes("FROM app_users")) return this.lockUser(params);
@@ -329,6 +352,157 @@ export class AccountDeletionDb {
     this.members = this.members.filter((item) => item.user_id !== userId);
     for (const [table, rows] of Object.entries(this.rows)) {
       this.rows[table] = rows.filter((row) => Number(row.user_id) !== userId);
+    }
+    return result([], 1);
+  }
+
+  private regclass(params: unknown[]) {
+    const name = String(params[0] ?? "");
+    const table = name.split(".").pop() ?? name;
+    return result([{ rel: this.relations.has(table) ? name : null }]);
+  }
+
+  private memberCount(params: unknown[]) {
+    const groupId = Number(params[0]);
+    return result([{ cnt: this.members.filter((item) => item.group_id === groupId).length }]);
+  }
+
+  private groupCount(params: unknown[]) {
+    const userId = Number(params[0]);
+    const ids = new Set(this.members.filter((item) => item.user_id === userId).map((item) => item.group_id));
+    return result([{ groups: ids.size }]);
+  }
+
+  private otherHousehold(params: unknown[]) {
+    const userId = Number(params[0]);
+    const allowed = params[1] == null ? null : Number(params[1]);
+    const row = this.members.find((item) => item.user_id === userId && (allowed == null || Number.isNaN(allowed) || item.group_id !== allowed));
+    return result(row ? [{ group_id: row.group_id }] : []);
+  }
+
+  private recentFailures(kind: "user" | "ip", value: unknown) {
+    const cutoff = Date.now() - 15 * 60 * 1000;
+    return (this.rows.account_deletion_attempts ?? []).filter((row) => {
+      if (row.succeeded === true) return false;
+      const at = Date.parse(String(row.attempted_at ?? ""));
+      if (Number.isFinite(at) && at <= cutoff) return false;
+      if (kind === "user") return Number(row.user_id) === Number(value);
+      return String(row.ip_hash) === String(value);
+    }).length;
+  }
+
+  private attemptCount(kind: "user" | "ip", params: unknown[]) {
+    return result([{ failures: this.recentFailures(kind, params[0]) }]);
+  }
+
+  private insertAttempt(params: unknown[]) {
+    this.rows.account_deletion_attempts.push({
+      user_id: Number(params[0]),
+      ip_hash: String(params[1]),
+      succeeded: false,
+      attempted_at: new Date().toISOString(),
+    });
+    return result([], 1);
+  }
+
+  private insertTombstone(params: unknown[]) {
+    const id = String(params[0]);
+    if (!this.rows.deleted_auth_users.some((row) => row.supabase_user_id === id)) {
+      this.rows.deleted_auth_users.push({
+        supabase_user_id: id,
+        app_user_id: Number(params[1]),
+        auth_deleted_at: null,
+        attempt_count: 0,
+      });
+    }
+    return result([], 1);
+  }
+
+  private insertPendingFile(params: unknown[]) {
+    const storagePath = String(params[0]);
+    const backend = String(params[1]);
+    const exists = this.rows.pending_storage_deletes.some(
+      (row) => row.storage_path === storagePath && row.storage_backend === backend,
+    );
+    if (!exists) {
+      this.rows.pending_storage_deletes.push({
+        storage_path: storagePath,
+        storage_backend: backend,
+        deleted_at: null,
+        attempt_count: 0,
+      });
+    }
+    return result([], 1);
+  }
+
+  private touchTombstone(text: string, params: unknown[]) {
+    const row = this.rows.deleted_auth_users.find((item) => item.supabase_user_id === String(params[0]) && item.auth_deleted_at == null);
+    if (!row) return result([], 0);
+    row.attempt_count = Number(row.attempt_count ?? 0) + 1;
+    row.last_attempt_at = new Date().toISOString();
+    if (text.includes("auth_deleted_at = NOW()")) row.auth_deleted_at = new Date().toISOString();
+    return result([], 1);
+  }
+
+  private touchPendingFile(text: string, params: unknown[]) {
+    const row = this.rows.pending_storage_deletes.find(
+      (item) => item.storage_path === String(params[0]) && item.storage_backend === String(params[1]) && item.deleted_at == null,
+    );
+    if (!row) return result([], 0);
+    row.attempt_count = Number(row.attempt_count ?? 0) + 1;
+    if (text.includes("deleted_at = NOW()")) row.deleted_at = new Date().toISOString();
+    return result([], 1);
+  }
+
+  private selectTombstone(params: unknown[]) {
+    const rows = this.rows.deleted_auth_users.filter((row) => row.supabase_user_id === String(params[0]));
+    return result(rows.map((row) => ({ ...row })));
+  }
+
+  private selectPendingFiles() {
+    return result(this.rows.pending_storage_deletes.filter((row) => row.deleted_at == null).map((row) => ({ ...row })));
+  }
+
+  private userByEmail(params: unknown[]) {
+    const email = String(params[0] ?? "").toLowerCase();
+    const user = this.users.find((item) => item.email.toLowerCase() === email);
+    if (!user) return result([]);
+    return result([this.publicUser(user)]);
+  }
+
+  private insertAppUser(params: unknown[]) {
+    const user: AccountUser = {
+      user_id: this.users.length + 10,
+      email: String(params[0]),
+      display_name: params[1] == null ? null : String(params[1]),
+      profile_photo: null,
+      password_hash: null,
+      supabase_user_id: String(params[2]),
+    };
+    this.users.push(user);
+    return result([this.publicUser(user)]);
+  }
+
+  private insertGroup(params: unknown[]) {
+    const groupId = this.groups.reduce((max, group) => Math.max(max, group.group_id), 0) + 1;
+    this.groups.push({ group_id: groupId, group_name: String(params[0]), created_by: Number(params[1]) });
+    return result([{ group_id: groupId }]);
+  }
+
+  private insertMembers(params: unknown[]) {
+    const groupId = Number(params[0]);
+    const pairs = [
+      [params[1], params[2]],
+      [params[3], params[4]],
+    ];
+    for (const [userId, role] of pairs) {
+      if (userId == null) continue;
+      this.members.push({
+        group_id: groupId,
+        user_id: Number(userId),
+        role: String(role),
+        created_at: new Date().toISOString(),
+      });
     }
     return result([], 1);
   }

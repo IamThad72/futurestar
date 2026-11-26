@@ -30,6 +30,13 @@ vi.mock("../server/utils/supabaseAdmin", () => ({
     (globalThis as { __supabaseAdmin?: { auth: { admin: { deleteUser: (id: string, soft?: boolean) => Promise<{ error: { message: string } | null }> } } } | null }).__supabaseAdmin ?? null,
 }));
 
+vi.mock("../server/utils/supabasePassword", () => ({
+  supabasePasswordMatches: async (email: string, password: string) => {
+    const accepted = (globalThis as { __supabasePasswords?: Record<string, string> }).__supabasePasswords ?? {};
+    return accepted[email] === password;
+  },
+}));
+
 vi.mock("../server/utils/estateDocuments", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../server/utils/estateDocuments")>();
   return {
@@ -85,6 +92,11 @@ function later() {
   return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 }
 
+function bearerJwt(iatSeconds: number) {
+  const payload = Buffer.from(JSON.stringify({ iat: iatSeconds })).toString("base64url");
+  return `header.${payload}.sig`;
+}
+
 function session(db: AccountDeletionDb, userId: number, token: string) {
   db.sessions.push({ session_token: token, user_id: userId, expires_at: later() });
 }
@@ -99,7 +111,7 @@ async function call(db: AccountDeletionDb, options: { cookie?: string; jwt?: str
     headers,
     body: options.body ?? {},
   });
-  const value = await (deleteAccount as (event: HandlerEvent) => Promise<{ success: boolean; authUserRemoved: boolean }>)(event);
+  const value = await (deleteAccount as (event: HandlerEvent) => Promise<{ success: boolean; authUserRemoved: boolean; authRemovalPending: boolean }>)(event);
   return { value, event };
 }
 
@@ -195,7 +207,7 @@ describe("delete account authentication and IDOR", () => {
       body: { confirmEmail: "a@example.com", password: PASSWORD, userId: 2, user_id: 2 },
     });
 
-    expect(value).toEqual({ success: true, authUserRemoved: true });
+    expect(value).toEqual({ success: true, authUserRemoved: true, authRemovalPending: false });
     expect(cookieHeader(event)).toContain("session=");
     expect(cookieHeader(event).toLowerCase()).toContain("max-age=0");
     expect(db.users.map((item) => item.user_id)).toEqual([2]);
@@ -368,15 +380,24 @@ describe("auth user and storage cleanup", () => {
   it("deletes a Supabase-only account from a bearer token without a password", async () => {
     const db = install(new AccountDeletionDb());
     db.users.push(user({ user_id: 3, email: "mobile@example.com", password_hash: null, supabase_user_id: "sb-mobile" }));
-    db.trustJwt("jwt-mobile", "sb-mobile");
+    const token = bearerJwt(Math.floor(Date.now() / 1000));
+    db.trustJwt(token, "sb-mobile");
+    (globalThis as { __supabasePasswords?: Record<string, string> }).__supabasePasswords = { "mobile@example.com": PASSWORD };
     db.rows.workouts.push({ workout_id: 3, user_id: 3, name: "Lift" });
 
+    await expectStatus(
+      call(db, { jwt: token, body: { confirmEmail: "mobile@example.com", password: "" } }).then((item) => item.value),
+      400,
+      "Enter your password to confirm.",
+    );
+    expect(db.users).toHaveLength(1);
+
     const { value } = await call(db, {
-      jwt: "jwt-mobile",
-      body: { confirmEmail: "mobile@example.com", password: "" },
+      jwt: token,
+      body: { confirmEmail: "mobile@example.com", password: PASSWORD },
     });
 
-    expect(value).toEqual({ success: true, authUserRemoved: true });
+    expect(value).toEqual({ success: true, authUserRemoved: true, authRemovalPending: false });
     expect(db.users).toEqual([]);
     expect(db.rows.workouts).toEqual([]);
     expect(globals().__supabaseAdmin?.auth.admin.deleteUser).toHaveBeenCalledWith("sb-mobile", false);
@@ -402,13 +423,16 @@ describe("auth user and storage cleanup", () => {
       body: { confirmEmail: "a@example.com", password: PASSWORD },
     });
 
-    expect(value).toEqual({ success: true, authUserRemoved: false });
+    expect(value).toEqual({ success: true, authUserRemoved: false, authRemovalPending: true });
     expect(db.users).toEqual([]);
+    expect(db.rows.deleted_auth_users[0]).toMatchObject({ supabase_user_id: "sb-a", auth_deleted_at: null });
+    expect(Number(db.rows.deleted_auth_users[0]?.attempt_count)).toBeGreaterThan(0);
+    expect(db.rows.pending_storage_deletes[0]).toMatchObject({ storage_path: "solo/remove", deleted_at: null });
     const logged = vi.mocked(console.error).mock.calls.map((args) => JSON.stringify(args)).join(" ");
     expect(logged).toContain("sb-a");
+    expect(logged).toContain("solo/remove");
     expect(logged).not.toContain("a@example.com");
     expect(logged).not.toContain("secret-will.pdf");
-    expect(logged).not.toContain("solo/remove");
   });
 
   it("succeeds when no service-role client and no Supabase user are configured", async () => {
@@ -422,7 +446,113 @@ describe("auth user and storage cleanup", () => {
       body: { confirmEmail: "A@EXAMPLE.COM", password: PASSWORD },
     });
 
-    expect(value).toEqual({ success: true, authUserRemoved: false });
+    expect(value).toEqual({ success: true, authUserRemoved: false, authRemovalPending: false });
     expect(db.users).toEqual([]);
+  });
+
+  it("rejects a stale Supabase token and a wrong Supabase password", async () => {
+    const db = install(new AccountDeletionDb());
+    db.users.push(user({ user_id: 3, email: "mobile@example.com", password_hash: null, supabase_user_id: "sb-mobile" }));
+    (globalThis as { __supabasePasswords?: Record<string, string> }).__supabasePasswords = { "mobile@example.com": PASSWORD };
+    const stale = bearerJwt(Math.floor(Date.now() / 1000) - 600);
+    db.trustJwt(stale, "sb-mobile");
+
+    await expectStatus(
+      call(db, { jwt: stale, body: { confirmEmail: "mobile@example.com", password: PASSWORD } }).then((item) => item.value),
+      401,
+      "Sign in again to delete your account.",
+    );
+    expect(db.users).toHaveLength(1);
+    expect(db.queries.some((query) => query === "BEGIN")).toBe(false);
+
+    const fresh = bearerJwt(Math.floor(Date.now() / 1000));
+    db.trustJwt(fresh, "sb-mobile");
+    await expectStatus(
+      call(db, { jwt: fresh, body: { confirmEmail: "mobile@example.com", password: "nope" } }).then((item) => item.value),
+      400,
+      "Enter your password to confirm.",
+    );
+    expect(db.users).toHaveLength(1);
+    expect(db.rows.account_deletion_attempts.length).toBeGreaterThan(0);
+  });
+});
+
+describe("throttle, households, and handoff details", () => {
+  it("does not open a transaction until the password matches", async () => {
+    const db = install(new AccountDeletionDb());
+    db.users.push(user({ user_id: 1, email: "a@example.com" }));
+    session(db, 1, "session-a");
+    await expectStatus(
+      call(db, { cookie: "session-a", body: { confirmEmail: "a@example.com", password: "wrong" } }).then((item) => item.value),
+      400,
+    );
+    expect(db.queries.some((query) => query === "BEGIN")).toBe(false);
+    expect(db.rows.account_deletion_attempts).toHaveLength(1);
+    expect(db.users).toHaveLength(1);
+  });
+
+  it("stops further attempts after the per-user limit, even with the right password", async () => {
+    const db = install(new AccountDeletionDb());
+    db.users.push(user({ user_id: 1, email: "a@example.com" }));
+    session(db, 1, "session-a");
+    for (let i = 0; i < 5; i += 1) {
+      await expectStatus(
+        call(db, { cookie: "session-a", body: { confirmEmail: "a@example.com", password: "wrong" } }).then((item) => item.value),
+        400,
+      );
+    }
+    await expectStatus(
+      call(db, { cookie: "session-a", body: { confirmEmail: "a@example.com", password: PASSWORD } }).then((item) => item.value),
+      429,
+      "Too many attempts. Try again later.",
+    );
+    expect(db.users).toHaveLength(1);
+    expect(db.queries.filter((query) => query === "BEGIN")).toHaveLength(0);
+  });
+
+  it("refuses to delete an account that is already in two households", async () => {
+    const db = install(new AccountDeletionDb());
+    db.users.push(user({ user_id: 1, email: "a@example.com" }));
+    session(db, 1, "session-a");
+    db.groups.push(
+      { group_id: 10, group_name: "Home", created_by: 1 },
+      { group_id: 11, group_name: "Other", created_by: 1 },
+    );
+    db.members.push(
+      { group_id: 10, user_id: 1, role: "owner", created_at: "2024-01-01T00:00:00.000Z" },
+      { group_id: 11, user_id: 1, role: "member", created_at: "2024-02-01T00:00:00.000Z" },
+    );
+    await expectStatus(
+      call(db, { cookie: "session-a", body: { confirmEmail: "a@example.com", password: PASSWORD } }).then((item) => item.value),
+      409,
+      "This account is in more than one household. Leave the extra household before deleting the account.",
+    );
+    expect(db.users).toHaveLength(1);
+    expect(db.groups).toHaveLength(2);
+    expect(db.queries.some((query) => query === "BEGIN")).toBe(false);
+  });
+
+  it("promotes a co-owner ahead of an earlier member", async () => {
+    const db = install(new AccountDeletionDb());
+    db.users.push(
+      user({ user_id: 1, email: "owner@example.com" }),
+      user({ user_id: 2, email: "member@example.com" }),
+      user({ user_id: 3, email: "co@example.com" }),
+    );
+    session(db, 1, "session-owner");
+    db.groups.push({ group_id: 10, group_name: "Home", created_by: 1 });
+    db.members.push(
+      { group_id: 10, user_id: 1, role: "owner", created_at: "2024-01-01T00:00:00.000Z" },
+      { group_id: 10, user_id: 2, role: "member", created_at: "2024-02-01T00:00:00.000Z" },
+      { group_id: 10, user_id: 3, role: "owner", created_at: "2024-09-01T00:00:00.000Z" },
+    );
+    db.rows.budgets.push({ budget_id: 1, user_id: 1, group_id: 10, name: "Shared" });
+
+    await call(db, { cookie: "session-owner", body: { confirmEmail: "owner@example.com", password: PASSWORD } });
+
+    expect(db.groups[0]?.created_by).toBe(3);
+    expect(db.members.find((item) => item.user_id === 3)?.role).toBe("owner");
+    expect(db.members.find((item) => item.user_id === 2)?.role).toBe("member");
+    expect(db.rows.budgets[0]).toMatchObject({ user_id: 3, group_id: 10 });
   });
 });

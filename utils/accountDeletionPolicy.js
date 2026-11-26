@@ -76,6 +76,12 @@ export function householdKeyForGroup(groupId) {
   return `g:${Number(groupId)}`;
 }
 
+/** Bearer tokens older than this are not a fresh sign-in for Supabase-only deletion. */
+export const REAUTH_WINDOW_MS = 5 * 60 * 1000;
+
+export const DELETION_ATTEMPT_USER_LIMIT = 5;
+export const DELETION_ATTEMPT_IP_LIMIT = 30;
+
 export function isSafeIdentifier(name) {
   return typeof name === "string" && /^[a-z_][a-z0-9_]*$/.test(name);
 }

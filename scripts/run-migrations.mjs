@@ -109,6 +109,9 @@ const migrations = [
   "create_faith_profiles.sql",
   "create_faith_common.sql",
   "alter_groups_created_by_restrict.sql",
+  "create_deleted_auth_users.sql",
+  "create_pending_storage_deletes.sql",
+  "create_account_deletion_attempts.sql",
 ];
 
 async function run() {

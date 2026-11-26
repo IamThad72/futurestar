@@ -11,7 +11,8 @@
  *   reown    — a member leaves other people, and an owner remains.
  *              reownToUserId is that owner. newOwnerId is null.
  *   promote  — an owner leaves, or nobody remaining is an owner.
- *              The earliest other member becomes owner.
+ *              An existing co-owner is chosen before any other member.
+ *              Otherwise the earliest other member becomes owner.
  *              newOwnerId and reownToUserId are that person.
  *   dissolve — they are the only member. Erase the household too.
  *
@@ -85,6 +86,11 @@ export function planAccountDeletion(userId, members, options = {}) {
   const remainingOwners = others.filter((member) => member.role === "owner");
   if (!selfIsOwner && remainingOwners.length > 0) {
     return { mode: "reown", newOwnerId: null, reownToUserId: earliest(remainingOwners).user_id };
+  }
+
+  if (selfIsOwner && remainingOwners.length > 0) {
+    const coOwner = earliest(remainingOwners);
+    return { mode: "promote", newOwnerId: coOwner.user_id, reownToUserId: coOwner.user_id };
   }
 
   const successor = earliest(others);
