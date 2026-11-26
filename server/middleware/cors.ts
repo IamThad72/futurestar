@@ -1,11 +1,16 @@
+import { originPermitted } from "../utils/cors";
+
 /**
  * CORS for Capacitor WebViews and deployed web app calling the API on another origin.
  * Native apps send Authorization: Bearer (not cookies) — no credentials mode required.
+ * Entries are exact origins (scheme, host, and port). `http://localhost` is port 80.
+ * The dev server's port is listed on its own so it is not a prefix match.
  */
 const CAPACITOR_ORIGINS = [
   "capacitor://localhost",
   "ionic://localhost",
   "http://localhost",
+  "http://localhost:3000",
   "https://localhost",
 ];
 
@@ -22,9 +27,7 @@ function allowedOrigins(): string[] {
 export default defineEventHandler((event) => {
   const origin = getRequestHeader(event, "origin");
   const allowed = allowedOrigins();
-  const permit =
-    allowed.includes("*") ||
-    (origin && allowed.some((o) => o === origin || origin.startsWith(o)));
+  const permit = originPermitted(origin, allowed);
 
   if (permit && origin) {
     setResponseHeaders(event, {
