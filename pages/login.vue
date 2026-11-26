@@ -121,9 +121,11 @@
 
 <script setup>
 import { takeAccountDeletedNotice } from "~/utils/accountDeletedNotice";
+import { safeDeleteAccountNext } from "~/utils/deletionGuards";
 import { isPasswordRecoveryRedirect, parseSupabaseAuthParams } from "~/utils/supabaseAuthHash";
 
 const { go } = useAppNavigate();
+const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 const loading = computed(() => auth.loading);
@@ -186,7 +188,7 @@ const submit = async () => {
     const user = await auth.login(form.email, form.password);
     success.value = `Welcome back${user?.display_name ? `, ${user.display_name}` : ""}!`;
     form.password = "";
-    await go("/today");
+    await go(safeDeleteAccountNext(route.query.next) || "/today");
   } catch (err) {
     error.value = err?.data?.statusMessage || err?.message || "Login failed.";
   }

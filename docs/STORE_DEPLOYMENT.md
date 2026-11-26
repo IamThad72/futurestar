@@ -102,7 +102,7 @@ The permanent app identifier is `com.futurestar.app` on Capacitor, Android, and 
 
 A signed-in person deletes their account from You → Privacy and data → Delete account, or from the public page `/delete-account` (that page explains the steps when nobody is signed in). Use `https://<production-host>/delete-account` as the web deletion link in App Store Connect and Play Console.
 
-Shared household money records stay with the household. Private Faith and Body rows, the profile, sessions, and the sign-in are erased. The rule is `keep-shared` in `utils/accountDeletionPolicy.js` and is waiting on the owner before this ships. Deleting the app does not delete the account.
+Shared household money records stay with the household for as long as the household keeps them. Private Faith and Body rows, the profile, and sessions are erased. The sign-in id is kept so that sign-in cannot open a new account; if removing it does not finish immediately, it is retried. The rule is `keep-shared` in `utils/accountDeletionPolicy.js`. The owner confirmed that rule. Deleting the app does not delete the account. Before release, run the foreign-key audit and all four household scenarios on a preview database with throwaway accounts, never production.
 
 ## Store console requirements (manual)
 

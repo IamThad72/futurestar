@@ -8,21 +8,16 @@
       <div>
         <p class="font-semibold text-ink">Erased</p>
         <ul class="mt-1 list-disc space-y-1 pl-5">
-          <li>Budget lines, transactions, and estate records that belong only to you</li>
-          <li>Estate documents you own</li>
-          <li>Faith journals, prayers, and worship notes</li>
-          <li>Nutrition and workouts</li>
-          <li>Your profile, sessions, and sign-in</li>
+          <li v-for="item in erased" :key="item">{{ item }}</li>
         </ul>
       </div>
       <div>
         <p class="font-semibold text-ink">Stays with the household</p>
-        <p class="mt-1">
-          Shared household money records stay with the household. If other people are in it,
-          those shared records are kept for them. If you are the owner and others remain, the
-          person who joined next becomes the owner. If you are the only person, the household
-          is deleted too.
-        </p>
+        <p class="mt-1">{{ kept }}</p>
+      </div>
+      <div>
+        <p class="font-semibold text-ink">What is kept afterwards</p>
+        <p class="mt-1">{{ retention }}</p>
       </div>
     </div>
 
@@ -44,7 +39,7 @@
     </label>
 
     <label class="form-control w-full min-w-0" :for="passwordId">
-      <span class="label-text text-sm">Password (if you set one)</span>
+      <span class="label-text text-sm">Password</span>
       <input
         :id="passwordId"
         v-model="password"
@@ -65,7 +60,7 @@
         type="submit"
         class="btn btn-error min-h-11 w-full"
         data-testid="delete-account-submit"
-        :disabled="!emailMatches || busy"
+        :disabled="!canSubmit"
         :aria-busy="busy"
       >
         {{ busy ? "Deleting..." : "Delete account" }}
@@ -75,14 +70,13 @@
 </template>
 
 <script setup>
-import { computed, ref, useId } from "vue";
+import { computed, ref, useId, watch } from "vue";
+import { ERASED_ON_DELETE, KEPT_ON_DELETE, RETENTION_ON_DELETE } from "~/utils/accountDeletionCopy";
 import { parseFetchError } from "~/utils/parseFetchError";
 
 const props = defineProps({
   accountEmail: { type: String, default: "" },
 });
-
-const emit = defineEmits(["deleted"]);
 
 const confirmEmail = ref("");
 const password = ref("");
@@ -91,24 +85,34 @@ const busy = ref(false);
 const emailId = useId();
 const passwordId = useId();
 
+const emit = defineEmits(["deleted", "busy"]);
+
+const erased = ERASED_ON_DELETE;
+const kept = KEPT_ON_DELETE;
+const retention = RETENTION_ON_DELETE;
+
 const emailMatches = computed(() => {
   const expected = props.accountEmail.trim().toLowerCase();
   return expected.length > 0 && confirmEmail.value.trim().toLowerCase() === expected;
 });
 
+const canSubmit = computed(() => emailMatches.value && password.value.length > 0 && !busy.value);
+
+watch(busy, (value) => emit("busy", value));
+
 async function submit() {
   error.value = "";
-  if (!emailMatches.value || busy.value) return;
+  if (!canSubmit.value) return;
   busy.value = true;
   try {
-    await $fetch("/api/auth/delete-account", {
+    const response = await $fetch("/api/auth/delete-account", {
       method: "POST",
       body: {
         confirmEmail: confirmEmail.value.trim(),
         password: password.value,
       },
     });
-    emit("deleted");
+    emit("deleted", { authRemovalPending: Boolean(response?.authRemovalPending) });
   } catch (cause) {
     error.value = parseFetchError(cause, "Could not delete the account.");
   } finally {

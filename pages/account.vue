@@ -105,8 +105,8 @@ watch(
   },
 );
 
-async function onAccountDeleted() {
-  rememberAccountDeleted();
+async function onAccountDeleted(payload) {
+  rememberAccountDeleted(Boolean(payload?.authRemovalPending));
   showDeleteAccount.value = false;
   await signOut();
 }

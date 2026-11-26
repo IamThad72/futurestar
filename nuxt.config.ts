@@ -100,8 +100,17 @@ export default defineNuxtConfig({
     },
   },
 
-  // Required for Capacitor (app must run fully client-side)
+  // Required for Capacitor (app must run fully client-side).
+  // /delete-account is the exception: Play's web link must see the deletion
+  // text in the HTML, not an empty client shell.
   ssr: false,
+  ...(isCapacitorBuild
+    ? {}
+    : {
+        routeRules: {
+          "/delete-account": { ssr: true, prerender: true },
+        },
+      }),
 
   // SPA + static Capacitor builds: app manifest fetch (/_nuxt/builds/meta/dev.json) 404s and can show error page
   experimental: {
@@ -120,7 +129,7 @@ export default defineNuxtConfig({
     preset: isVercel || (isProd && !isCapacitorBuild) ? "vercel" : undefined,
     prerender: {
       crawlLinks: false,
-      routes: isCapacitorBuild ? ["/"] : [],
+      routes: isCapacitorBuild ? ["/"] : ["/delete-account"],
     },
     vercel: {
       functions: {
