@@ -140,8 +140,8 @@ Chrome **Remote debugging** (`chrome://inspect`) shows failed `/api/` URLs in th
 
 ## App identifiers
 
-- **Capacitor app id:** `com.futurestar.myfin` (`capacitor.config.ts`)
-- **Android / iOS bundle:** `com.futurestar.myfin`
+- **Capacitor app id:** `com.futurestar.app` (`capacitor.config.ts`)
+- **Android / iOS bundle:** `com.futurestar.app`
 
 ## Store submission
 

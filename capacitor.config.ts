@@ -12,7 +12,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 const isDev = process.env.CAPACITOR_DEV === "true" || process.env.MOBILE_DEV === "true";
 
 const config: CapacitorConfig = {
-  appId: "com.futurestar.myfin",
+  appId: "com.futurestar.app",
   appName: "Future Star",
   webDir: "dist",
   server: isDev

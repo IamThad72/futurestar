@@ -84,11 +84,11 @@ npm run cap:run:android
 
 | Platform | ID |
 |----------|-----|
-| Capacitor `appId` | `com.futurestar.myfin` |
-| Android `applicationId` | `com.futurestar.myfin` |
-| iOS bundle identifier | `com.futurestar.myfin` |
+| Capacitor `appId` | `com.futurestar.app` |
+| Android `applicationId` | `com.futurestar.app` |
+| iOS bundle identifier | `com.futurestar.app` |
 
-The app identifier `com.futurestar.myfin` is the same on Capacitor, Android, and iOS (`capacitor.config.ts`, `android/app/build.gradle`). It cannot be changed after the first App Store or Play Store release. Decide it before the first upload.
+The permanent app identifier is `com.futurestar.app` on Capacitor, Android, and iOS (`capacitor.config.ts`, `android/app/build.gradle` `applicationId` and `namespace`, and `PRODUCT_BUNDLE_IDENTIFIER` in the Xcode project). `MainActivity` lives in that same package. No store upload used `com.futurestar.myfin`. Do not change `com.futurestar.app` after the first App Store or Play Store upload.
 
 ## Security (implemented in repo)
 
