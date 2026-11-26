@@ -4,7 +4,18 @@ Draft for the owner. It matches the draft privacy policy in `utils/legalText.js`
 
 Account deletion, when the app includes it, follows the rule the owner confirmed: `keep-shared`. Shared household money stays with the household. Private data is erased. The screens are in pull request 10 and are not on `main` until that change is merged. The policy says to look for You → Privacy and data → Delete account, and for `/delete-account`, only when that copy of the app includes them.
 
-No advertising SDK, analytics SDK, or advertising-identifier request was found in the app code. Third-party calls below are for the named feature. Confirm “no tracking” and “no advertising” on the store forms before submitting. The owner has said personal information is not sold, and that it is not shared for cross-context behavioral advertising. Confirm “no tracking” and “no advertising” on the store forms before submitting.
+No advertising SDK, analytics SDK, or advertising-identifier request was found in the app code. Third-party calls below are for the named feature. The owner has said personal information is not sold, and that it is not shared for cross-context behavioral advertising. Confirm “no tracking” and “no advertising” on the store forms before submitting.
+
+## Minimum age and proposed store ratings
+
+The privacy policy and terms say a person must be 14 or older. Someone under 18 needs a parent or guardian's consent where the law requires it. The app does not knowingly collect personal information from children under 14, and the policy says that data will be deleted if we learn of it. The app does not ask for a date of birth, so 14+ and under-18 consent are not enforced in code.
+
+**Proposed ratings. The owner has not chosen these. Confirm before answering the store questionnaires.**
+
+| Store | Proposed rating | Why it was proposed | What does not match 14+ |
+| --- | --- | --- | --- |
+| Apple App Store | 17+ | Apple's published steps are 4+, 9+, 12+, and 17+. 17+ is the step that does not present the app as suitable for children under 14. The app is personal finance, faith practice, and fitness, without sexual content, violence, gambling, or an advertising SDK. | There is no 14+ step. 12+ would include 12- and 13-year-olds the policy excludes. 17+ also excludes 14-, 15-, and 16-year-olds the policy allows. |
+| Google Play | Teen | IARC Teen is the usual content rating for this kind of app. | Teen is often treated as 13+, one year under the policy. Mature 17+ would exclude 14-, 15-, and 16-year-olds. |
 
 ## Do not promote a preview while this text is a draft
 
