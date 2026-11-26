@@ -1,4 +1,5 @@
 import { LEGAL_DRAFT, LEGAL_UPDATED, legalUpdatedLabel } from "./legalText.js";
+import { supportEmailInnerHtml } from "./supportEmail.js";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -19,7 +20,7 @@ function renderParts(parts) {
     .join("");
 }
 
-function renderBlock(block) {
+function renderBlock(block, supportEmail) {
   if (!block || typeof block !== "object") return "";
   if (block.type === "h3") return `<h3>${escapeHtml(block.text)}</h3>`;
   if (block.type === "ul") {
@@ -30,7 +31,7 @@ function renderBlock(block) {
     return `<p><strong>Owner to fill.</strong> ${escapeHtml(block.text)}</p>`;
   }
   if (block.type === "supportEmail") {
-    return "<p>No support email is set. The owner adds one with NUXT_PUBLIC_SUPPORT_EMAIL. This page leaves the address out until then.</p>";
+    return `<p>${supportEmailInnerHtml(supportEmail)}</p>`;
   }
   if (block.type === "p") {
     const inner = block.parts ? renderParts(block.parts) : escapeHtml(block.text);
@@ -40,14 +41,14 @@ function renderBlock(block) {
 }
 
 /** HTML for /privacy and /terms that is present before JavaScript runs. */
-export function legalStaticHtml(document) {
+export function legalStaticHtml(document, supportEmail = "") {
   const marker = `legal-static-${document.id}`;
   const draft = LEGAL_DRAFT
     ? "<p><strong>Draft.</strong> This text is not approved. It needs the owner's review before it can be published.</p>"
     : "";
   const sections = (document.sections || [])
     .map((section) => {
-      const blocks = (section.blocks || []).map(renderBlock).join("");
+      const blocks = (section.blocks || []).map((block) => renderBlock(block, supportEmail)).join("");
       return `<section><h2 id="${escapeHtml(section.id)}">${escapeHtml(section.heading)}</h2>${blocks}</section>`;
     })
     .join("");

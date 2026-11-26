@@ -37,6 +37,10 @@ npm run build:mobile:prod   # fails if API base is not HTTPS
 
 Capacitor WebView origins (`https://localhost`, etc.) are allowed by default in `server/middleware/cors.ts`.
 
+## Privacy and terms
+
+`/privacy` and `/terms` are prerendered into the web build. While `LEGAL_DRAFT` is true in `utils/legalText.js`, a production Vercel build and a GitHub Actions build of `main` fail on purpose. Promoting a preview deployment to production does not run the build again, so it skips that guard. Do not promote a preview while the legal text is still a draft. The same is true of `vercel deploy --prebuilt` when `VERCEL_ENV` is unset.
+
 ## Build commands
 
 | Command | Use case |

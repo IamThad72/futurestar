@@ -75,15 +75,11 @@
           <span class="font-semibold">Owner to fill.</span>
           {{ block.text }}
         </p>
-        <p v-else-if="block.type === 'supportEmail'" class="mt-3 break-words text-base leading-6 text-ink">
-          <template v-if="safeEmail">
-            You can write to
-            <a :href="`mailto:${safeEmail}`" class="font-semibold text-navy underline underline-offset-2">{{ safeEmail }}</a>.
-          </template>
-          <template v-else>
-            No support email is set. The owner adds one with NUXT_PUBLIC_SUPPORT_EMAIL. This page leaves the address out until then.
-          </template>
-        </p>
+        <p
+          v-else-if="block.type === 'supportEmail'"
+          class="mt-3 break-words text-base leading-6 text-ink"
+          v-html="supportEmailHtml"
+        />
       </template>
     </section>
   </article>
@@ -92,6 +88,7 @@
 <script setup>
 import { computed } from "vue";
 import { legalUpdatedLabel, tableOfContents } from "~/utils/legalText";
+import { supportEmailInnerHtml } from "~/utils/supportEmail";
 
 const props = defineProps({
   document: {
@@ -115,11 +112,7 @@ const props = defineProps({
 const router = useRouter();
 const contents = computed(() => tableOfContents(props.document));
 const updatedLabel = computed(() => legalUpdatedLabel(props.updated));
-const safeEmail = computed(() => {
-  const value = String(props.supportEmail || "").trim();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "";
-  return value;
-});
+const supportEmailHtml = computed(() => supportEmailInnerHtml(props.supportEmail));
 
 function goBack() {
   if (window.history.length > 1) {

@@ -6,6 +6,10 @@ import { LEGAL_DRAFT, legalDocuments } from "./legalText.js";
  * VERCEL_ENV=production is the Vercel production deploy.
  * GITHUB_REF=refs/heads/main is a GitHub Actions run on main.
  * NODE_ENV=production is not a gate: `nuxt build` sets it for preview and CI too.
+ *
+ * Promoting an already-built Vercel preview to production does not run this
+ * check again. A local prebuilt deploy with VERCEL_ENV unset does not either.
+ * Do not promote a preview while LEGAL_DRAFT is true.
  */
 export function isProductionRelease(env = process.env) {
   // A Vercel preview must build even if the project also has GITHUB_REF set.

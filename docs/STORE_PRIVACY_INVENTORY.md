@@ -6,6 +6,10 @@ Account deletion, when the app includes it, follows the rule the owner confirmed
 
 No advertising SDK, analytics SDK, or advertising-identifier request was found in the app code. Third-party calls below are for the named feature. Confirm “no tracking” and “no advertising” on the store forms before submitting. This inventory does not say personal information is sold, and it does not say it is never sold.
 
+## Do not promote a preview while this text is a draft
+
+The draft guard runs when Vercel builds with `VERCEL_ENV=production`, and when GitHub Actions builds `main`. Promoting an already-built preview deployment to production does not build again, so it skips that guard. A local prebuilt deploy (`vercel deploy --prebuilt`) with `VERCEL_ENV` unset also skips it. Do not promote a preview, and do not ship a prebuilt bundle, while `LEGAL_DRAFT` is true or an Owner to fill note remains.
+
 ## Apple App Privacy
 
 | Data | Apple category | Collected | Purpose | Linked to the person | Shared with | Optional | Deletable |

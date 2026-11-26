@@ -4,6 +4,7 @@ import test from "node:test";
 import { legalReleaseBlocked, legalTextStillDraft } from "../utils/legalDraftGuard.js";
 import { legalStaticHtml } from "../utils/legalStaticHtml.js";
 import { privacyPolicy, termsOfService } from "../utils/legalText.js";
+import { SUPPORT_EMAIL_UNSET, supportEmailInnerHtml } from "../utils/supportEmail.js";
 
 const root = new URL("../", import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), "utf8");
@@ -26,6 +27,17 @@ test("privacy and terms HTML is in the page before JavaScript runs", () => {
   assert.match(terms, /Limitation of liability/);
   assert.match(terms, /Owner to fill/);
   assert.equal(terms.includes('href="/delete-account"'), false);
+  assert.match(privacy, new RegExp(SUPPORT_EMAIL_UNSET.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.equal(privacy.includes("mailto:"), false);
+
+  const withEmail = legalStaticHtml(privacyPolicy, "owner@example.com");
+  assert.match(withEmail, /href="mailto:owner@example.com"/);
+  assert.match(withEmail, />owner@example.com</);
+  assert.equal(withEmail.includes(SUPPORT_EMAIL_UNSET), false);
+  assert.equal(supportEmailInnerHtml("not-an-email"), SUPPORT_EMAIL_UNSET);
+  const page = read("components/LegalDocument.vue");
+  assert.match(page, /supportEmailInnerHtml/);
+  assert.equal(page.includes(SUPPORT_EMAIL_UNSET), false);
 });
 
 test("the web build prerenders privacy and terms, and the phone build does not", () => {
