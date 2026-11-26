@@ -37,13 +37,16 @@ test("the web build prerenders privacy and terms, and the phone build does not",
   const plugin = read("server/plugins/legal-html.ts");
   assert.match(plugin, /legal-static-/);
   assert.match(plugin, /prerender:generate/);
+  const envPlugin = read("server/plugins/env-validation.ts");
+  assert.match(envPlugin, /if \(import\.meta\.prerender\) return;/);
 });
 
 test("a draft blocks production and main, and does not block preview or this pull request", () => {
   assert.equal(legalTextStillDraft(), true);
   assert.equal(legalReleaseBlocked({}), false);
   assert.equal(legalReleaseBlocked({ VERCEL_ENV: "preview" }), false);
-  assert.equal(legalReleaseBlocked({ VERCEL_ENV: "preview", GITHUB_REF: "refs/heads/feature/privacy-terms" }), false);
+  assert.equal(legalReleaseBlocked({ VERCEL_ENV: "preview", GITHUB_REF: "refs/heads/main" }), false);
+  assert.equal(legalReleaseBlocked({ VERCEL_ENV: "development", GITHUB_REF: "refs/heads/main" }), false);
   assert.equal(legalReleaseBlocked({ GITHUB_REF: "refs/pull/14/merge" }), false);
   assert.equal(legalReleaseBlocked({ NODE_ENV: "production" }), false);
   assert.equal(legalReleaseBlocked({ VERCEL_ENV: "production" }), true);

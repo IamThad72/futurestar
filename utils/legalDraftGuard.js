@@ -8,7 +8,10 @@ import { LEGAL_DRAFT, legalDocuments } from "./legalText.js";
  * NODE_ENV=production is not a gate: `nuxt build` sets it for preview and CI too.
  */
 export function isProductionRelease(env = process.env) {
-  return env.VERCEL_ENV === "production" || env.GITHUB_REF === "refs/heads/main";
+  // A Vercel preview must build even if the project also has GITHUB_REF set.
+  if (env.VERCEL_ENV === "preview" || env.VERCEL_ENV === "development") return false;
+  if (env.VERCEL_ENV === "production") return true;
+  return env.GITHUB_REF === "refs/heads/main";
 }
 
 export function legalTextStillDraft(documents = legalDocuments) {
