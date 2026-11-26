@@ -62,7 +62,7 @@ export const privacyPolicy = {
       blocks: [
         {
           type: "p",
-          text: "We store what you enter so the app can show it back to you. We do not ask for your phone number, your contacts, or your precise location.",
+          text: "We store what you enter so the app can show it back to you. We do not ask for your personal phone number, your contacts, or your precise location. A cash account or a debt can include a support number you type, and a web address for the institution.",
         },
         { type: "h3", text: "Account" },
         {
@@ -73,6 +73,14 @@ export const privacyPolicy = {
         {
           type: "p",
           text: "If you use the money tools, we store what you enter: budgets, transactions, income, debt, savings, investments and holdings, tax figures and a household tax profile, insurance, real estate, and an account map. Linked household members can see these records. See Household sharing.",
+        },
+        {
+          type: "p",
+          text: "A real estate record stores a street number, street, city, state, and ZIP code. A vehicle record can store a VIN you type. That VIN stays with the vehicle. The make, model, and year list does not send the VIN to NHTSA.",
+        },
+        {
+          type: "p",
+          text: "A cash or investment account stores an account number and the account holder. An insurance record stores a policy number and the policy holder. A debt record can store a loan number and the borrower. A household tax profile can store a state, a county, a local jurisdiction, a school district, and a ZIP code. It does not store a street address.",
         },
         { type: "h3", text: "Estate documents" },
         {
@@ -143,7 +151,7 @@ export const privacyPolicy = {
             "USDA FoodData Central. The food words you search, and a food id when a result is opened. Needs a server API key.",
             "Open Food Facts. The barcode digits only.",
             "Alpha Vantage. Ticker symbols from investment holdings, from a server job. Not your name or email.",
-            "NHTSA vPIC. Your browser requests vehicle makes, models, and years while you fill in a vehicle. That request does not go through our server.",
+            "NHTSA vPIC. Your browser requests vehicle makes, models, and years while you fill in a vehicle. That request does not go through our server, and it does not include a stored VIN.",
             "ExerciseDB. The server asks for exercise names and instructions. By default that host is oss.exercisedb.dev. If a RapidAPI key is configured, the server uses that ExerciseDB host instead. Your browser loads exercise images from static.exercisedb.dev. The search is an exercise name or a body-part filter, not your journal.",
           ],
         },
@@ -203,15 +211,15 @@ export const privacyPolicy = {
       blocks: [
         {
           type: "p",
-          text: "The app does not delete records on a timer. They stay until you delete them in the app, or until you delete the account.",
+          text: "The app does not delete records on a timer. They stay until you delete them in the app.",
         },
         {
           type: "p",
-          parts: [
-            "You can delete your account from You, under Privacy and data, and from the public page ",
-            { href: "/delete-account", label: "Delete account" },
-            ". Shared household money stays with the household and is handed to someone who remains. Your private data is erased. That includes faith practice, nutrition, workouts and the training journal, your profile photo, your password hash, and your sessions. Money rows that were never shared with a household are erased with your account. If you are the last person in the household, the household and its shared records are deleted with the account. An estate file is removed when that document is deleted. A document handed to the household stays, including the file. A share you granted on a single estate record is removed with your account, even if the record itself stays.",
-          ],
+          text: "Account deletion is a separate control. When this copy of the app includes it, you will find it under You, in the section named Privacy and data, labeled Delete account. The same steps are on the public page /delete-account when that page is part of the app. If you do not see that section or that page, account deletion is not available in this copy yet.",
+        },
+        {
+          type: "p",
+          text: "When account deletion runs, shared household money stays with the household and is handed to someone who remains. Your private data is erased. That includes faith practice, nutrition, workouts and the training journal, your profile photo, your password hash, and your sessions. Money rows that were never shared with a household are erased with your account. If you are the last person in the household, the household and its shared records are deleted with the account. An estate file is removed when that document is deleted. A document handed to the household stays, including the file. A share you granted on a single estate record is removed with your account, even if the record itself stays. Copies kept only on the device, described under On this device, stay until the browser clears them or you remove them there.",
         },
       ],
     },
@@ -226,6 +234,25 @@ export const privacyPolicy = {
         {
           type: "p",
           text: "This is ordinary server storage. People who operate the database and the file storage can read what is stored. The app does not encrypt records so that only your devices can read them.",
+        },
+      ],
+    },
+    {
+      id: "on-this-device",
+      heading: "On this device",
+      blocks: [
+        {
+          type: "p",
+          text: "Some information stays in the browser on your device, as well as in the database.",
+        },
+        {
+          type: "ul",
+          items: [
+            "A copy of investment holdings you edit is saved in local storage. The key starts with myfin.investment-holdings.2026-10-31 and ends with your account id. The copy can include the holding name, ticker, account, shares, price, cost, and value.",
+            "A flag that you closed the faith-tradition prompt is saved in local storage as futurestar.faithPromptDismissed. The value is 1. It is not your prayers or your reviews.",
+            "After a password reset, session storage keeps a one-time flag named loginForgotPassword so the sign-in screen can show the reset step. The flag is removed when that screen opens.",
+            "The Supabase sign-in client in the browser keeps its session in local storage. The app does not turn that off. The server admin client does not keep a session.",
+          ],
         },
       ],
     },
@@ -355,9 +382,7 @@ export const termsOfService = {
           parts: [
             "You can stop using the app. Deleting the account is described in the ",
             { href: "/privacy", label: "privacy policy" },
-            ", under Retention and deletion, and starts from You or from ",
-            { href: "/delete-account", label: "Delete account" },
-            ". The publisher can stop offering the app.",
+            ", under Retention and deletion. When the app includes that control, it is under You, in Privacy and data. The publisher can stop offering the app.",
           ],
         },
       ],
