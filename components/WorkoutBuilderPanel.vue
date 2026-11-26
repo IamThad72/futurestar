@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-4">
     <div class="flex flex-wrap items-center gap-2">
-      <button type="button" class="training-chip btn btn-ghost btn-sm rounded-full" @click="onBack">Workout Manager</button>
+      <button type="button" class="training-chip btn btn-ghost btn-sm rounded-full" :disabled="saving" @click="onBack">Workout Manager</button>
       <button
         type="button"
         class="training-chip btn btn-primary btn-sm rounded-full"
@@ -29,19 +29,43 @@
 
 <script setup>
 const emit = defineEmits(["back"]);
+const { confirm: askUser } = useConfirm();
 
 const { draft, dirty, saving, listError, saveError, saveNotice, startNew, saveWorkout, deleteWorkout } =
   useWorkoutDraft();
 
-function onBack() {
-  if (dirty.value && !window.confirm("This workout has unsaved changes. Discard them?")) return;
+async function onBack() {
+  if (saving.value) return;
+  if (dirty.value) {
+    saving.value = true;
+    const discard = await askUser({
+      header: "Discard changes?",
+      message: "This workout has unsaved changes. Discard them?",
+      confirmText: "Discard",
+      destructive: true,
+    });
+    saving.value = false;
+    if (!discard) return;
+  }
   startNew();
   emit("back");
 }
 
 async function onDelete() {
-  if (!window.confirm("Delete this workout? This cannot be undone.")) return;
+  if (saving.value) return;
+  saving.value = true;
+  const remove = await askUser({
+    header: "Delete workout?",
+    message: "Delete this workout? This cannot be undone.",
+    confirmText: "Delete",
+    destructive: true,
+  });
+  if (!remove) {
+    saving.value = false;
+    return;
+  }
   const ok = await deleteWorkout();
+  saving.value = false;
   if (ok) emit("back");
 }
 </script>

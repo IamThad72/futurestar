@@ -54,21 +54,21 @@ onMounted(() => {
 
 const healthAreas = [
   {
-    name: "Financial",
+    name: "Money",
     href: "/financial",
     pillar: "financial",
     description:
       "Steward what you have. Track estate, accounts, budgets, and taxes so you can see where you stand and plan with a clear picture of cash flow and net worth.",
   },
   {
-    name: "Spiritual",
+    name: "Faith",
     href: "/spiritual",
     pillar: "spiritual",
     description:
       "Stay grounded in faith, purpose, and inner life. Begin with morning prayer, remember what is true, read Scripture, and close the day in reflection.",
   },
   {
-    name: "Physical",
+    name: "Body",
     href: "/physical",
     pillar: "physical",
     description:

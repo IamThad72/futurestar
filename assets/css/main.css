@@ -373,6 +373,15 @@ ion-app.app-shell button {
 }
 
 .mobile-ionic-shell ion-title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: auto;
+  padding-inline: 4.75rem;
+  text-align: center;
+  pointer-events: none;
   font-weight: 600;
   font-size: 1.125rem;
 }
@@ -630,58 +639,6 @@ ion-app.app-shell button {
   flex: 1 1 auto;
 }
 
-.mobile-ionic-shell .mobile-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  margin: 0;
-  border: none;
-  padding: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.mobile-ionic-shell .mobile-brand__icon {
-  width: 1.5rem;
-  height: 1.5rem;
-  flex-shrink: 0;
-  color: var(--sl-gold, #c9a24a);
-}
-
-.mobile-ionic-shell .mobile-menu-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0;
-  border: none;
-  padding: 0.25rem;
-  width: 2.5rem;
-  height: 2.5rem;
-  background: transparent;
-  color: var(--sl-muted);
-  cursor: pointer;
-}
-
-.mobile-ionic-shell .mobile-menu-btn ion-icon {
-  font-size: 1.5rem;
-}
-
-.mobile-ionic-shell .mobile-user-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0;
-  border: none;
-  padding: 0.25rem;
-  width: 2.5rem;
-  height: 2.5rem;
-  background: transparent;
-  cursor: pointer;
-}
-
 .mobile-ionic-shell .mobile-login-btn {
   margin: 0;
   border: none;
@@ -692,49 +649,6 @@ ion-app.app-shell button {
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-}
-
-.mobile-ionic-shell .mobile-user-menu-backdrop {
-  position: absolute;
-  inset: 0;
-  z-index: 30;
-  margin: 0;
-  border: none;
-  padding: 0;
-  background: transparent;
-}
-
-.mobile-ionic-shell .mobile-user-menu-panel {
-  position: absolute;
-  top: 3.25rem;
-  right: 0.5rem;
-  z-index: 40;
-  width: 12rem;
-}
-
-.mobile-ionic-shell .mobile-user-btn__photo,
-.mobile-ionic-shell .mobile-user-btn__fallback {
-  display: block;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 9999px;
-  object-fit: cover;
-}
-
-.mobile-ionic-shell .mobile-user-btn__fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: var(--sl-primary);
-  color: var(--color-primary-content, #fff);
-}
-
-.mobile-ionic-shell .mobile-user-popover {
-  padding: 0.25rem 0;
-}
-
-.mobile-ionic-shell .mobile-user-popover .app-user-menu__item {
-  width: 100%;
 }
 
 .app-drawer .drawer-overlay {
@@ -1294,8 +1208,38 @@ ion-app .account-map-budget-bar button.btn:focus-visible {
   --ion-color-primary-contrast-rgb: 15, 22, 33;
   --ion-color-primary-shade: #6e96cc;
   --ion-color-primary-tint: #a9c6e8;
+  /* Approved dark danger. Shade is 12% black, tint is 10% white, contrast is black. */
+  --ion-color-danger: #ff6b6b;
+  --ion-color-danger-rgb: 255, 107, 107;
+  --ion-color-danger-contrast: #000000;
+  --ion-color-danger-contrast-rgb: 0, 0, 0;
+  --ion-color-danger-shade: #e05e5e;
+  --ion-color-danger-tint: #ff7a7a;
   color: var(--sl-ink);
   background: var(--sl-bg);
+}
+
+/* In-app confirms. The alert's own :host rule sets --background from
+   --ion-overlay-background-color, so that variable is what themes the card.
+   Light mode keeps the existing error color. Dark mode uses the danger
+   color set on the shell above; this rule repeats it because the light
+   values below would otherwise win. */
+ion-alert {
+  --ion-overlay-background-color: var(--sl-elevated);
+  --background: var(--sl-elevated);
+  --ion-text-color: var(--sl-ink);
+  --ion-color-primary: var(--sl-primary);
+  --ion-color-danger: var(--color-error);
+  --ion-color-danger-contrast: var(--color-error-content, #ffffff);
+}
+
+[data-theme="sacredledger-dark"] ion-alert {
+  --ion-color-danger: #ff6b6b;
+  --ion-color-danger-rgb: 255, 107, 107;
+  --ion-color-danger-contrast: #000000;
+  --ion-color-danger-contrast-rgb: 0, 0, 0;
+  --ion-color-danger-shade: #e05e5e;
+  --ion-color-danger-tint: #ff7a7a;
 }
 
 [data-pillar="financial"] {
@@ -1667,8 +1611,6 @@ ion-app .textarea:focus-visible {
   min-width: 44px;
 }
 
-.mobile-ionic-shell .mobile-brand,
-.mobile-ionic-shell .mobile-user-btn,
 .mobile-ionic-shell .budget-row-menu__trigger {
   display: inline-flex;
   align-items: center;
@@ -1679,8 +1621,7 @@ ion-app .textarea:focus-visible {
 
 .mobile-ionic-shell .estate-record-list__sort-btn,
 .mobile-ionic-shell .investment-edit-btn,
-.mobile-ionic-shell .budget-row-menu__item,
-.mobile-ionic-shell .app-user-menu__item {
+.mobile-ionic-shell .budget-row-menu__item {
   min-height: 44px;
 }
 

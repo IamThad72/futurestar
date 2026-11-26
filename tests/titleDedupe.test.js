@@ -10,10 +10,11 @@ test("page heading that repeats the toolbar title is a duplicate", () => {
 });
 
 test("section home headings match their short tab titles", () => {
-  assert.equal(isDuplicateScreenTitle("Financial Health", "Money", "/financial"), true);
-  assert.equal(isDuplicateScreenTitle("Spiritual Health", "Faith", "/spiritual"), true);
-  assert.equal(isDuplicateScreenTitle("Physical Health", "Body", "/physical/"), true);
-  assert.equal(isDuplicateScreenTitle("Financial Health", "Money", "/investments"), false);
+  assert.equal(isDuplicateScreenTitle("Money", "Money", "/financial"), true);
+  assert.equal(isDuplicateScreenTitle("Faith", "Faith", "/spiritual"), true);
+  assert.equal(isDuplicateScreenTitle("Body", "Body", "/physical/"), true);
+  assert.equal(isDuplicateScreenTitle("Money", "Investments", "/financial"), true);
+  assert.equal(isDuplicateScreenTitle("Money", "Investments", "/investments"), false);
 });
 
 test("headings that add information are kept", () => {

@@ -1,4 +1,4 @@
-/** Physical Health destinations (header Physical + in-section tabs). */
+/** Body destinations (sidebar and in-section links). */
 
 export const PHYSICAL_SECTIONS = [
   {
@@ -86,7 +86,7 @@ function physicalSlugFromPath(path) {
 
 export const PHYSICAL_NAV_TABS = [
   {
-    name: "Physical Home",
+    name: "Body home",
     href: "/physical",
     icon: "fitness",
     description: "Overview of your physical health tools.",

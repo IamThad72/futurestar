@@ -310,6 +310,8 @@ function toDatetimeLocalValue(iso) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+const { success } = useHaptics();
+const { confirm: askUser } = useConfirm();
 const sessions = ref([]);
 const listLoading = ref(false);
 const listError = ref("");
@@ -590,6 +592,7 @@ async function finishSession() {
   }
   const ok = await saveSession();
   if (!ok) return;
+  success();
   closeEditor();
 }
 
@@ -625,10 +628,23 @@ async function saveSession() {
   }
 }
 
+let deletePromptOpen = false;
+
 async function deleteSession() {
-  if (!draft.value.sessionId) return;
-  if (!window.confirm("Delete this journal session? This cannot be undone.")) return;
+  if (!draft.value.sessionId || deletePromptOpen) return;
+  deletePromptOpen = true;
   saving.value = true;
+  const ok = await askUser({
+    header: "Delete session?",
+    message: "Delete this journal session? This cannot be undone.",
+    confirmText: "Delete",
+    destructive: true,
+  });
+  if (!ok) {
+    deletePromptOpen = false;
+    saving.value = false;
+    return;
+  }
   saveError.value = "";
   try {
     await $fetch(`/api/physical/journal/${draft.value.sessionId}`, { method: "DELETE" });
@@ -637,6 +653,7 @@ async function deleteSession() {
   } catch (error) {
     saveError.value = parseFetchError(error, "Could not delete this session.");
   } finally {
+    deletePromptOpen = false;
     saving.value = false;
   }
 }

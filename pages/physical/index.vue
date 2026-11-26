@@ -2,7 +2,7 @@
   <section class="app-page overflow-x-hidden">
     <header class="mb-6 sm:mb-8">
       <h1 class="text-ink">
-        Physical Health
+        Body
       </h1>
       <p class="mt-2 text-base leading-6 text-muted">
         Train and track the body across strength, cardio, mobility, and composition.
@@ -32,7 +32,7 @@
 <script setup>
 import { PHYSICAL_HOME_LINKS } from "~/utils/physicalNav";
 
-useHead({ title: "Physical Health" });
+useHead({ title: "Body" });
 
 const homeLinks = PHYSICAL_HOME_LINKS;
 

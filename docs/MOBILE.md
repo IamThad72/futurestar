@@ -34,7 +34,9 @@ If tabs still fail after a correct sync, use Chrome **Remote debugging** (`chrom
 
 ## Mobile tab bar
 
-When someone is signed in on a phone (viewport at most 767px) or in the native app, `components/MobileIonicShell.vue` shows a header and a bottom tab bar. The destinations come from `utils/primaryNav.js`. Wider web layouts use a left sidebar for the same five destinations (`composables/useMobileShell.js`). The phone header has no hamburger. It has a star that goes home, and either a Login button or an avatar that opens Account Management, Linked Accounts, and Logout. A later change is expected to remove the star and the avatar.
+When someone is signed in on a phone (viewport at most 767px) or in the native app, `components/MobileIonicShell.vue` shows a header and a bottom tab bar. The destinations come from `utils/primaryNav.js`. Wider web layouts use a left sidebar for the same five destinations (`composables/useMobileShell.js`). The phone header has no hamburger, star, or avatar. Signed in, it is only the centered screen title. Signed out, a Login button stays on the right. Account Management, Linked Accounts, Faith settings, and Logout live on the You tab. The desktop header still has the brand and the avatar menu.
+
+Native builds give haptic feedback through `composables/useHaptics.js`: a tick when the tab changes, a light tap when a worship check-in is saved, a prayer is marked answered, or a reading day is marked done, a success pattern when a workout journal session is finished, and a warning before a destructive confirm. Nothing happens on the web. Deletes and discards use an Ionic alert from `composables/useConfirm.js` instead of the browser confirm dialog.
 
 The tab bar is hidden until the person is signed in.
 

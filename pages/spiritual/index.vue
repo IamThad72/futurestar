@@ -3,7 +3,7 @@
     <div class="spiritual-page__intro">
       <header class="mb-4 sm:mb-6">
         <h1 class="text-ink">
-          Spiritual Health
+          Faith
         </h1>
         <p class="mt-2 text-base leading-6 text-muted">
           {{ introText }}
@@ -61,7 +61,7 @@
 <script setup>
 import { SPIRITUAL_GROUPS, spiritualHomeLinks } from "~/utils/spiritualNav";
 
-useHead({ title: "Spiritual" });
+useHead({ title: "Faith" });
 
 const auth = useAuthStore();
 const faith = useFaithProfile();

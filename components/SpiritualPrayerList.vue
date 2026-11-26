@@ -123,6 +123,8 @@ import { parseFetchError } from "~/utils/parseFetchError";
 import { todayIsoDate } from "~/utils/liturgicalCalendar";
 import { PRAYER_CATEGORIES } from "~/utils/prayerList";
 
+const { light } = useHaptics();
+const { confirm: askUser } = useConfirm();
 const categories = PRAYER_CATEGORIES;
 const views = [
   { key: "active", label: "Active" },
@@ -229,6 +231,7 @@ async function answer(prayer) {
       body: { action: "answer", ...answerForm.value, date: todayIsoDate() },
     });
     answeringId.value = 0;
+    light();
     await load();
   } catch (error) {
     loadError.value = parseFetchError(error, "Could not save the answer.");
@@ -251,8 +254,18 @@ async function act(prayer, action) {
 }
 
 async function remove(prayer) {
-  if (!window.confirm(`Delete "${prayer.title}" for good?`)) return;
+  if (busyId.value === prayer.prayer_id) return;
   busyId.value = prayer.prayer_id;
+  const ok = await askUser({
+    header: "Delete prayer?",
+    message: `Delete "${prayer.title}" for good?`,
+    confirmText: "Delete",
+    destructive: true,
+  });
+  if (!ok) {
+    busyId.value = 0;
+    return;
+  }
   try {
     await $fetch(`/api/spiritual/prayers/${prayer.prayer_id}`, { method: "DELETE" });
     await load();

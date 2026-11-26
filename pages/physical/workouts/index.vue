@@ -42,6 +42,8 @@
 <script setup>
 useHead({ title: "Workout Manager" });
 
+const { confirm: askUser } = useConfirm();
+
 const editing = ref(false);
 const auth = useAuthStore();
 const {
@@ -82,8 +84,19 @@ watch(
   },
 );
 
+let discardPromptOpen = false;
+
 onBeforeRouteLeave(() => {
   if (!editing.value || !dirty.value) return true;
-  return window.confirm("This workout has unsaved changes. Discard them?");
+  if (discardPromptOpen) return false;
+  discardPromptOpen = true;
+  return askUser({
+    header: "Discard changes?",
+    message: "This workout has unsaved changes. Discard them?",
+    confirmText: "Discard",
+    destructive: true,
+  }).finally(() => {
+    discardPromptOpen = false;
+  });
 });
 </script>

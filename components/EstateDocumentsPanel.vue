@@ -58,6 +58,7 @@
             class="estate-docs-action-btn estate-docs-action-btn--danger"
             aria-label="Delete"
             title="Delete"
+            :disabled="deletingDocId != null"
             @click="deleteDocument(doc)"
           >
             <AppIcon name="trash" :size="20" />
@@ -146,6 +147,8 @@
 import { IonItem, IonLabel, IonList } from "@ionic/vue";
 import { parseFetchError } from "~/utils/parseFetchError";
 
+const { confirm: askUser } = useConfirm();
+
 const acceptTypes = [
   ".pdf",
   ".jpg",
@@ -180,6 +183,7 @@ const visibleDocuments = computed(() => {
   });
 });
 const loading = ref(false);
+const deletingDocId = ref(null);
 const loadError = ref("");
 const uploading = ref(false);
 const uploadError = ref("");
@@ -328,12 +332,25 @@ function openPreviewInNewTab() {
 }
 
 async function deleteDocument(doc) {
-  if (!confirm(`Delete “${displayName(doc)}”? This cannot be undone.`)) return;
+  if (deletingDocId.value != null) return;
+  deletingDocId.value = doc.doc_id;
+  const ok = await askUser({
+    header: "Delete document?",
+    message: `Delete “${displayName(doc)}”? This cannot be undone.`,
+    confirmText: "Delete",
+    destructive: true,
+  });
+  if (!ok) {
+    deletingDocId.value = null;
+    return;
+  }
   try {
     await $fetch(`/api/estate-mgmt/documents/${doc.doc_id}`, { method: "DELETE" });
     await loadDocuments();
   } catch (error) {
     loadError.value = parseFetchError(error, "Failed to delete document.");
+  } finally {
+    deletingDocId.value = null;
   }
 }
 

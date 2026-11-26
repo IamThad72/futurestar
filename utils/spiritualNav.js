@@ -1,4 +1,4 @@
-/** Spiritual Health destinations (header Spiritual + in-section tabs). */
+/** Faith destinations (sidebar and in-section links). */
 import { eveningLabel } from "./faithProfile.js";
 
 export const SPIRITUAL_SECTIONS = [
@@ -83,7 +83,7 @@ export function spiritualSections(tradition) {
 function navTabs(tradition) {
   return [
     {
-      name: "Spiritual Home",
+      name: "Faith home",
       href: "/spiritual",
       icon: "church",
       description: "Overview of your daily spiritual review.",

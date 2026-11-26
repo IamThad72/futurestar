@@ -225,6 +225,8 @@ import { parseFetchError } from "~/utils/parseFetchError";
 import { todayIsoDate } from "~/utils/liturgicalCalendar";
 
 const faith = useFaithProfile();
+const { light } = useHaptics();
+const { confirm: askUser } = useConfirm();
 const route = useRoute();
 const router = useRouter();
 
@@ -379,6 +381,7 @@ async function markDay(status) {
       body: { status, date: todayIsoDate() },
     });
     void loadList();
+    if (status === "done") light();
     // After reading, move on to the next unread day when it is due.
     const next = detail.value.plan.progress.nextDay;
     const scheduled = detail.value.plan.progress.scheduledDay;
@@ -411,10 +414,21 @@ async function planAction(action) {
   }
 }
 
-function confirmRestart() {
-  if (window.confirm("Start this plan again from day 1 today? Your marks for this plan will be cleared.")) {
-    void planAction("restart");
+async function confirmRestart() {
+  if (busy.value) return;
+  busy.value = true;
+  const ok = await askUser({
+    header: "Start again?",
+    message: "Start this plan again from day 1 today? Your marks for this plan will be cleared.",
+    confirmText: "Start again",
+    destructive: true,
+  });
+  if (!ok) {
+    busy.value = false;
+    return;
   }
+  busy.value = false;
+  void planAction("restart");
 }
 
 watch(

@@ -1,4 +1,4 @@
-/** Today strip for Physical Home. Counts come from the journals. */
+/** Today strip for the Body home. Counts come from the journals. */
 
 export function summarizeTraining(rows, today) {
   const sessions = new Set();
