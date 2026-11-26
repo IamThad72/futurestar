@@ -49,14 +49,24 @@ export const REOWN_NAME_COLUMNS = {
 /** First rename of a colliding source. Later collisions add " 2", " 3", and so on. */
 export const FORMER_MEMBER_SUFFIX = " (former member)";
 
-/** Application cap for a renamed source. The column itself is unbounded TEXT. */
+/**
+ * Application cap for a renamed source, in Unicode code points.
+ * That matches Postgres char_length. The column itself is unbounded TEXT.
+ */
 export const SOURCE_NAME_MAX_LENGTH = 200;
 
+function codePoints(value) {
+  return Array.from(String(value ?? ""));
+}
+
 function clipSourceName(original, tail) {
-  const room = SOURCE_NAME_MAX_LENGTH - tail.length;
-  const head = room > 0 ? String(original).slice(0, room) : "";
-  const name = `${head}${tail}`;
-  return name.length <= SOURCE_NAME_MAX_LENGTH ? name : name.slice(0, SOURCE_NAME_MAX_LENGTH);
+  const tailPoints = codePoints(tail);
+  const room = SOURCE_NAME_MAX_LENGTH - tailPoints.length;
+  const head = room > 0 ? codePoints(original).slice(0, room).join("") : "";
+  const name = `${head}${tailPoints.join("")}`;
+  const points = codePoints(name);
+  if (points.length <= SOURCE_NAME_MAX_LENGTH) return name;
+  return points.slice(0, SOURCE_NAME_MAX_LENGTH).join("");
 }
 
 /**

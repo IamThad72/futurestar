@@ -172,10 +172,29 @@ test("a colliding source is renamed and kept, and the same inputs stay the same"
 
   const long = "P".repeat(SOURCE_NAME_MAX_LENGTH);
   const renamed = renamedSourceName(long, [long]);
-  assert.equal(renamed.length, SOURCE_NAME_MAX_LENGTH);
+  assert.equal([...renamed].length, SOURCE_NAME_MAX_LENGTH);
   assert.equal(renamed.endsWith(FORMER_MEMBER_SUFFIX), true);
   assert.notEqual(renamed.toLowerCase(), long.toLowerCase());
   assert.equal(renamedSourceName(long, [long]), renamed);
+});
+
+test("a renamed source keeps a whole emoji at the 200 code-point cap", () => {
+  const loneSurrogate = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+  const atBoundary = `${"A".repeat(183)}😀Z`;
+  const keptEmoji = renamedSourceName(atBoundary, [atBoundary]);
+  assert.equal(loneSurrogate.test(keptEmoji), false);
+  assert.equal([...keptEmoji].length <= SOURCE_NAME_MAX_LENGTH, true);
+  assert.equal(keptEmoji.includes("😀"), true);
+  assert.equal(keptEmoji.endsWith(FORMER_MEMBER_SUFFIX), true);
+
+  const numberedSource = `${"A".repeat(181)}😀ZZZ`;
+  const firstNumbered = renamedSourceName(numberedSource, [numberedSource]);
+  const numbered = renamedSourceName(numberedSource, [numberedSource, firstNumbered]);
+  assert.equal(loneSurrogate.test(numbered), false);
+  assert.equal([...numbered].length <= SOURCE_NAME_MAX_LENGTH, true);
+  assert.equal(numbered.includes("😀"), true);
+  assert.equal(numbered.endsWith(`${FORMER_MEMBER_SUFFIX} 2`), true);
+  assert.equal(renamedSourceName(numberedSource, [numberedSource, firstNumbered]), numbered);
 });
 
 test("the default household policy is keep-shared and tax rows are included", () => {
