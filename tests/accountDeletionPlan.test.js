@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { planAccountDeletion } from "../utils/accountDeletionPlan.js";
 import {
@@ -181,6 +182,10 @@ test("deletion guards cover re-auth, throttle, focus, and the login return path"
   assert.equal(bearerIsFresh("not-a-jwt", now, 5 * 60 * 1000), false);
   assert.match(KEPT_ON_DELETE, /household/);
   assert.match(RETENTION_ON_DELETE, /sign-in id/);
+  assert.match(RETENTION_ON_DELETE, /daily job/);
+  const nuxtConfig = readFileSync(new URL("../nuxt.config.ts", import.meta.url), "utf8");
+  assert.match(nuxtConfig, /\/api\/cron\/account-cleanup", schedule: "15 8 \* \* \*"/);
+  assert.doesNotMatch(nuxtConfig, /account-cleanup", schedule: "15 \* \* \* \*"/);
   const html = deleteAccountStaticHtml();
   assert.match(html, /id="delete-account-static"/);
   assert.match(html, /Stays with the household/);

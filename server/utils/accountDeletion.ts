@@ -114,6 +114,8 @@ export async function assertDeletionNotThrottled(client: QueryClient, userId: nu
     throw missingMigrationError(MIGRATION_ATTEMPTS);
   }
   await client.query(`SELECT pg_advisory_xact_lock($1::int)`, [userId]);
+  // Drop rows older than a day here, before the 15-minute count. The cleanup cron is only
+  // once a day, so the throttle must not wait for that job.
   await client.query(
     `DELETE FROM account_deletion_attempts WHERE attempted_at < NOW() - INTERVAL '1 day'`,
   );
@@ -519,7 +521,11 @@ export async function retryAuthDeletion(client: QueryClient, supabaseUserId: str
   }
 }
 
-/** Drains queues left by account deletion. Used by the hourly cron. */
+/**
+ * Drains queues left by account deletion. The Vercel cron runs once a day.
+ * Each run retries up to 25 files and 25 sign-ins; the rest wait until the next day.
+ * Rows in account_deletion_attempts older than a day are deleted here as well.
+ */
 export async function runAccountCleanup(client: QueryClient) {
   let filesRemoved = 0;
   let authUsersRemoved = 0;

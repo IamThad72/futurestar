@@ -12,7 +12,7 @@ export const KEPT_ON_DELETE =
   "Shared household money records stay with the household for as long as that household keeps them. If other people remain, those shared records are kept for them. If you are the owner and others remain, an owner who is already in the household is chosen before anyone else, and otherwise the person who joined next becomes the owner. If you are the only person, the household is deleted too.";
 
 export const RETENTION_ON_DELETE =
-  "Your private records are not kept after deletion. The sign-in id is kept so that sign-in cannot open a new account. If removing the sign-in does not finish immediately, an hourly job retries until it is gone. Your email is not stored on that marker.";
+  "Your private records are not kept after deletion. The sign-in id is kept so that sign-in cannot open a new account. If removing the sign-in does not finish immediately, a daily job retries until it is gone. Your email is not stored on that marker.";
 
 export const PASSWORDLESS_HINT =
   "If this account has no password, open Sign in and choose Forgot password. That uses the email Supabase already sends, and sets a password. Then come back and enter it. This app does not add another email service.";

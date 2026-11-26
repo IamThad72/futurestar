@@ -136,10 +136,12 @@ export default defineNuxtConfig({
         maxDuration: 300,
       },
       config: {
-        // 01:00 UTC Tuesday–Saturday is 8:00pm Eastern Monday–Friday, after the US close.
+        // Price cron: 01:00 UTC Tuesday–Saturday is 8:00pm Eastern Monday–Friday, after the US close.
+        // Account cleanup is once a day. Hobby rejects a cron that runs more than once per day,
+        // and it runs a daily job sometime during the named hour, not at minute 15.
         crons: [
           { path: "/api/cron/investment-prices", schedule: "0 1 * * 2-6" },
-          { path: "/api/cron/account-cleanup", schedule: "15 * * * *" },
+          { path: "/api/cron/account-cleanup", schedule: "15 8 * * *" },
         ],
         routes: [
           {

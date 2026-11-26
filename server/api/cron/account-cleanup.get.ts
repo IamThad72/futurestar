@@ -3,7 +3,10 @@ import { createDbClient } from "../../utils/db";
 import { runAccountCleanup } from "../../utils/accountDeletion";
 import { cronAuthorized } from "~/utils/refreshInvestmentPrices.js";
 
-/** Retries leftover sign-in and file deletes, and drops old throttle rows. */
+/**
+ * Retries leftover sign-in and file deletes, and drops throttle rows older than a day.
+ * Scheduled once a day from nuxt.config.ts. Hobby runs that job sometime during the hour.
+ */
 function cronSecret() {
   try {
     const config = useRuntimeConfig();
