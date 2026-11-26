@@ -1208,13 +1208,22 @@ ion-app .account-map-budget-bar button.btn:focus-visible {
   --ion-color-primary-contrast-rgb: 15, 22, 33;
   --ion-color-primary-shade: #6e96cc;
   --ion-color-primary-tint: #a9c6e8;
+  /* Approved dark danger. Shade is 12% black, tint is 10% white, contrast is black. */
+  --ion-color-danger: #ff6b6b;
+  --ion-color-danger-rgb: 255, 107, 107;
+  --ion-color-danger-contrast: #000000;
+  --ion-color-danger-contrast-rgb: 0, 0, 0;
+  --ion-color-danger-shade: #e05e5e;
+  --ion-color-danger-tint: #ff7a7a;
   color: var(--sl-ink);
   background: var(--sl-bg);
 }
 
 /* In-app confirms. The alert's own :host rule sets --background from
    --ion-overlay-background-color, so that variable is what themes the card.
-   Ink and the destructive button follow the existing tokens. */
+   Light mode keeps the existing error color. Dark mode uses the danger
+   color set on the shell above; this rule repeats it because the light
+   values below would otherwise win. */
 ion-alert {
   --ion-overlay-background-color: var(--sl-elevated);
   --background: var(--sl-elevated);
@@ -1222,6 +1231,15 @@ ion-alert {
   --ion-color-primary: var(--sl-primary);
   --ion-color-danger: var(--color-error);
   --ion-color-danger-contrast: var(--color-error-content, #ffffff);
+}
+
+[data-theme="sacredledger-dark"] ion-alert {
+  --ion-color-danger: #ff6b6b;
+  --ion-color-danger-rgb: 255, 107, 107;
+  --ion-color-danger-contrast: #000000;
+  --ion-color-danger-contrast-rgb: 0, 0, 0;
+  --ion-color-danger-shade: #e05e5e;
+  --ion-color-danger-tint: #ff7a7a;
 }
 
 [data-pillar="financial"] {
