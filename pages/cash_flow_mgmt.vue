@@ -972,11 +972,8 @@ async function loadBudgets() {
     const debtData = await $fetch("/api/records/debt").then((d) => d?.records ?? []).catch(() => []);
     debtRecords.value = Array.isArray(debtData) ? debtData : [];
   } catch (err) {
-    console.error("Failed to load budgets", err);
-    loadError.value = parseFetchError(
-      err,
-      "Failed to load budget. If you recently updated the app, run: npm run migrate",
-    );
+    console.error("Failed to load budgets. If you recently updated the app, run: npm run migrate", err);
+    loadError.value = parseFetchError(err, "The budget could not be loaded. Try again in a moment.");
     budgets.value = { income: [], expenses: [] };
     debtRecords.value = [];
   } finally {
