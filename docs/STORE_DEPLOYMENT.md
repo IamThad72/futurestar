@@ -88,7 +88,7 @@ npm run cap:run:android
 | Android `applicationId` | `com.futurestar.myfin` |
 | iOS bundle identifier | `com.futurestar.myfin` |
 
-Change these only before first store submission if you need a different namespace.
+The app identifier `com.futurestar.myfin` is the same on Capacitor, Android, and iOS (`capacitor.config.ts`, `android/app/build.gradle`). It cannot be changed after the first App Store or Play Store release. Decide it before the first upload.
 
 ## Security (implemented in repo)
 
@@ -102,17 +102,20 @@ Change these only before first store submission if you need a different namespac
 
 - [ ] Apple Developer / Google Play developer accounts
 - [ ] App signing (release keystore / App Store Connect certificates)
-- [ ] Privacy policy URL (required for finance apps)
+- [ ] Privacy policy URL: ________ (required for finance apps and for both stores). No privacy page is in the app yet, so publish the URL before the first upload.
+- [ ] Account deletion URL: ________ (required by Apple). No in-app account-deletion flow is in the app yet, so publish the URL before the first upload.
+- [ ] Build with Xcode 26 or later (App Store Connect requirement since April 28, 2026)
+- [ ] Target API 36 (Google Play requirement from August 31, 2026). Already set: `compileSdkVersion` and `targetSdkVersion` are 36 in `android/variables.gradle`.
 - [ ] App Store / Play Data safety & privacy questionnaires
 - [ ] Screenshots and store listing copy
-- [ ] Version `versionCode` / `CFBundleVersion` bump per release (`android/app/build.gradle`, Xcode project)
+- [ ] Version `versionCode` / `CFBundleVersion` bump per release (`android/app/build.gradle`, Xcode project). Do not bump those in a feature pull request.
 
 ## Pre-submit verification
 
 1. `npm run build:mobile:prod` succeeds with your production `.env`.
 2. Open `dist/index.html` — confirm `apiBase` is your **HTTPS** URL.
 3. Install release build on a real device; sign in with Supabase credentials.
-4. Exercise Estate, Budget, Tracker, Account tabs.
+4. Exercise the Today, Money, Faith, Body, and You tabs (`/today`, `/financial`, `/spiritual`, `/physical`, `/account`).
 5. Confirm API calls in server logs (no 401/CORS errors).
 
 ## Related docs
