@@ -33,7 +33,7 @@ const webDir = cfg.app?.webDir;
 const extConfigType = cfg.app?.extConfigType;
 const androidScheme = cfg.app?.extConfig?.server?.androidScheme;
 
-if (appId !== "com.futurestar.myfin" || webDir !== "dist" || extConfigType !== "ts" || androidScheme !== "https") {
+if (appId !== "com.futurestar.app" || webDir !== "dist" || extConfigType !== "ts" || androidScheme !== "https") {
   console.error("Capacitor config did not load capacitor.config.ts.", {
     appId,
     webDir,
