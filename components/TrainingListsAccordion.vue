@@ -8,14 +8,16 @@
         :class="{ 'training-accordion__header--open': openSlug === item.slug }"
         :aria-expanded="openSlug === item.slug"
       >
+        <AppIcon :name="item.icon" :size="20" />
         <span class="min-w-0 flex-1 text-left">
           <span class="training-accordion__title block text-sm font-semibold">{{ item.name }}</span>
           <span class="mt-0.5 block text-xs text-base-content/60">{{ item.description }}</span>
         </span>
-        <ChevronDownIcon
-          class="training-accordion__chevron size-5"
+        <AppIcon
+          name="chevron-down"
+          :size="20"
+          class="training-accordion__chevron"
           :class="{ 'training-accordion__chevron--open': openSlug === item.slug }"
-          aria-hidden="true"
         />
       </button>
       <div class="training-accordion__content" slot="content">
@@ -26,7 +28,6 @@
 </template>
 
 <script setup>
-import { ChevronDownIcon } from "@heroicons/vue/24/outline";
 import { IonAccordion, IonAccordionGroup } from "@ionic/vue";
 import { CATALOG_PICKER_KEY } from "~/utils/workoutDraft";
 import { PHYSICAL_CATEGORIES } from "~/utils/physicalNav";

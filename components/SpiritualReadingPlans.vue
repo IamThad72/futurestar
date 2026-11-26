@@ -12,7 +12,8 @@
     <!-- One plan -->
     <template v-else-if="selectedId">
       <button type="button" class="training-chip btn btn-ghost btn-sm rounded-full" @click="closePlan">
-        ← All plans
+        <AppIcon name="chevron-back" :size="18" />
+        All plans
       </button>
       <div v-if="!detail" class="app-card px-4 py-6 text-sm text-gray-700">
         {{ detailError || "Loading plan…" }}
@@ -62,8 +63,12 @@
               </p>
             </div>
             <div class="flex gap-1">
-              <button type="button" class="training-chip btn btn-ghost btn-xs rounded-full" :disabled="currentDay <= 1" aria-label="Previous day" @click="openDay(currentDay - 1)">‹</button>
-              <button type="button" class="training-chip btn btn-ghost btn-xs rounded-full" :disabled="currentDay >= detail.plan.length" aria-label="Next day" @click="openDay(currentDay + 1)">›</button>
+              <button type="button" class="training-chip btn btn-ghost btn-xs rounded-full" :disabled="currentDay <= 1" aria-label="Previous day" @click="openDay(currentDay - 1)">
+                <AppIcon name="chevron-back" :size="18" />
+              </button>
+              <button type="button" class="training-chip btn btn-ghost btn-xs rounded-full" :disabled="currentDay >= detail.plan.length" aria-label="Next day" @click="openDay(currentDay + 1)">
+                <AppIcon name="chevron-forward" :size="18" />
+              </button>
             </div>
           </div>
           <p class="sl-scripture mt-3">{{ dayInfo?.citation }}</p>
@@ -122,7 +127,8 @@
                 @click="openDay(item.day)"
               >
                 <span class="plan-day-row__mark" :class="item.status ? `is-${item.status}` : ''" aria-hidden="true">
-                  {{ item.status === "done" ? "✓" : item.status === "skipped" ? "–" : "" }}
+                  <AppIcon v-if="item.status === 'done'" name="checkmark" :size="16" filled />
+                  <AppIcon v-else-if="item.status === 'skipped'" name="remove" :size="16" />
                 </span>
                 <span class="min-w-0 flex-1">
                   <span class="block text-xs text-gray-700">Day {{ item.day }} · {{ formatDate(item.date) }}</span>

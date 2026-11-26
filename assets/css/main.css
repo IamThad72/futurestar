@@ -546,6 +546,7 @@ ion-app.app-shell button {
 .app-sidebar a {
   display: flex;
   align-items: center;
+  gap: 0.5rem;
   min-height: 44px;
   border-radius: 12px;
   padding: 0.45rem 0.7rem;
@@ -1530,14 +1531,39 @@ ion-app .textarea:focus-visible {
 }
 
 .today-prayer__icon,
-.today-summary__icon {
+.today-summary__icon,
+.app-icon-chip {
   display: inline-flex;
-  height: 44px;
-  width: 44px;
-  flex: 0 0 44px;
+  height: 32px;
+  width: 32px;
+  flex: 0 0 32px;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
+  border-radius: 10px;
+}
+
+.app-icon-chip {
+  background: var(--sl-sunken, #f3eee6);
+  color: var(--sl-primary, #1f3a5f);
+}
+
+.app-icon-chip--lead {
+  margin-bottom: 0.75rem;
+}
+
+.app-icon-chip.is-financial {
+  background: var(--sl-evergreen-tint);
+  color: var(--sl-evergreen);
+}
+
+.app-icon-chip.is-spiritual {
+  background: var(--sl-violet-tint);
+  color: var(--sl-violet);
+}
+
+.app-icon-chip.is-physical {
+  background: var(--sl-ember-tint);
+  color: var(--sl-ember);
 }
 
 .today-prayer__icon {

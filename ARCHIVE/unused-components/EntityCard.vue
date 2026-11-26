@@ -49,11 +49,11 @@
         <div class="-mt-px flex divide-x divide-neutral px-0">
           <div class="flex w-0 flex-1 justify-center">
             
-            <button class="btn btn-link no-underline hover:text-decoration-none text-base-content" style="text-decoration: none" onclick="buySellModal.showModal()"><PlusCircleIcon class="size-5 text-success" aria-hidden="true"/>BUY</button>
+            <button class="btn btn-link no-underline hover:text-decoration-none text-base-content" style="text-decoration: none" onclick="buySellModal.showModal()"><AppIcon name="add-circle" :size="20" class="text-success" />BUY</button>
           </div>
           <div class="flex w-0 flex-1 justify-center">
            
-            <button class="btn btn-link no-underline hover:text-decoration-none text-base-content" style="text-decoration: none" onclick="buySellModal.showModal()"><MinusCircleIcon class="size-5 text-success" aria-hidden="true"/>SELL</button>
+            <button class="btn btn-link no-underline hover:text-decoration-none text-base-content" style="text-decoration: none" onclick="buySellModal.showModal()"><AppIcon name="remove-circle" :size="20" class="text-success" />SELL</button>
           </div>
         </div>
         <dialog id="my_modal_1" class="modal">
@@ -75,19 +75,8 @@
     <div class="modal-box">
       <form method="dialog">
        
-        <button class="btn btn-square btn-outline absolute right-2 top-2 text-xl">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M6 18L18 6M6 6l12 12" />
-          </svg>
+        <button class="btn btn-square btn-outline absolute right-2 top-2 text-xl" aria-label="Close">
+          <AppIcon name="close" :size="24" />
         </button>
       </form>
       <h3 class="text-lg font-bold">Hello!</h3>
@@ -99,7 +88,6 @@
 
 <script setup>
  import { ref } from 'vue';
- import { EnvelopeIcon, PhoneIcon, PlusCircleIcon, MinusCircleIcon, XCircleIcon } from '@heroicons/vue/20/solid'
 const selectedEntity = ref({});
 
 // Method to set the selected person and open the modal

@@ -9,7 +9,7 @@
       :aria-current="link.current ? 'page' : undefined"
     >
       <span class="app-primary-nav__icon" :class="link.pillar ? `is-${link.pillar}` : 'is-neutral'">
-        <AppIcon :name="link.icon" :size="24" :stroke-width="1.75" />
+        <AppIcon :name="link.icon" :size="24" :filled="link.current" :stroke-width="1.75" />
       </span>
       <span>{{ link.name }}</span>
     </AppLink>

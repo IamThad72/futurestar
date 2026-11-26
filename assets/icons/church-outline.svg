@@ -1,0 +1,12 @@
+<!--
+  Faith tab church, outline.
+  Drawn by hand on the Ionicons 512 grid. ionicons 8 has no church, cross,
+  or praying-hands icon. Stroke is 32 (class ionicon-stroke-width), with
+  round caps and joins: a Latin cross, a gabled nave, and an open door.
+  The filled file is a solid silhouette, not a tint of this stroke.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="ionicon" aria-hidden="true">
+  <path d="M256 40v116M196 96h120" stroke="currentColor" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" class="ionicon-fill-none ionicon-stroke-width"/>
+  <path d="M124 460V308H72L256 176l184 132h-52v152H124z" stroke="currentColor" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" class="ionicon-fill-none ionicon-stroke-width"/>
+  <path d="M220 460V388a36 36 0 0 0 72 0v72" stroke="currentColor" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" class="ionicon-fill-none ionicon-stroke-width"/>
+</svg>

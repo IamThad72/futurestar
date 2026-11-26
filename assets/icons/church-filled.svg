@@ -1,0 +1,11 @@
+<!--
+  Faith tab church, filled.
+  Same drawing as church-outline.svg: Latin cross and gabled nave on the
+  512 grid. This file is a solid currentColor silhouette. The door is an
+  even-odd cutout, not a lighter tint of the outline stroke.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="ionicon" aria-hidden="true">
+  <path fill="currentColor" stroke="none" d="M238 32h36v160h-36z"/>
+  <path fill="currentColor" stroke="none" d="M188 80h136v36H188z"/>
+  <path fill="currentColor" stroke="none" fill-rule="evenodd" d="M124 468V316H64L256 168l192 148h-60v152H124zm96 0V392a36 36 0 0 0 72 0v76h-72z"/>
+</svg>

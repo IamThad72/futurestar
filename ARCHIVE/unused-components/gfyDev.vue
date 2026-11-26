@@ -1,5 +1,5 @@
 <template>
-  <h3>Go F!CK YOURSELF! <AcademicCapIcon class="inline-block h-6 w-6" /></h3>
+  <h3>Go F!CK YOURSELF! <AppIcon name="school" :size="24" class="inline-block" /></h3>
 <div class="p-6 max-w-xl space-y-4">
     <div>
       <label class="block text-sm font-medium mb-1">Estate Type</label>
@@ -42,7 +42,6 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { EnvelopeIcon, PhoneIcon, PlusCircleIcon, MinusCircleIcon, XCircleIcon, AcademicCapIcon } from '@heroicons/vue/20/solid'
 
 type Option = { label: string; value: string }
 

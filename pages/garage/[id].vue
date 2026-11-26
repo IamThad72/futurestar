@@ -17,9 +17,10 @@
           <div>
             <NuxtLink
               to="/garage"
-              class="text-sm font-medium text-gray-500 hover:text-gray-800 md:text-base dark:text-gray-400 dark:hover:text-gray-200"
+              class="inline-flex items-center gap-1 text-sm font-medium text-gray-500 hover:text-gray-800 md:text-base dark:text-gray-400 dark:hover:text-gray-200"
             >
-              ← Garage
+              <AppIcon name="chevron-back" :size="18" />
+              Garage
             </NuxtLink>
             <h1 class="mt-1 text-base font-semibold text-gray-900 md:text-lg dark:text-white">
               {{ vehicleTitle }}
@@ -70,7 +71,7 @@
                   >
                     <span class="sr-only">Options for {{ svc.service_name }}</span>
                     <span v-if="deleteSavingId === svc.vsr_id" class="text-xs" aria-hidden="true">...</span>
-                    <EllipsisVerticalIcon v-else class="size-5" aria-hidden="true" />
+                    <AppIcon v-else :name="overflowIcon" :size="20" />
                   </HeadlessMenuButton>
                   <HeadlessMenuItems class="budget-row-menu absolute right-0 z-10 mt-2 w-44 origin-top-right focus:outline-none">
                     <div class="budget-row-menu__list">
@@ -221,12 +222,14 @@
 </template>
 
 <script setup>
-import { EllipsisVerticalIcon } from "@heroicons/vue/20/solid";
+import { Capacitor } from "@capacitor/core";
 import { dueServices } from "~/utils/serviceDue";
+import { overflowIconName } from "~/utils/iconRegistry";
 
 useHead({ title: "Vehicle Details" });
 
 const auth = useAuthStore();
+const overflowIcon = overflowIconName(Capacitor.getPlatform());
 const route = useRoute();
 const vehicleId = computed(() => String(route.params.id || ""));
 

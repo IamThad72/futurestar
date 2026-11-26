@@ -17,7 +17,7 @@
           class="inline-flex w-10 shrink-0 items-center justify-center self-stretch rounded-md text-base-content/40 hover:bg-base-200 hover:text-base-content/70 sm:w-12"
           aria-hidden="true"
         >
-          <Bars2Icon class="size-6" />
+          <AppIcon name="reorder-two" :size="24" />
         </span>
         <div class="flex min-w-0 flex-1 flex-col gap-2 py-0.5">
           <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
@@ -146,7 +146,6 @@
 </template>
 
 <script setup>
-import { Bars2Icon } from "@heroicons/vue/24/outline";
 import { CATALOG_PICKER_KEY, catalogExerciseId, payloadFromExercise, WORKOUT_EXERCISE_DND } from "~/utils/workoutDraft";
 
 const props = defineProps({

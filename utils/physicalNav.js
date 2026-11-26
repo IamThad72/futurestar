@@ -4,16 +4,19 @@ export const PHYSICAL_SECTIONS = [
   {
     name: "Nutrition Journal",
     slug: "nutrition",
+    icon: "nutrition",
     description: "Set a daily plan, add foods, and log servings against your targets.",
   },
   {
     name: "Exercise Journal",
     slug: "workout-journal",
+    icon: "journal",
     description: "Start a saved plan or an empty session, then log the sets you actually did.",
   },
   {
     name: "Workout Manager",
     slug: "workouts",
+    icon: "barbell",
     description: "Save workout plans. Open one to edit its exercises and targets.",
   },
 ];
@@ -22,31 +25,37 @@ export const PHYSICAL_CATEGORIES = [
   {
     name: "Cardio Training",
     slug: "cardio-training",
+    icon: "bicycle",
     description: "Outdoor cardio and machines: runs, walks, bikes, and trainers.",
   },
   {
     name: "Plyometrics Training",
     slug: "plyometrics-training",
+    icon: "flash",
     description: "Explosive jumps and plyo work for power and landing control.",
   },
   {
     name: "Stretching",
     slug: "stretching",
+    icon: "body",
     description: "Stretches grouped by hips, back, shoulders, legs, and neck.",
   },
   {
     name: "Weight Lifting",
     slug: "strength-training",
+    icon: "barbell",
     description: "Pulling strength with dumbbells, kettlebells, or body resistance / no weights.",
   },
   {
     name: "Yoga Training",
     slug: "yoga-training",
+    icon: "leaf",
     description: "Yoga poses and flows matched from the flexibility catalog.",
   },
   {
     name: "Aerobic Training",
     slug: "aerobic-training",
+    icon: "walk",
     description: "Higher-pulse bodyweight, rope, and kettlebell aerobic work.",
   },
 ];
@@ -79,12 +88,14 @@ export const PHYSICAL_NAV_TABS = [
   {
     name: "Physical Home",
     href: "/physical",
+    icon: "fitness",
     description: "Overview of your physical health tools.",
     match: (path) => path === "/physical",
   },
   ...PHYSICAL_SECTIONS.map((section) => ({
     name: section.name,
     href: `/physical/${section.slug}`,
+    icon: section.icon,
     description: section.description,
     match: (path) =>
       section.slug === "workouts"

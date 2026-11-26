@@ -5,7 +5,8 @@
       <ul>
         <li v-for="tab in group.tabs" :key="tab.href">
           <AppLink :to="tab.href" :aria-current="tab.current ? 'page' : undefined">
-            {{ tab.name }}
+            <AppIcon v-if="tab.icon" :name="tab.icon" :size="20" :filled="tab.current" />
+            <span>{{ tab.name }}</span>
           </AppLink>
         </li>
       </ul>

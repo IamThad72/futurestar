@@ -262,7 +262,7 @@
           @click="paletteCollapsed = false"
         >
           <span class="account-map-palette-rail__label">Records</span>
-          <span aria-hidden="true">›</span>
+          <AppIcon name="chevron-forward" :size="18" />
         </button>
 
         <div
@@ -288,7 +288,7 @@
               aria-label="Close records panel"
               @click="paletteCollapsed = true"
             >
-              ‹
+              <AppIcon name="chevron-back" :size="18" />
             </button>
           </div>
 

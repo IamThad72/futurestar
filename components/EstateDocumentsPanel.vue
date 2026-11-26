@@ -41,8 +41,8 @@
             :title="isPreviewable(doc.mime_type) ? 'View' : 'Open'"
             @click="openDocument(doc)"
           >
-            <EyeIcon v-if="isPreviewable(doc.mime_type)" class="size-4" aria-hidden="true" />
-            <ArrowTopRightOnSquareIcon v-else class="size-4" aria-hidden="true" />
+            <AppIcon v-if="isPreviewable(doc.mime_type)" name="eye" :size="20" />
+            <AppIcon v-else name="open" :size="20" />
           </button>
           <button
             type="button"
@@ -51,7 +51,7 @@
             title="Download"
             @click="downloadDocument(doc)"
           >
-            <ArrowDownTrayIcon class="size-4" aria-hidden="true" />
+            <AppIcon name="download" :size="20" />
           </button>
           <button
             type="button"
@@ -60,7 +60,7 @@
             title="Delete"
             @click="deleteDocument(doc)"
           >
-            <TrashIcon class="size-4" aria-hidden="true" />
+            <AppIcon name="trash" :size="20" />
           </button>
         </div>
       </ion-item>
@@ -143,12 +143,6 @@
 </template>
 
 <script setup>
-import {
-  ArrowDownTrayIcon,
-  ArrowTopRightOnSquareIcon,
-  EyeIcon,
-  TrashIcon,
-} from "@heroicons/vue/24/outline";
 import { IonItem, IonLabel, IonList } from "@ionic/vue";
 import { parseFetchError } from "~/utils/parseFetchError";
 
@@ -427,8 +421,10 @@ defineExpose({ openUpload, loadDocuments });
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  min-width: 44px;
+  min-height: 44px;
   border: none;
   border-radius: 0;
   background: transparent;
