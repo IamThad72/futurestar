@@ -38,7 +38,7 @@
     "cap:run:android:live": "node scripts/warn-skip-sync.mjs && cross-env CAPACITOR_DEV=true npx cap run android --no-sync",
     "cap:run:ios": "npm run cap:sync:dev && cross-env CAPACITOR_DEV=true npx cap run ios",
     "assets:generate": "node scripts/generate-app-assets.mjs",
-    "cap:assets": "npm run assets:generate && npx @capacitor/assets generate --assetPath resources --iconBackgroundColor '#1F3A5F' --splashBackgroundColor '#FBF8F3'"
+    "cap:assets": "npm run assets:generate && npx @capacitor/assets generate --assetPath resources --ios --android --iconBackgroundColor \"#1F3A5F\" --iconBackgroundColorDark \"#0F1621\" --splashBackgroundColor \"#FBF8F3\" --splashBackgroundColorDark \"#0F1621\" && node scripts/normalize-native-icons.mjs"
   },
   "dependencies": {
     "@azure/cosmos": "^4.9.0",

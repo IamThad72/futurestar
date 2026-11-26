@@ -50,12 +50,14 @@ Money, Faith, and Body stay highlighted for the pages under those areas, not onl
 
 ## Icons & splash screen
 
-Branding is generated from `resources/icon-only.png` and `resources/splash.png` (built by `scripts/generate-app-assets.mjs`).
+`scripts/generate-app-assets.mjs` draws the Sacred Ledger mark into `resources/` (`icon-only.png`, adaptive foreground and background, light and dark splash). Web icons are real PNGs in `public/icons/`, linked from `public/manifest.webmanifest`.
 
 ```bash
-npm run cap:assets    # regenerate PNG sources + Android/iOS/PWA assets
+npm run cap:assets    # redraw sources, then iOS and Android assets
 npm run cap:sync      # production build + sync
 ```
+
+`cap:assets` does not bump `versionCode` or the iOS marketing version. See `resources/README.md` for what `@capacitor/assets` 3.0.5 gets wrong and how the normalize step corrects it. The mobile dist check allows `public/icons` and `manifest.webmanifest` beside `_nuxt/`; those are static files, not routes.
 
 ## Commands
 

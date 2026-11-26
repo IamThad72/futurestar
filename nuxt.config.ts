@@ -25,13 +25,17 @@ export default defineNuxtConfig({
         { name: "theme-color", content: "#0F1621", media: "(prefers-color-scheme: dark)" },
         { name: "color-scheme", content: "light dark" },
       ],
-      link: bundledFonts.map((font) => ({
-        rel: "preload",
-        as: "font",
-        type: "font/woff2",
-        href: bundledFontPublicPath(font.file),
-        crossorigin: "anonymous",
-      })),
+      link: [
+        { rel: "manifest", href: "/manifest.webmanifest" },
+        { rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png", sizes: "180x180" },
+        ...bundledFonts.map((font) => ({
+          rel: "preload",
+          as: "font",
+          type: "font/woff2",
+          href: bundledFontPublicPath(font.file),
+          crossorigin: "anonymous",
+        })),
+      ],
       script: [
         {
           key: "sacred-ledger-theme",
