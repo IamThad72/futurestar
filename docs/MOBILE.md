@@ -57,7 +57,7 @@ npm run cap:assets    # redraw sources, then iOS and Android assets
 npm run cap:sync      # production build + sync
 ```
 
-`cap:assets` does not bump `versionCode` or the iOS marketing version. See `resources/README.md` for what `@capacitor/assets` 3.0.5 gets wrong and how the normalize step corrects it. The mobile dist check allows `public/icons` and `manifest.webmanifest` beside `_nuxt/`; those are static files, not routes.
+`cap:assets` does not bump `versionCode` or the iOS marketing version. See `resources/README.md` for what `@capacitor/assets` 3.0.5 gets wrong and how the normalize step corrects it. The mobile dist check allows `fonts`, `licenses`, `icons`, and `manifest.webmanifest` beside `_nuxt/`. Those are static files, not routes.
 
 ## Commands
 

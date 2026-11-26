@@ -189,7 +189,7 @@ test("release versions and the app id are unchanged", () => {
   assert.match(project, /MARKETING_VERSION = 1\.0;/);
   assert.match(project, /CURRENT_PROJECT_VERSION = 1;/);
   const config = readFileSync(join(root, "capacitor.config.ts"), "utf8");
-  assert.match(config, /appId: "com\.futurestar\.myfin"/);
+  assert.match(config, /appId: "com\.futurestar\.app"/);
   const css = readFileSync(join(root, "assets/css/main.css"), "utf8");
   assert.match(css, /--color-navy:\s*#1f3a5f/i);
   assert.match(css, /--color-gold:\s*#c9a24a/i);
