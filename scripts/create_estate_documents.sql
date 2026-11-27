@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS estate_documents (
     mime_type TEXT NOT NULL,
     size_bytes INTEGER NOT NULL,
     storage_path TEXT NOT NULL,
-    storage_backend TEXT NOT NULL DEFAULT 'disk',
+    storage_backend TEXT NOT NULL DEFAULT 'supabase',
     title TEXT,
     notes TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

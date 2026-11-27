@@ -94,7 +94,7 @@
             <span class="label-text text-sm">Notes (optional)</span>
             <textarea v-model.trim="uploadForm.notes" class="textarea textarea-bordered textarea-sm w-full" rows="2" maxlength="2000" />
           </label>
-          <div v-if="uploadError" class="text-sm text-error">{{ uploadError }}</div>
+          <div v-if="uploadError" class="text-sm text-error" role="alert" aria-live="polite">{{ uploadError }}</div>
           <div class="modal-action">
             <button type="button" class="btn btn-ghost btn-sm min-h-9" @click="uploadModalRef?.close()">
               Cancel

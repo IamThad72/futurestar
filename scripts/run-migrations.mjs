@@ -102,6 +102,7 @@ const migrations = [
   "create_workouts.sql",
   "create_workout_journal.sql",
   "create_estate_documents.sql",
+  "alter_estate_documents_storage_backend_default.sql",
   "create_spiritual_daily_reviews.sql",
   "create_investment_positions.sql",
   "create_tax_household_profiles.sql",
