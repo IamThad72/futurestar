@@ -728,6 +728,7 @@ describe("throttle, households, and handoff details", () => {
     db.rows.investment_positions.push(
       { position_id: 1, ci_id: 10, user_id: 2, group_id: 4, symbol: "AAA" },
       { position_id: 2, ci_id: 11, user_id: 2, group_id: null, symbol: "BBB" },
+      { position_id: 3, ci_id: 10, user_id: 2, group_id: null, symbol: "CCC" },
     );
     db.rows.asset_vehicles.push({ vh_id: 3, user_id: 2, group_id: null, make: "Bike" });
     db.rows.vehicle_service_records.push({ vsr_id: 5, vh_id: 3, user_id: 2, group_id: null, service_name: "oil" });
@@ -735,6 +736,7 @@ describe("throttle, households, and handoff details", () => {
     expect(db.users.map((item) => item.user_id)).toEqual([1]);
     expect(db.rows.cash_and_investments.find((row) => row.ci_id === 10)?.user_id).toBe(1);
     expect(db.rows.investment_positions.find((row) => row.position_id === 1)?.user_id).toBe(1);
+    expect(db.rows.investment_positions.find((row) => row.position_id === 3)?.user_id).toBe(1);
     expect(db.rows.cash_and_investments.find((row) => row.ci_id === 11)?.user_id).toBeNull();
     expect(db.rows.investment_positions.find((row) => row.position_id === 2)?.user_id).toBeNull();
     expect(db.rows.asset_vehicles[0]?.user_id).toBeNull();
@@ -750,7 +752,7 @@ describe("throttle, households, and handoff details", () => {
       headers: { authorization: "Bearer 1234567890123456" },
     }));
     expect(result.privateRowsPurged).toBe(2);
-    expect(db.rows.investment_positions.map((row) => row.position_id)).toEqual([1]);
+    expect(db.rows.investment_positions.map((row) => row.position_id).sort()).toEqual([1, 3]);
     expect(db.rows.cash_and_investments.map((row) => row.ci_id)).toEqual([10]);
     expect(db.rows.vehicle_service_records).toHaveLength(1);
     expect(db.rows.asset_vehicles).toHaveLength(1);

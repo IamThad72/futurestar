@@ -392,6 +392,29 @@ async function deleteHeldChildren(client: QueryClient, parent: string, parentPk:
   return { table: spec.child, count: Number(deleted.rowCount ?? 0) };
 }
 
+/**
+ * A holding or service row that still names the leaving person, but whose
+ * parent was already given to someone else, follows that parent. Rows that
+ * still point at the leaving person are left alone so ON DELETE RESTRICT
+ * rejects a delete that forgot to detach them.
+ */
+async function followReownedParents(client: QueryClient, userId: number) {
+  for (const spec of PRIVATE_HOLD_CHILDREN) {
+    if (!(await relationExists(client, `public.${spec.child}`))) continue;
+    if (!(await relationExists(client, `public.${spec.parent}`))) continue;
+    await client.query(
+      `UPDATE ${quoteIdent(spec.child)} AS child
+       SET user_id = parent.user_id
+       FROM ${quoteIdent(spec.parent)} AS parent
+       WHERE child.${quoteIdent(spec.childFk)} = parent.${quoteIdent(spec.parentPk)}
+         AND child.user_id = $1
+         AND parent.user_id IS NOT NULL
+         AND parent.user_id <> $1`,
+      [userId],
+    );
+  }
+}
+
 async function holdPrivateAssetRows(client: QueryClient, userId: number) {
   if (!(await relationExists(client, "public.deleted_user_private_rows"))) {
     throw missingMigrationError(MIGRATION_PRIVATE_ROWS);
@@ -424,6 +447,7 @@ async function holdPrivateAssetRows(client: QueryClient, userId: number) {
       );
     }
   }
+  await followReownedParents(client, userId);
 }
 
 /**

@@ -159,6 +159,7 @@ export class AccountDeletionDb {
     if (text.startsWith("UPDATE") && text.includes("source_id =")) return this.renameSource(text, params);
     if (text.startsWith("UPDATE") && text.includes("NOT EXISTS")) return this.reownSkippingNames(text, params);
     if (text.startsWith("UPDATE") && text.includes("household_key")) return this.reownByHouseholdKey(text, params);
+    if (text.includes("SET user_id = parent.user_id")) return this.followReownedParent(text, params);
     if (text.includes("SET user_id = NULL") && (text.includes("investment_positions") || text.includes("vehicle_service_records"))) {
       return this.detachHoldChildren(text, params);
     }
@@ -377,6 +378,23 @@ export class AccountDeletionDb {
   private userIdNullability(params: unknown[]) {
     const table = String(params[0] ?? "");
     return result([{ is_nullable: this.userIdNotNull.has(table) ? "NO" : "YES" }]);
+  }
+
+  private followReownedParent(text: string, params: unknown[]) {
+    const positions = text.includes("investment_positions");
+    const child = positions ? "investment_positions" : "vehicle_service_records";
+    const parent = positions ? "cash_and_investments" : "asset_vehicles";
+    const fk = positions ? "ci_id" : "vh_id";
+    const leaver = Number(params[0]);
+    let count = 0;
+    for (const row of this.rows[child] ?? []) {
+      if (Number(row.user_id) !== leaver) continue;
+      const owner = (this.rows[parent] ?? []).find((item) => Number(item[fk]) === Number(row[fk]));
+      if (!owner || owner.user_id == null || Number(owner.user_id) === leaver) continue;
+      row.user_id = Number(owner.user_id);
+      count += 1;
+    }
+    return result([], count);
   }
 
   private detachHoldChildren(text: string, params: unknown[]) {

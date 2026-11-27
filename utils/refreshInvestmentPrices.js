@@ -63,10 +63,13 @@ export async function refreshInvestmentPrices(client, apiKey, log = () => {}) {
   }
 
   const symbols = await client.query(
-    `SELECT DISTINCT symbol
-     FROM investment_positions
-     WHERE shares IS NOT NULL
-     ORDER BY symbol`,
+    `SELECT DISTINCT p.symbol
+     FROM investment_positions p
+     JOIN cash_and_investments ci ON ci.ci_id = p.ci_id
+     WHERE p.shares IS NOT NULL
+       AND p.user_id IS NOT NULL
+       AND ci.user_id IS NOT NULL
+     ORDER BY p.symbol`,
   );
   const quoted = symbols.rows.map((row) => String(row.symbol || "").toUpperCase()).filter(isQuotedSymbol);
   const touched = new Set();
@@ -83,18 +86,22 @@ export async function refreshInvestmentPrices(client, apiKey, log = () => {}) {
       continue;
     }
     const result = await client.query(
-      `UPDATE investment_positions
+      `UPDATE investment_positions p
        SET price = $1::numeric,
            price_as_of = $2::date,
            market_value = CASE
-             WHEN price IS DISTINCT FROM $1::numeric THEN ROUND(shares * $1::numeric, 2)
-             ELSE market_value
+             WHEN p.price IS DISTINCT FROM $1::numeric THEN ROUND(p.shares * $1::numeric, 2)
+             ELSE p.market_value
            END,
            updated_at = NOW()
-       WHERE symbol = $3
-         AND shares IS NOT NULL
-         AND (price_as_of IS DISTINCT FROM $2::date OR price IS DISTINCT FROM $1::numeric)
-       RETURNING ci_id`,
+       FROM cash_and_investments ci
+       WHERE p.ci_id = ci.ci_id
+         AND p.symbol = $3
+         AND p.shares IS NOT NULL
+         AND p.user_id IS NOT NULL
+         AND ci.user_id IS NOT NULL
+         AND (p.price_as_of IS DISTINCT FROM $2::date OR p.price IS DISTINCT FROM $1::numeric)
+       RETURNING p.ci_id`,
       [close.close, close.date, symbol],
     );
     for (const row of result.rows) touched.add(Number(row.ci_id));
@@ -110,9 +117,10 @@ export async function refreshInvestmentPrices(client, apiKey, log = () => {}) {
          SELECT ci_id, ROUND(SUM(market_value), 2) AS total
          FROM investment_positions
          WHERE ci_id = $1
+           AND user_id IS NOT NULL
          GROUP BY ci_id
        ) s
-       WHERE ci.ci_id = s.ci_id AND s.total IS NOT NULL`,
+       WHERE ci.ci_id = s.ci_id AND ci.user_id IS NOT NULL AND s.total IS NOT NULL`,
       [accountId],
     );
   }

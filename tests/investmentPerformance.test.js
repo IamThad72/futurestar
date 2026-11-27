@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { formatInvestmentShares, truncateDescription } from "../utils/investmentFormat.js";
 import { isQuotedSymbol, latestDailyClose } from "../utils/investmentQuotes.js";
-import { cronAuthorized } from "../utils/refreshInvestmentPrices.js";
+import { cronAuthorized, refreshInvestmentPrices } from "../utils/refreshInvestmentPrices.js";
 import {
   accountValueStack,
   gainFromTotals,
@@ -244,6 +244,40 @@ test("daily close parser accepts a close and skips cash symbols", () => {
   assert.equal(isQuotedSymbol("SPAXX"), true);
   assert.equal(isQuotedSymbol("FCASH"), false);
   assert.equal(isQuotedSymbol("84679P306"), false);
+});
+
+test("price refresh does not reprice a held position", async () => {
+  const queries = [];
+  const client = {
+    async query(sql) {
+      const text = sql.replace(/\s+/g, " ").trim();
+      queries.push(text);
+      if (text.startsWith("CREATE TABLE")) return { rowCount: 0, rows: [] };
+      if (text.startsWith("INSERT INTO investment_price_runs")) return { rowCount: 1, rows: [{ id: 1 }] };
+      if (text.startsWith("SELECT DISTINCT")) return { rowCount: 1, rows: [{ symbol: "AAPL" }] };
+      if (text.startsWith("UPDATE investment_positions")) return { rowCount: 0, rows: [] };
+      return { rowCount: 1, rows: [] };
+    },
+  };
+  const previous = globalThis.fetch;
+  globalThis.fetch = async () => ({
+    ok: true,
+    json: async () => ({ "Time Series (Daily)": { "2026-11-26": { "4. close": "10.50" } } }),
+  });
+  try {
+    const result = await refreshInvestmentPrices(client, "test-key", () => {});
+    assert.equal(result.ran, true);
+    assert.equal(result.updated, 0);
+  } finally {
+    globalThis.fetch = previous;
+  }
+  const symbolQuery = queries.find((sql) => sql.startsWith("SELECT DISTINCT"));
+  const updateQuery = queries.find((sql) => sql.startsWith("UPDATE investment_positions"));
+  assert.match(symbolQuery, /p\.user_id IS NOT NULL/);
+  assert.match(symbolQuery, /ci\.user_id IS NOT NULL/);
+  assert.match(updateQuery, /p\.user_id IS NOT NULL/);
+  assert.match(updateQuery, /ci\.user_id IS NOT NULL/);
+  assert.match(updateQuery, /FROM cash_and_investments ci/);
 });
 
 test("price cron accepts only a long bearer secret", () => {
