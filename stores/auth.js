@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { Capacitor } from "@capacitor/core";
-import { parseFetchError } from "~/utils/parseFetchError";
+import { bindSessionAuth, isAuthStatus, parseFetchError, SESSION_ENDED_MESSAGE } from "~/utils/parseFetchError";
 
 function isNativeApp() {
   return import.meta.client && Capacitor.isNativePlatform();
@@ -12,17 +12,24 @@ export const useAuthStore = defineStore("auth", {
     loading: false,
     error: "",
     ready: false,
+    /** Set when a signed-in request comes back 401/403. Not a first-time guest. */
+    sessionEnded: false,
   }),
   actions: {
     async fetchSession() {
       this.loading = true;
-      this.error = "";
+      if (!this.sessionEnded) this.error = "";
 
       try {
         const response = await $fetch("/api/auth/me", { timeout: 8000 });
         this.user = response?.user ?? null;
+        if (this.user) this.sessionEnded = false;
       } catch (error) {
-        this.error = parseFetchError(error, "Session check failed.");
+        if (isAuthStatus(error) && (this.user || this.sessionEnded)) {
+          parseFetchError(error);
+        } else if (!isAuthStatus(error)) {
+          this.error = parseFetchError(error, "Session check failed.");
+        }
         this.user = null;
       } finally {
         this.loading = false;
@@ -47,6 +54,7 @@ export const useAuthStore = defineStore("auth", {
             });
             if (legacyResponse?.user) {
               this.user = legacyResponse.user;
+              this.sessionEnded = false;
               return this.user;
             }
           } catch (legacyErr) {
@@ -91,6 +99,7 @@ export const useAuthStore = defineStore("auth", {
           headers: { Authorization: `Bearer ${token}` },
         });
         this.user = response?.user ?? null;
+        if (this.user) this.sessionEnded = false;
         return this.user;
       } catch (error) {
         this.error =
@@ -228,6 +237,7 @@ export const useAuthStore = defineStore("auth", {
     },
     async logout() {
       this.loading = true;
+      this.sessionEnded = false;
       this.error = "";
 
       try {
@@ -246,3 +256,29 @@ export const useAuthStore = defineStore("auth", {
     },
   },
 });
+
+bindSessionAuth(
+  () => {
+    try {
+      const auth = useAuthStore();
+      return { signedIn: Boolean(auth.user), ended: Boolean(auth.sessionEnded) };
+    } catch {
+      return { signedIn: false, ended: false };
+    }
+  },
+  () => {
+    try {
+      const auth = useAuthStore();
+      if (!auth.user && auth.sessionEnded) return;
+      const wasSignedIn = Boolean(auth.user);
+      auth.user = null;
+      auth.sessionEnded = true;
+      auth.error = SESSION_ENDED_MESSAGE;
+      if (wasSignedIn && import.meta.client && !String(window.location.pathname || "").startsWith("/login")) {
+        void navigateTo("/login", { replace: true });
+      }
+    } catch {
+      /* tests bind their own ender */
+    }
+  },
+);

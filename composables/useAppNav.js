@@ -15,18 +15,7 @@ export function useAppNav() {
   const isSpiritualSection = computed(() => isSpiritualPath(route.path));
   const isSpiritualHome = computed(() => isSpiritualHomePath(route.path));
 
-  const links = computed(() => {
-    if (auth.user) return primaryNavForPath(route.path);
-    return [
-      {
-        name: "Login",
-        path: "/login",
-        icon: "",
-        pillar: "",
-        current: route.path.startsWith("/login"),
-      },
-    ];
-  });
+  const links = computed(() => primaryNavForPath(route.path));
 
   /** Tradition-specific names (e.g. Evening Examen vs Evening Reflection) once the profile has loaded. */
   const faithTradition = computed(() => (faith.loaded.value ? faith.tradition.value : ""));
@@ -44,7 +33,6 @@ export function useAppNav() {
   );
 
   const sidebarGroups = computed(() => {
-    if (!auth.user) return [];
     if (isFinancialSection.value) {
       return financialSidebarGroups(financialTabsForPath(route.path, route.query, route.hash));
     }

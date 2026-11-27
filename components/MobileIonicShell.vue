@@ -22,6 +22,7 @@
       <ion-content ref="contentRef" class="mobile-ionic-content">
         <main
           id="main-content"
+          tabindex="-1"
           ref="mainRef"
           class="mobile-ionic-main"
           :class="{ 'mobile-ionic-main--flush-end': isSpiritualHome }"
@@ -31,7 +32,6 @@
       </ion-content>
 
       <ion-footer
-        v-if="auth.user"
         v-show="!textFieldFocused"
         class="mobile-area-bar"
       >

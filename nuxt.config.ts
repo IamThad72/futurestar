@@ -2,6 +2,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { bundledFontPublicPath, bundledFonts, copyBundledFonts } from "./scripts/copy-bundled-fonts.mjs";
+import { documentTitle } from "./utils/documentTitle.js";
 
 copyBundledFonts();
 
@@ -22,7 +23,7 @@ export default defineNuxtConfig({
     head: {
       htmlAttrs: { lang: "en" },
       title: "Future Star",
-      titleTemplate: "%s · Future Star",
+      titleTemplate: documentTitle,
       viewport: "width=device-width, initial-scale=1, viewport-fit=cover",
       meta: [
         { name: "description", content: "A household app for money, faith, and the body." },

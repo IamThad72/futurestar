@@ -7,7 +7,7 @@
           <h1>Garage</h1>
           <p class="page-header__lede">Vehicles and the service history that goes with them.</p>
         </div>
-        <button type="button" class="btn btn-primary" @click="openAddVehicle">Add a vehicle</button>
+        <button v-if="auth.user" type="button" class="btn btn-primary" @click="openAddVehicle">Add a vehicle</button>
       </header>
 
       <p v-if="loading" class="text-sm text-muted">Loading…</p>
@@ -16,7 +16,7 @@
         v-else-if="!sortedVehicles.length"
         title="No vehicles yet."
         sentence="Add a car or truck to keep its service history here."
-        action="Add a vehicle"
+        :action="auth.user ? 'Add a vehicle' : ''"
         @action="openAddVehicle"
       />
       <EstateRecordList
@@ -112,12 +112,22 @@ function openVehicle(item) {
 }
 
 async function openAddVehicle() {
+  if (!auth.user) {
+    void navigateTo("/login");
+    return;
+  }
   addModalMounted.value = true;
   await nextTick();
   addModalRef.value?.open("vehicle");
 }
 
 async function loadVehicles() {
+  if (!auth.user) {
+    vehicles.value = [];
+    error.value = "";
+    loading.value = false;
+    return;
+  }
   loading.value = true;
   error.value = "";
   try {

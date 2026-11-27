@@ -1,7 +1,15 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { isAuthStatus, parseFetchError, settleLoadError } from "../utils/parseFetchError.js";
+import { documentTitle } from "../utils/documentTitle.js";
+import {
+  bindSessionAuth,
+  isAuthStatus,
+  parseFetchError,
+  SESSION_ENDED_MESSAGE,
+  settleLoadError,
+  SIGN_IN_MESSAGE,
+} from "../utils/parseFetchError.js";
 import { physicalSidebarGroups, physicalTabsForPath } from "../utils/physicalNav.js";
 import { taxYearPath } from "../utils/taxYear.js";
 
@@ -9,13 +17,38 @@ function authError(status) {
   return { statusCode: status, data: { statusMessage: "You must be logged in." } };
 }
 
-test("401 and 403 settle to empty data instead of an error message", () => {
+test("a first-time guest load is empty data, and a write still says to sign in", () => {
+  bindSessionAuth(() => ({ signedIn: false, ended: false }));
   for (const status of [401, 403]) {
     const error = authError(status);
     assert.equal(isAuthStatus(error), true);
-    assert.equal(parseFetchError(error, "Could not load."), "");
-    assert.deepEqual(settleLoadError(error, "Could not load."), { auth: true, message: "" });
+    assert.equal(parseFetchError(error, "Could not load."), SIGN_IN_MESSAGE);
+    assert.notEqual(parseFetchError(error), "");
+    assert.deepEqual(settleLoadError(error, "Could not load."), {
+      auth: true,
+      expired: false,
+      message: "",
+    });
   }
+});
+
+test("a 401 while the client was signed in ends the session once and keeps a message", () => {
+  let ended = 0;
+  bindSessionAuth(
+    () => ({ signedIn: ended === 0, ended: ended > 0 }),
+    () => {
+      ended += 1;
+    },
+  );
+  const error = authError(401);
+  assert.equal(parseFetchError(error), SESSION_ENDED_MESSAGE);
+  assert.equal(ended, 1);
+  const settled = settleLoadError(error, "Could not load.");
+  assert.equal(settled.expired, true);
+  assert.equal(settled.message, SESSION_ENDED_MESSAGE);
+  assert.notEqual(settled.message, "");
+  assert.equal(ended, 1);
+  bindSessionAuth(() => ({ signedIn: false, ended: false }));
 });
 
 test("network and server failures stay errors for LoadErrorPanel", () => {
@@ -52,6 +85,23 @@ test("Body sidebar splits journals and plans", () => {
     groups[1].tabs.map((tab) => tab.name),
     ["Workout Manager"],
   );
+});
+
+test("the You page hides account controls when there is no session", () => {
+  const page = readFileSync(new URL("../pages/account.vue", import.meta.url), "utf8");
+  assert.match(page, /Your profile/);
+  assert.match(page, /Sign in to manage your profile/);
+  assert.match(page, /v-if="auth\.user" class="you-menu/);
+  assert.match(page, /v-if="auth\.user" class="you-page__logout"/);
+  assert.match(page, /v-if="auth\.user" class="mt-4" aria-labelledby="privacy-and-data-heading"/);
+});
+
+test("document titles do not repeat the brand", () => {
+  assert.equal(documentTitle("Future Star"), "Future Star");
+  assert.equal(documentTitle(""), "Future Star");
+  assert.equal(documentTitle(undefined), "Future Star");
+  assert.equal(documentTitle("Budget Setup"), "Budget Setup · Future Star");
+  assert.equal(documentTitle("Delete your account"), "Delete your account · Future Star");
 });
 
 test("named loaders map anonymous responses through settleLoadError", () => {

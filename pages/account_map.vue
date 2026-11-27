@@ -6,6 +6,7 @@
       sentence="Use Budget Setup to add and edit lines on this phone."
       action="Open Budget Setup"
       to="/cash_flow_mgmt"
+      :level="1"
     />
     <div v-else class="account-map-page">
     <p v-if="!auth.ready" class="text-sm text-muted">Loading…</p>

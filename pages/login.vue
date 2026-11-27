@@ -153,6 +153,8 @@ function switchToSignIn() {
 }
 
 onMounted(() => {
+  if (auth.sessionEnded && auth.error) error.value = auth.error;
+
   const deletedNotice = takeAccountDeletedNotice();
   if (deletedNotice) success.value = deletedNotice;
 

@@ -102,6 +102,11 @@ function greetingName(user) {
 }
 
 async function loadLiturgicalDay() {
+  if (!auth.user) {
+    liturgicalPending.value = false;
+    liturgicalLabel.value = "";
+    return;
+  }
   liturgicalPending.value = true;
   liturgicalLabel.value = "";
   try {
@@ -130,6 +135,13 @@ async function loadLiturgicalDay() {
 }
 
 async function loadPhysical() {
+  if (!auth.user) {
+    physicalLoading.value = false;
+    physicalError.value = "";
+    physicalDetail.value = "";
+    physicalText.value = "No session is logged today.";
+    return;
+  }
   physicalLoading.value = true;
   physicalError.value = "";
   try {
@@ -147,7 +159,14 @@ async function loadPhysical() {
     physicalText.value = "";
     physicalDetail.value = "";
     const failure = settleLoadError(error, "Could not load today.");
-    if (failure.auth) return;
+    if (failure.expired) {
+      physicalError.value = failure.message;
+      return;
+    }
+    if (failure.auth) {
+      physicalText.value = "No session is logged today.";
+      return;
+    }
     physicalError.value = failure.message;
   } finally {
     physicalLoading.value = false;

@@ -14,6 +14,7 @@
             {{ mirrorLoading ? "Reading…" : "See this week's note" }}
           </button>
           <p v-if="mirrorError" class="mt-2 text-sm text-red-600">{{ mirrorError }}</p>
+          <p v-else-if="mirrorNote" class="mt-2 text-base text-muted">{{ mirrorNote }}</p>
           <p v-else-if="mirrorText" class="mt-2 max-w-xl text-sm leading-6 text-base-content/80">{{ mirrorText }}</p>
         </div>
       </header>
@@ -76,18 +77,32 @@ const showDock = computed(() => {
 /** Reload the panel when the tradition changes (Roman vs church-year days). */
 const calendarKey = computed(() => `${faith.tradition.value}-${faith.calendarKind.value}`);
 const mirrorText = ref("");
+const mirrorNote = ref("");
 const mirrorError = ref("");
 const mirrorLoading = ref(false);
 
 async function loadMirror() {
   if (mirrorLoading.value) return;
-  mirrorLoading.value = true;
   mirrorError.value = "";
+  mirrorNote.value = "";
+  if (!auth.user) {
+    mirrorNote.value = "No note for this week yet.";
+    return;
+  }
+  mirrorLoading.value = true;
   try {
     const data = await $fetch("/api/spiritual/mirror");
     mirrorText.value = String(data?.text || "");
   } catch (error) {
     const failure = settleLoadError(error, "Could not read this week.");
+    if (failure.expired) {
+      mirrorError.value = failure.message;
+      return;
+    }
+    if (failure.auth) {
+      mirrorNote.value = "No note for this week yet.";
+      return;
+    }
     mirrorError.value = failure.message;
   } finally {
     mirrorLoading.value = false;

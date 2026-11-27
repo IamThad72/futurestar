@@ -55,12 +55,19 @@
     />
 
     <div v-else class="space-y-6">
+      <EmptyState
+        v-if="!loading && !hasBudgetLines"
+        title="No budget lines yet."
+        sentence="Add a line to start a plan."
+      />
+      <template v-if="loading || hasBudgetLines">
       <header>
         <p class="text-sm font-medium text-gray-500 dark:text-gray-400">
           Current snapshot
         </p>
       </header>
       <EstateStatsGrid :stats="budgetSnapshotStats" :loading="loading" />
+      </template>
 
       <!-- Add Budget Item modal -->
       <LazyAddBudgetItemModal
@@ -70,7 +77,7 @@
       />
 
       <!-- Budget summary (A–Z by section title; always expanded) -->
-      <div class="grid w-full grid-cols-1 gap-6">
+      <div v-if="loading || hasBudgetLines" class="grid w-full grid-cols-1 gap-6">
         <!-- Expenses (expense type only) -->
         <div class="w-full overflow-hidden rounded-lg border border-primary bg-transparent">
           <div class="border-b border-primary pl-2.5 pr-1.5 py-4">
@@ -748,6 +755,8 @@ import { formatDebtRecordLabel } from "~/utils/budgetDebt";
 import { overflowIconName } from "~/utils/iconRegistry";
 import { isGrossIncomeBudgetLine, isNetIncomeBudgetLine } from "~/utils/budgetChart";
 
+useHead({ title: "Budget Setup" });
+
 const auth = useAuthStore();
 const overflowIcon = overflowIconName(Capacitor.getPlatform());
 const addBudgetModalRef = ref(null);
@@ -859,6 +868,11 @@ function isGrossPayLine(item) {
 }
 
 const snapshotReady = ref(false);
+const hasBudgetLines = computed(() => {
+  const income = budgets.value.income ?? [];
+  const expenses = budgets.value.expenses ?? [];
+  return income.length + expenses.length > 0;
+});
 
 const budgetSnapshotStats = computed(() => {
   const income = budgets.value.income ?? [];

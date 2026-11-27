@@ -40,28 +40,78 @@ export function fetchStatus(error) {
   return Number.isFinite(status) ? status : 0;
 }
 
-/** Anonymous or forbidden responses are empty data, not a page error. */
+/** Anonymous or forbidden responses. Loaders may treat a guest as empty data. */
 export function isAuthStatus(error) {
   const status = fetchStatus(error);
   return status === 401 || status === 403;
 }
 
+export const SESSION_ENDED_MESSAGE = "Your session ended. Please sign in again.";
+export const SIGN_IN_MESSAGE = "Please sign in.";
+
 /**
- * Loaders use this so a signed-out request clears to empty data.
- * Real failures keep a message for LoadErrorPanel.
+ * Who the client thinks is signed in. The auth store registers this.
+ * Tests can replace it. The default is a first-time guest.
+ */
+let readSession = () => ({ signedIn: false, ended: false });
+let endSession = () => {};
+
+export function bindSessionAuth(reader, ender = () => {}) {
+  readSession = typeof reader === "function" ? reader : () => ({ signedIn: false, ended: false });
+  endSession = typeof ender === "function" ? ender : () => {};
+}
+
+function sessionState() {
+  try {
+    const state = readSession() || {};
+    return { signedIn: Boolean(state.signedIn), ended: Boolean(state.ended) };
+  } catch {
+    return { signedIn: false, ended: false };
+  }
+}
+
+/**
+ * A 401/403 while the client still had a user is an expired session, not a guest.
+ * Returns true when this request should say the session ended.
+ */
+export function markSessionEnded() {
+  const state = sessionState();
+  if (state.signedIn) {
+    try {
+      endSession();
+    } catch {
+      /* the store clears itself */
+    }
+    return true;
+  }
+  return state.ended;
+}
+
+/**
+ * Loaders only. A first-time guest becomes empty data.
+ * An expired session keeps a message so the page does not look blank on purpose.
  */
 export function settleLoadError(error, fallback = "Something went wrong. Please try again.") {
-  if (isAuthStatus(error)) return { auth: true, message: "" };
-  return { auth: false, message: parseFetchError(error, fallback) };
+  if (isAuthStatus(error)) {
+    const expired = markSessionEnded();
+    return {
+      auth: true,
+      expired,
+      message: expired ? SESSION_ENDED_MESSAGE : "",
+    };
+  }
+  return { auth: false, expired: false, message: parseFetchError(error, fallback) };
 }
 
 /**
  * Map $fetch / network errors to user-facing messages.
- * 401 and 403 are not errors to show: the page stays empty and browsable.
+ * Mutations use this. 401/403 always return a sentence, never an empty string.
  */
 export function parseFetchError(error, fallback = "Something went wrong. Please try again.") {
   if (!error) return fallback;
-  if (isAuthStatus(error)) return "";
+  if (isAuthStatus(error)) {
+    return markSessionEnded() ? SESSION_ENDED_MESSAGE : SIGN_IN_MESSAGE;
+  }
 
   const status = fetchStatus(error);
 

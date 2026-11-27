@@ -51,7 +51,7 @@ export const SPIRITUAL_SECTIONS = [
 
 /** Sidebar groups: daily rhythm first, then ongoing practices. */
 export const SPIRITUAL_GROUPS = [
-  { key: "daily", name: "Today" },
+  { key: "daily", name: "Daily" },
   { key: "practices", name: "Practices" },
 ];
 
@@ -129,7 +129,7 @@ export function spiritualHomeLinks(tradition) {
 
 export const SPIRITUAL_HOME_LINKS = spiritualHomeLinks();
 
-/** Sidebar groups ("Today", "Practices") with their tabs for the current path. */
+/** Sidebar groups ("Daily", "Practices") with their tabs for the current path. */
 export function spiritualSidebarGroups(path, tradition) {
   const tabs = spiritualTabsForPath(path, tradition).filter((tab) => tab.href !== "/spiritual");
   return SPIRITUAL_GROUPS.map((group) => ({

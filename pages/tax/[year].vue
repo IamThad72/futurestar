@@ -1,13 +1,16 @@
 <template>
   <section class="app-page-wide space-y-4 sm:space-y-6">
     <header class="page-header">
+      <div class="page-header__copy">
       <h1>Tax</h1>
+      <p v-if="auth.ready && !auth.user" class="page-header__lede">Annual totals and estimated taxes for the year.</p>
       <p v-if="auth.ready && auth.user && !loading && model.profileMissing" class="min-w-0 text-sm text-base-content/80">
         Federal, state, and local estimates wait until you save a filing status for {{ selectedYear }}. Nothing is assumed. Withholding and paycheck totals stay visible either way.
       </p>
       <p v-else-if="auth.ready && auth.user && profileSummary" class="min-w-0 text-sm text-base-content/80">
         {{ profileSummary }}
       </p>
+      </div>
       <button
         v-if="auth.ready && auth.user"
         type="button"

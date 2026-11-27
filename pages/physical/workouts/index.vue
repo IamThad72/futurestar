@@ -66,6 +66,10 @@ const {
 } = useWorkoutDraft();
 
 function onNew() {
+  if (!auth.user) {
+    void navigateTo("/login");
+    return;
+  }
   startNew();
   editing.value = true;
 }

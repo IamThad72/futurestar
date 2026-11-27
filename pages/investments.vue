@@ -16,15 +16,13 @@
       </p>
     </header>
 
-    <div
+    <EmptyState
       v-if="!holdings.length"
-      class="rounded-lg border border-base-300 bg-base-100 px-4 py-10 text-center text-sm text-base-content/60"
-    >
-      <p>No holdings to show.</p>
-      <div class="mt-3 flex justify-center">
-        <button type="button" class="investment-edit-btn" @click="openAdd">Add holding</button>
-      </div>
-    </div>
+      title="No holdings to show."
+      sentence="Cost basis and unrealized gain show up after a holding is saved."
+      :action="auth.user ? 'Add holding' : ''"
+      @action="openAdd"
+    />
 
     <template v-else>
       <dl class="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4 sm:gap-3">
@@ -124,7 +122,7 @@
         <p class="text-xs leading-5 text-base-content/60">
           Share counts are not added into the portfolio total. Edits are saved on the Estate account.
         </p>
-        <button type="button" class="investment-edit-btn" @click="openAdd">Add holding</button>
+        <button v-if="auth.user" type="button" class="investment-edit-btn" @click="openAdd">Add holding</button>
       </div>
       <p v-if="saveError" class="mt-2 text-xs text-error">{{ saveError }}</p>
 

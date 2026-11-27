@@ -6,7 +6,7 @@
       <header class="page-header">
         <div class="page-header__copy">
           <h1>Budget Tracker</h1>
-          <p class="page-header__lede">Type a store, amount, and day. You'll review it before it's saved.</p>
+          <p class="page-header__lede">Log spending against this month's plan.</p>
         </div>
         <NuxtLink to="/cash_flow_mgmt" class="btn btn-primary shrink-0">Add a budget line</NuxtLink>
       </header>
@@ -114,6 +114,7 @@
         <form class="mb-4 grid gap-2" @submit.prevent="draftTransaction">
           <label class="form-control">
             <span class="label py-1"><span class="label-text text-sm">Describe a transaction</span></span>
+            <p class="mb-1 text-sm text-muted">Type a store, amount, and day. You'll review it before it's saved.</p>
             <input
               v-model.trim="sentenceText"
               type="text"
@@ -2451,6 +2452,10 @@ function buildAddTxDescription(payee, description) {
 }
 
 async function submitTransaction() {
+  if (!auth.user) {
+    void navigateTo("/login");
+    return;
+  }
   txError.value = "";
   const id = txForm.value.budgetItemId;
   const amount = txForm.value.amount;
@@ -2765,6 +2770,10 @@ function cancelEdit() {
 }
 
 async function saveEditTransaction() {
+  if (!auth.user) {
+    void navigateTo("/login");
+    return;
+  }
   if (!editingTxId.value) return;
   editTxError.value = "";
   const amount = editTxForm.value.amount;
@@ -2867,6 +2876,10 @@ function draftTransactionSentence(draft) {
 async function draftTransaction() {
   const text = sentenceText.value.trim();
   if (text.length < 2 || sentenceBusy.value) return;
+  if (!auth.user) {
+    sentenceNotice.value = "No draft for that yet.";
+    return;
+  }
   sentenceBusy.value = true;
   sentenceError.value = "";
   sentenceNotice.value = "";
@@ -2901,7 +2914,16 @@ async function draftTransaction() {
     sentenceNotice.value = "";
     draftTransactionSentence(draft);
   } catch (error) {
-    sentenceError.value = parseFetchError(error, "Could not draft that transaction.");
+    const failure = settleLoadError(error, "Could not draft that transaction.");
+    if (failure.expired) {
+      sentenceError.value = failure.message;
+      return;
+    }
+    if (failure.auth) {
+      sentenceNotice.value = "No draft for that yet.";
+      return;
+    }
+    sentenceError.value = failure.message;
   } finally {
     sentenceBusy.value = false;
   }

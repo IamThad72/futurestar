@@ -1,6 +1,6 @@
 <template>
   <div class="empty-state">
-    <p class="empty-state__title">{{ title }}</p>
+    <component :is="heading" class="empty-state__title">{{ title }}</component>
     <p class="empty-state__sentence">{{ sentence }}</p>
     <NuxtLink v-if="to" :to="to" class="btn btn-primary">{{ action }}</NuxtLink>
     <button v-else-if="action" type="button" class="btn btn-primary" @click="$emit('action')">
@@ -10,12 +10,16 @@
 </template>
 
 <script setup>
-defineProps({
+const props = defineProps({
   title: { type: String, required: true },
   sentence: { type: String, required: true },
   action: { type: String, default: "" },
   to: { type: String, default: "" },
+  /** 1 when this is the page title, 2 under an existing h1, 3 under an h2. */
+  level: { type: Number, default: 2 },
 });
+
+const heading = computed(() => (props.level === 1 || props.level === 3 ? `h${props.level}` : "h2"));
 
 defineEmits(["action"]);
 </script>
@@ -32,12 +36,6 @@ defineEmits(["action"]);
 
 .empty-state__title {
   margin: 0;
-  font-family: "Fraunces Variable", ui-serif, Georgia, serif;
-  font-size: 22px;
-  font-weight: 560;
-  line-height: 28px;
-  letter-spacing: -0.015em;
-  color: var(--sl-ink, #1c2430);
 }
 
 .empty-state__sentence {

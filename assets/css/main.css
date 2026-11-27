@@ -172,7 +172,7 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .app-page-wide {
-  @apply mx-auto w-full max-w-[96rem] min-w-0 overflow-x-hidden px-1 py-4 sm:px-6 sm:py-6 lg:px-8;
+  @apply mx-auto w-full max-w-[96rem] min-w-0 overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8;
 }
 
 @media (max-width: 639.98px) {
