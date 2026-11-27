@@ -33,8 +33,8 @@ test("draft HTML keeps Owner to fill notes and the required sections", () => {
   assert.match(privacy, /kept hidden for 90 days and then permanently deleted/);
   assert.match(privacy, /not visible or accessible in the app/);
   assert.match(privacy, /\(former member\)/);
-  assert.match(terms, /kept hidden for 90 days and then permanently deleted/);
-  assert.match(terms, /A daily job then deletes them\./);
+  assert.match(terms, /kept hidden for 90 days, then a daily job permanently deletes them/);
+  assert.equal(terms.includes("A daily job then deletes them."), false);
   assert.equal(privacy.includes("Money rows that were never shared"), false);
   assert.equal(privacy.includes("A share you granted"), false);
 
