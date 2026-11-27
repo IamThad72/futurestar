@@ -112,6 +112,7 @@ const migrations = [
   "create_deleted_auth_users.sql",
   "create_pending_storage_deletes.sql",
   "create_account_deletion_attempts.sql",
+  "create_deleted_user_private_rows.sql",
 ];
 
 async function run() {

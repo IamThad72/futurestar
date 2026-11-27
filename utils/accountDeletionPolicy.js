@@ -9,7 +9,9 @@
  *   Rows with no group, and everything private to the person (Faith, Body,
  *   profile, sessions, sign-in), are erased.
  *   A same-name income, investment, or savings source is kept and renamed.
- *   record_shares that name the leaving person are deleted with that person.
+ *   record_shares is not in the production schema. Deletion does not query it.
+ *   Private asset_inventory, asset_vehicles, and cash_and_investments rows
+ *   (group_id null) are detached for 90 days, then deleted. Shared rows stay.
  *   When the last person leaves, household rows are deleted, including rows
  *   that still name someone who already left. They are not made private.
  *

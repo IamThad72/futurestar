@@ -228,6 +228,8 @@ test("deletion guards cover re-auth, throttle, focus, and the login return path"
   assert.match(KEPT_ON_DELETE, /household/);
   assert.match(RETENTION_ON_DELETE, /sign-in id/);
   assert.match(RETENTION_ON_DELETE, /daily job/);
+  assert.match(RETENTION_ON_DELETE, /90 days/);
+  assert.match(RETENTION_ON_DELETE, /asset, vehicle, and cash or investment/);
   const nuxtConfig = readFileSync(new URL("../nuxt.config.ts", import.meta.url), "utf8");
   assert.match(nuxtConfig, /\/api\/cron\/account-cleanup", schedule: "15 8 \* \* \*"/);
   assert.doesNotMatch(nuxtConfig, /account-cleanup", schedule: "15 \* \* \* \*"/);

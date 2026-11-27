@@ -316,6 +316,7 @@ describe("household deletion", () => {
       "3:1:Bonus",
     ]);
     expect(db.rows.record_shares).toEqual([]);
+    expect(db.queries.some((query) => query.toLowerCase().includes("record_shares"))).toBe(false);
     expect(db.rows.tax_household_profiles[0]).toMatchObject({ user_id: 1, group_id: 10, household_key: "g:10" });
     expect(db.rows.tax_deduction_overrides[0]).toMatchObject({ user_id: 1, household_key: "g:10" });
     expect(db.rows.prayer_requests.map((item) => item.user_id)).toEqual([1]);
@@ -349,6 +350,7 @@ describe("household deletion", () => {
     expect(db.rows.income_sources.find((item) => item.source_id === 1)?.name).toBe("Pay");
     expect(db.rows.budget_transactions[0]?.income_source_id).toBe(2);
     expect(db.rows.record_shares).toEqual([]);
+    expect(db.queries.some((query) => query.toLowerCase().includes("record_shares"))).toBe(false);
   });
 
   it("promotes the other member when the owner leaves", async () => {
@@ -670,6 +672,57 @@ describe("throttle, households, and handoff details", () => {
     expect(logged).not.toContain("sb-old");
     expect(db.rows.pending_storage_deletes[0]?.deleted_at).toBeTruthy();
     expect(db.rows.deleted_auth_users[0]?.auth_deleted_at).toBeTruthy();
+  });
+
+  it("detaches a private asset for 90 days and the cron deletes only expired rows", async () => {
+    const db = install(new AccountDeletionDb());
+    db.users.push(user({ user_id: 1, email: "a@example.com" }));
+    session(db, 1, "session-a");
+    db.rows.asset_inventory.push({ ai_id: 7, user_id: 1, group_id: null, title: "ring" });
+    db.rows.asset_vehicles.push({ vh_id: 8, user_id: 1, group_id: 10, title: "shared" });
+    await call(db, { cookie: "session-a", body: { confirmEmail: "a@example.com", password: PASSWORD } });
+    expect(db.rows.asset_inventory[0]?.user_id).toBeNull();
+    expect(db.rows.asset_vehicles[0]?.user_id).toBe(1);
+    expect(db.rows.deleted_user_private_rows).toHaveLength(1);
+    expect(db.rows.deleted_user_private_rows[0]).toMatchObject({ table_name: "asset_inventory", row_pk: "7", former_user_id: 1 });
+    expect(db.queries.some((query) => query.toLowerCase().includes("record_shares"))).toBe(false);
+
+    db.rows.deleted_user_private_rows[0].purge_after = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    db.rows.asset_vehicles.push({ vh_id: 9, user_id: null, make: "keep" });
+    db.rows.deleted_user_private_rows.push({
+      id: 2,
+      table_name: "asset_vehicles",
+      row_pk: "9",
+      former_user_id: 1,
+      purge_after: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    });
+    process.env.CRON_SECRET = "1234567890123456";
+    const result = await (accountCleanup as (event: HandlerEvent) => Promise<{ privateRowsPurged: number }>)(makeEvent({
+      method: "GET",
+      url: "/api/cron/account-cleanup",
+      headers: { authorization: "Bearer 1234567890123456" },
+    }));
+    expect(result.privateRowsPurged).toBe(1);
+    expect(db.rows.asset_inventory).toEqual([]);
+    expect(db.rows.asset_vehicles.some((row) => row.vh_id === 9)).toBe(true);
+    expect(db.rows.deleted_user_private_rows.map((row) => row.row_pk)).toEqual(["9"]);
+    const logged = vi.mocked(console.error).mock.calls.map((args) => JSON.stringify(args)).join(" ");
+    expect(logged).toContain("asset_inventory");
+    expect(logged).not.toContain("ring");
+    expect(logged).not.toContain("former_user_id");
+  });
+
+  it("refuses to delete when the private-row queue is missing", async () => {
+    const db = install(new AccountDeletionDb());
+    db.relations.delete("deleted_user_private_rows");
+    db.users.push(user({ user_id: 1, email: "a@example.com" }));
+    session(db, 1, "session-a");
+    await expectStatus(
+      call(db, { cookie: "session-a", body: { confirmEmail: "a@example.com", password: PASSWORD } }).then((item) => item.value),
+      500,
+      "Account deletion is not ready. Run scripts/create_deleted_user_private_rows.sql before deleting accounts.",
+    );
+    expect(db.users).toHaveLength(1);
   });
 
   it("purges only this user's old throttle rows, and the daily job deletes a limited batch", async () => {

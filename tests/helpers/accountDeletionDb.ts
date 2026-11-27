@@ -48,7 +48,15 @@ export class AccountDeletionDb {
   rows: Record<string, Row[]> = {};
   columns: Record<string, string[]> = clone(DEFAULT_COLUMNS);
   queries: string[] = [];
-  relations = new Set(["deleted_auth_users", "pending_storage_deletes", "account_deletion_attempts"]);
+  relations = new Set([
+    "deleted_auth_users",
+    "pending_storage_deletes",
+    "account_deletion_attempts",
+    "deleted_user_private_rows",
+    "asset_inventory",
+    "asset_vehicles",
+    "cash_and_investments",
+  ]);
   failDeleteUser = false;
   private jwtToSupabase = new Map<string, string>();
   private snapshots: string[] = [];
@@ -66,6 +74,10 @@ export class AccountDeletionDb {
     this.rows.deleted_auth_users = [];
     this.rows.pending_storage_deletes = [];
     this.rows.account_deletion_attempts = [];
+    this.rows.deleted_user_private_rows = [];
+    this.rows.asset_inventory = [];
+    this.rows.asset_vehicles = [];
+    this.rows.cash_and_investments = [];
   }
 
   client() {
@@ -136,7 +148,15 @@ export class AccountDeletionDb {
     if (text.startsWith("UPDATE") && text.includes("source_id =")) return this.renameSource(text, params);
     if (text.startsWith("UPDATE") && text.includes("NOT EXISTS")) return this.reownSkippingNames(text, params);
     if (text.startsWith("UPDATE") && text.includes("household_key")) return this.reownByHouseholdKey(text, params);
+    if (text.includes("SET user_id = NULL")) return this.detachPrivateAsset(text, params);
     if (text.startsWith("UPDATE") && text.includes("SET user_id")) return this.reownByGroup(text, params);
+    if (text.includes("AS pk") && text.includes("group_id IS NULL")) return this.privateAssetPks(text, params);
+    if (text.startsWith("INSERT INTO deleted_user_private_rows")) return this.insertPrivateHold(params);
+    if (text.startsWith("SELECT id, table_name, row_pk")) return this.duePrivateHolds();
+    if (text.startsWith("DELETE FROM deleted_user_private_rows")) return this.deletePrivateHold(params);
+    if (text.startsWith("DELETE FROM \"asset_inventory\"")) return this.deleteAssetByPk("asset_inventory", "ai_id", params);
+    if (text.startsWith("DELETE FROM \"asset_vehicles\"")) return this.deleteAssetByPk("asset_vehicles", "vh_id", params);
+    if (text.startsWith("DELETE FROM \"cash_and_investments\"")) return this.deleteAssetByPk("cash_and_investments", "ci_id", params);
     if (text.startsWith("DELETE FROM group_members")) return this.deleteMember(params);
     if (text.startsWith("DELETE FROM app_users") || text.includes("DELETE FROM app_users")) return this.deleteUser(params);
     if (text.startsWith("DELETE FROM groups") || text.includes("DELETE FROM groups WHERE")) return this.deleteGroup(params);
@@ -331,6 +351,69 @@ export class AccountDeletionDb {
     return result([], 1);
   }
 
+  private privateAssetPks(text: string, params: unknown[]) {
+    const table = this.sourceTable(text);
+    const userId = Number(params[0]);
+    const rows = (this.rows[table] ?? []).filter(
+      (row) => Number(row.user_id) === userId && (row.group_id == null || row.group_id === undefined),
+    );
+    return result(rows.map((row) => ({ pk: row.ai_id ?? row.vh_id ?? row.ci_id })));
+  }
+
+  private insertPrivateHold(params: unknown[]) {
+    const tableName = String(params[0]);
+    const rowPk = String(params[1]);
+    const exists = (this.rows.deleted_user_private_rows ?? []).some(
+      (row) => row.table_name === tableName && String(row.row_pk) === rowPk,
+    );
+    if (!exists) {
+      this.rows.deleted_user_private_rows.push({
+        id: this.rows.deleted_user_private_rows.length + 1,
+        table_name: tableName,
+        row_pk: rowPk,
+        former_user_id: Number(params[2]),
+        deleted_at: new Date().toISOString(),
+        purge_after: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+      });
+    }
+    return result([], exists ? 0 : 1);
+  }
+
+  private detachPrivateAsset(text: string, params: unknown[]) {
+    const table = this.tableName(text);
+    const pk = Number(params[0]);
+    const userId = Number(params[1]);
+    const row = (this.rows[table] ?? []).find((item) => {
+      const id = Number(item.ai_id ?? item.vh_id ?? item.ci_id);
+      return id === pk && Number(item.user_id) === userId && (item.group_id == null || item.group_id === undefined);
+    });
+    if (!row) return result([], 0);
+    row.user_id = null;
+    return result([], 1);
+  }
+
+  private duePrivateHolds() {
+    const now = Date.now();
+    const due = (this.rows.deleted_user_private_rows ?? [])
+      .filter((row) => Date.parse(String(row.purge_after ?? "")) <= now)
+      .slice(0, 500);
+    return result(due.map((row) => ({ id: row.id, table_name: row.table_name, row_pk: row.row_pk })));
+  }
+
+  private deletePrivateHold(params: unknown[]) {
+    const id = Number(params[0]);
+    const before = this.rows.deleted_user_private_rows.length;
+    this.rows.deleted_user_private_rows = this.rows.deleted_user_private_rows.filter((row) => Number(row.id) !== id);
+    return result([], before - this.rows.deleted_user_private_rows.length);
+  }
+
+  private deleteAssetByPk(table: string, pkName: string, params: unknown[]) {
+    const pk = Number(params[0]);
+    const before = this.rows[table] ?? [];
+    this.rows[table] = before.filter((row) => Number(row[pkName]) !== pk);
+    return result([], before.length - this.rows[table].length);
+  }
+
   private reownSkippingNames(text: string, params: unknown[]) {
     const table = this.tableName(text);
     const [newOwner, oldOwner, groupId] = params.map(Number);
@@ -414,7 +497,14 @@ export class AccountDeletionDb {
     this.users = this.users.filter((item) => item.user_id !== userId);
     this.sessions = this.sessions.filter((item) => item.user_id !== userId);
     this.members = this.members.filter((item) => item.user_id !== userId);
+    const keptWithoutUserFk = new Set([
+      "asset_inventory",
+      "asset_vehicles",
+      "cash_and_investments",
+      "deleted_user_private_rows",
+    ]);
     for (const [table, rows] of Object.entries(this.rows)) {
+      if (keptWithoutUserFk.has(table)) continue;
       if (table === "record_shares") {
         this.rows[table] = rows.filter(
           (row) => Number(row.owner_user_id) !== userId && Number(row.shared_user_id) !== userId,

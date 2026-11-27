@@ -53,6 +53,16 @@ export const MULTIPLE_HOUSEHOLDS_MESSAGE =
 export const MIGRATION_ATTEMPTS = "scripts/create_account_deletion_attempts.sql";
 export const MIGRATION_TOMBSTONE = "scripts/create_deleted_auth_users.sql";
 export const MIGRATION_STORAGE = "scripts/create_pending_storage_deletes.sql";
+export const MIGRATION_PRIVATE_ROWS = "scripts/create_deleted_user_private_rows.sql";
+
+/** Private rows with no user_id foreign key. group_id null is kept 90 days, then purged. */
+const PRIVATE_HOLD_TABLES = [
+  { table: "asset_inventory", pk: "ai_id" },
+  { table: "asset_vehicles", pk: "vh_id" },
+  { table: "cash_and_investments", pk: "ci_id" },
+] as const;
+
+const PRIVATE_PURGE_BATCH = 500;
 
 export function missingMigrationError(script: string) {
   return createError({
@@ -275,6 +285,40 @@ async function collectEstateFiles(
 }
 
 /**
+ * Private asset, vehicle, and cash rows have no foreign key to app_users.
+ * Clear user_id so a later account cannot inherit them, and remember the row
+ * until purge_after. Household rows are already reowned or deleted by group_id.
+ */
+async function holdPrivateAssetRows(client: QueryClient, userId: number) {
+  if (!(await relationExists(client, "public.deleted_user_private_rows"))) {
+    throw missingMigrationError(MIGRATION_PRIVATE_ROWS);
+  }
+  for (const spec of PRIVATE_HOLD_TABLES) {
+    if (!(await relationExists(client, `public.${spec.table}`))) continue;
+    const table = quoteIdent(spec.table);
+    const pk = quoteIdent(spec.pk);
+    const found = await client.query(
+      `SELECT ${pk} AS pk FROM ${table} WHERE user_id = $1 AND group_id IS NULL`,
+      [userId],
+    );
+    for (const row of found.rows) {
+      const rowPk = String(row.pk ?? "");
+      if (!rowPk) continue;
+      await client.query(
+        `INSERT INTO deleted_user_private_rows (table_name, row_pk, former_user_id)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (table_name, row_pk) DO NOTHING`,
+        [spec.table, rowPk, userId],
+      );
+      await client.query(
+        `UPDATE ${table} SET user_id = NULL WHERE ${pk} = $1::bigint AND user_id = $2 AND group_id IS NULL`,
+        [row.pk, userId],
+      );
+    }
+  }
+}
+
+/**
  * Runs inside an open transaction. The caller commits, or rolls back on any throw.
  * The only user id is the one the caller already took from the session.
  */
@@ -429,6 +473,8 @@ export async function deleteAccountInTransaction(
     await client.query(`DELETE FROM groups WHERE group_id = $1`, [dissolveGroupId]);
   }
 
+  await holdPrivateAssetRows(client, userId);
+
   const supabaseUserId = user.supabase_user_id == null ? null : String(user.supabase_user_id);
   if (supabaseUserId) {
     if (!(await relationExists(client, "public.deleted_auth_users"))) {
@@ -555,6 +601,7 @@ export async function runAccountCleanup(client: QueryClient) {
   let filesRemoved = 0;
   let authUsersRemoved = 0;
   let attemptsPurged = 0;
+  let privateRowsPurged = 0;
 
   if (await relationExists(client, "public.pending_storage_deletes")) {
     const pending = await client.query(
@@ -610,7 +657,32 @@ export async function runAccountCleanup(client: QueryClient) {
     attemptsPurged = Number(purged.rowCount ?? 0);
   }
 
-  return { filesRemoved, authUsersRemoved, attemptsPurged };
+  if (await relationExists(client, "public.deleted_user_private_rows")) {
+    const due = await client.query(
+      `SELECT id, table_name, row_pk
+       FROM deleted_user_private_rows
+       WHERE purge_after <= NOW()
+       ORDER BY purge_after, id
+       LIMIT ${PRIVATE_PURGE_BATCH}`,
+    );
+    const purgedByTable = new Map<string, number>();
+    for (const row of due.rows) {
+      const spec = PRIVATE_HOLD_TABLES.find((item) => item.table === String(row.table_name ?? ""));
+      if (!spec) continue;
+      await client.query(
+        `DELETE FROM ${quoteIdent(spec.table)} WHERE ${quoteIdent(spec.pk)} = $1::bigint`,
+        [row.row_pk],
+      );
+      await client.query(`DELETE FROM deleted_user_private_rows WHERE id = $1`, [row.id]);
+      purgedByTable.set(spec.table, (purgedByTable.get(spec.table) ?? 0) + 1);
+      privateRowsPurged += 1;
+    }
+    for (const [table, count] of purgedByTable) {
+      console.error("[cron/account-cleanup] private rows purged", { table, count });
+    }
+  }
+
+  return { filesRemoved, authUsersRemoved, attemptsPurged, privateRowsPurged };
 }
 
 /** After commit. Storage and Auth failures stay pending and are retried. */
