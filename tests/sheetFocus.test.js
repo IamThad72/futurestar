@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { consumeSheetTrigger, rememberSheetTrigger, sheetReturnTarget } from "../utils/sheetFocus.js";
+import { consumeSheetTrigger, focusSheetControl, rememberSheetTrigger, sheetReturnTarget } from "../utils/sheetFocus.js";
 
 const body = { focus() {} };
 const trigger = { focus() {} };
@@ -21,6 +21,21 @@ test("sheet focus returns to the control that opened it", () => {
   const page = readFileSync(new URL("../pages/account.vue", import.meta.url), "utf8");
   const sheet = readFileSync(new URL("../components/YouSubpage.vue", import.meta.url), "utf8");
   assert.match(page, /rememberSheetTrigger\(trigger\)/);
+  assert.match(page, /focusSheetControl\(trigger\)/);
+  assert.doesNotMatch(page, /tabindex="0"/);
   assert.match(sheet, /consumeSheetTrigger\(document\.activeElement, document\.body\)/);
-  assert.match(sheet, /trigger\.focus\(\)/);
+  assert.match(sheet, /focusSheetControl\(trigger\)/);
+});
+
+test("focus restore uses the ion-item inner button, then setFocus", () => {
+  const button = { focus() { button.focused = true; } };
+  const host = { shadowRoot: { querySelector: (sel) => (sel === "button" ? button : null) } };
+  assert.equal(focusSheetControl(host), button);
+  assert.equal(button.focused, true);
+
+  let setFocusCalls = 0;
+  const item = { setFocus() { setFocusCalls += 1; } };
+  assert.equal(focusSheetControl(item), item);
+  assert.equal(setFocusCalls, 1);
+  assert.equal(focusSheetControl(null), null);
 });

@@ -25,6 +25,11 @@ test("phone You sub-pages start below an ion-header, including the top safe area
     );
   }
   assert.doesNotMatch(css, /--ion-safe-area-(?:top|right|bottom|left):\s*env\(/);
+  assert.match(css, /--padding-bottom:\s*var\(--ion-padding,\s*16px\)/);
+  assert.doesNotMatch(css, /--padding-bottom:\s*calc\(/);
+  assert.match(css, /--padding-start:\s*calc\(var\(--you-subpage-pad\) \+ var\(--you-subpage-safe-start\)\)/);
+  assert.match(css, /--padding-end:\s*calc\(var\(--you-subpage-pad\) \+ var\(--you-subpage-safe-end\)\)/);
+  assert.doesNotMatch(css, /calc\([^;]*var\([^)]*,\s*var\(/);
   assert.doesNotMatch(css, /\.you-subpage[^{]*\{[^}]*margin-top:/);
 
   for (const file of ["components/AccountManagementModal.vue", "components/LinkedAccountsModal.vue"]) {

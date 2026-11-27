@@ -1841,10 +1841,14 @@ ion-modal.you-subpage .ion-page {
 
 .you-subpage ion-content.you-subpage__content {
   --background: var(--color-base-100);
+  /* The fullscreen modal already pads the bottom with the home-indicator inset. */
   --padding-top: var(--ion-padding, 16px);
-  --padding-bottom: calc(var(--ion-padding, 16px) + var(--ion-safe-area-bottom, var(--safe-area-inset-bottom, env(safe-area-inset-bottom))));
-  --padding-start: calc(var(--ion-padding, 16px) + var(--ion-safe-area-left, var(--safe-area-inset-left, env(safe-area-inset-left))));
-  --padding-end: calc(var(--ion-padding, 16px) + var(--ion-safe-area-right, var(--safe-area-inset-right, env(safe-area-inset-right))));
+  --padding-bottom: var(--ion-padding, 16px);
+  --you-subpage-pad: var(--ion-padding, 16px);
+  --you-subpage-safe-start: var(--ion-safe-area-left, var(--safe-area-inset-left, env(safe-area-inset-left)));
+  --you-subpage-safe-end: var(--ion-safe-area-right, var(--safe-area-inset-right, env(safe-area-inset-right)));
+  --padding-start: calc(var(--you-subpage-pad) + var(--you-subpage-safe-start));
+  --padding-end: calc(var(--you-subpage-pad) + var(--you-subpage-safe-end));
   flex: 1 1 auto;
   min-height: 0;
 }

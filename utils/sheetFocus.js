@@ -1,7 +1,7 @@
 /**
- * The control that opened a You sheet, then whatever else is focused, as long
- * as it is not the page body. ion-modal moves focus into the sheet and the
- * sheet puts it back here after dismiss.
+ * The ion-item that opened a You sheet. Focus goes to its inner native button
+ * (one tab stop). ion-item.setFocus is the fallback when the shadow button
+ * is not there yet.
  */
 let pendingTrigger = null;
 
@@ -16,11 +16,29 @@ export function consumeSheetTrigger(activeElement, body) {
 }
 
 export function sheetReturnTarget(trigger, activeElement, body) {
-  if (isFocusable(trigger, body)) return trigger;
-  if (isFocusable(activeElement, body)) return activeElement;
+  if (isElement(trigger, body)) return trigger;
+  if (isElement(activeElement, body)) return activeElement;
   return null;
 }
 
-function isFocusable(el, body) {
-  return Boolean(el && el !== body && typeof el.focus === "function");
+/** Focus the row's inner button, or call ion-item setFocus. Returns what was focused. */
+export function focusSheetControl(host) {
+  const button = host?.shadowRoot?.querySelector?.("button");
+  if (button && typeof button.focus === "function") {
+    button.focus();
+    return button;
+  }
+  if (host && typeof host.setFocus === "function") {
+    host.setFocus();
+    return host;
+  }
+  return null;
+}
+
+function isElement(el, body) {
+  return Boolean(
+    el &&
+      el !== body &&
+      (el.shadowRoot || typeof el.setFocus === "function" || typeof el.focus === "function"),
+  );
 }

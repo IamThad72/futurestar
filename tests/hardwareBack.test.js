@@ -16,7 +16,9 @@ test("android back dismisses a presented sheet instead of leaving the page", () 
 
 test("the phone sheet uses ion-modal so Escape, back, and focus are handled", () => {
   const sheet = readFileSync(new URL("../components/YouSubpage.vue", import.meta.url), "utf8");
-  assert.match(sheet, /<ion-modal[^>]*:is-open="presented"/);
+  assert.match(sheet, /<ion-modal[^>]*ref="modalRef"[^>]*:is-open="presented"/);
+  assert.match(sheet, /dismissModal\(modalRef\.value\)/);
+  assert.doesNotMatch(sheet, /querySelectorAll\(|\.remove\(\)|discardSheet/);
   assert.match(sheet, /@didDismiss="onDismiss"/);
   assert.match(sheet, /function onDismiss\(\) \{[\s\S]*presented\.value = false;[\s\S]*emit\("update:modelValue", false\);/);
   assert.doesNotMatch(sheet, /keyboard-close="false"|:keyboard-close="false"/);

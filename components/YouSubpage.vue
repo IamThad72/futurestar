@@ -33,7 +33,7 @@
     the parent unmounts it.
   -->
   <Teleport v-else to="ion-app">
-    <ion-modal class="you-subpage" :is-open="presented" @didDismiss="onDismiss">
+    <ion-modal ref="modalRef" class="you-subpage" :is-open="presented" @didDismiss="onDismiss">
       <div class="ion-page">
         <ion-header class="ion-no-border">
           <ion-toolbar>
@@ -53,9 +53,10 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { IonButtons, IonContent, IonHeader, IonModal, IonTitle, IonToolbar } from "@ionic/vue";
-import { consumeSheetTrigger } from "~/utils/sheetFocus";
+import { dismissModal } from "~/utils/sheetDismiss";
+import { consumeSheetTrigger, focusSheetControl } from "~/utils/sheetFocus";
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -69,20 +70,11 @@ const emit = defineEmits(["update:modelValue"]);
 const { useMobileChrome } = useMobileShell();
 const mobile = computed(() => useMobileChrome.value);
 const presented = ref(false);
+const modalRef = ref(null);
 let returnFocus = null;
 
 onMounted(() => {
   returnFocus = consumeSheetTrigger(document.activeElement, document.body);
-});
-
-function discardSheet() {
-  document.querySelectorAll("ion-modal.you-subpage").forEach((el) => el.remove());
-}
-
-onBeforeUnmount(discardSheet);
-onUnmounted(() => {
-  discardSheet();
-  requestAnimationFrame(discardSheet);
 });
 
 watch(
@@ -93,12 +85,17 @@ watch(
   { immediate: true },
 );
 
-function close() {
-  if (mobile.value) {
-    presented.value = false;
+async function close() {
+  if (!mobile.value) {
+    emit("update:modelValue", false);
     return;
   }
-  emit("update:modelValue", false);
+  const pending = dismissModal(modalRef.value);
+  if (pending) {
+    await pending;
+    return;
+  }
+  presented.value = false;
 }
 
 function onDismiss() {
@@ -106,9 +103,6 @@ function onDismiss() {
   const trigger = returnFocus;
   returnFocus = null;
   emit("update:modelValue", false);
-  setTimeout(() => {
-    discardSheet();
-    if (trigger?.isConnected) trigger.focus();
-  }, 0);
+  focusSheetControl(trigger);
 }
 </script>
