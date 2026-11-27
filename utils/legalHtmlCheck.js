@@ -26,6 +26,8 @@ export const PRIVACY_CONTENT = [
   "cross-context behavioral advertising",
   "14 or older",
   "children under 14",
+  "The weekly mirror note is written inside the app.",
+  "Its data is not sent to third parties.",
 ];
 
 export const TERMS_CONTENT = [

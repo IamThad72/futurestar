@@ -205,11 +205,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "The weekly mirror does not send your prayer requests, and it does not send the full text of a review. It sends counts: how many days have a review, which virtues you named and how often, how many times tomorrow was filled, and words that appear more than once in the troubled and shortfall answers.",
-        },
-        {
-          type: "placeholder",
-          text: "Say whether the weekly mirror should keep sending words that repeat in the troubled and shortfall answers to Groq. The code does that today. It does not send prayer requests or the full review.",
+          text: "The weekly mirror note is written inside the app. It uses counts already stored for that week: how many days have a review, which virtues you named and how often, how many times tomorrow was filled, and words that appear more than once in the troubled and shortfall answers. Its data is not sent to third parties. It does not send your prayer requests, and it does not send the full text of a review.",
         },
         {
           type: "p",
