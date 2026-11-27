@@ -16,7 +16,7 @@ export const PRIVACY_CONTENT = [
   "futurestar.faithPromptDismissed",
   "loginForgotPassword",
   "If you do not see that section or that page",
-  "90 days",
+  "hidden for 90 days, then a daily job permanently deletes them.",
   "not visible or accessible in the app",
   "(former member)",
   "Household tax profiles and deduction overrides stay",

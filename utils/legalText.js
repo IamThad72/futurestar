@@ -231,7 +231,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "Your private faith practice, nutrition, workouts and the training journal, your profile, your sessions, and your sign-in are erased. Budget lines, transactions, and estate records that belong only to you are erased. Private asset inventory, vehicle, and cash or investment account records that are not in a household are kept hidden for 90 days and then permanently deleted. That hold includes the holdings on a private cash or investment account and the service history on a private vehicle. They are not visible or accessible in the app during those 90 days. A daily job then deletes them. Shared household copies of those records, including shared holdings and service history, stay with the household.",
+          text: "Your private faith practice, nutrition, workouts and the training journal, your profile, your sessions, and your sign-in are erased. Budget lines, transactions, and estate records that belong only to you are erased. Private asset inventory, vehicle, and cash or investment account records that are not in a household are kept hidden for 90 days, then a daily job permanently deletes them. That hold includes the holdings on a private cash or investment account and the service history on a private vehicle. They are not visible or accessible in the app during those 90 days. Shared household copies of those records, including shared holdings and service history, stay with the household.",
         },
         {
           type: "p",

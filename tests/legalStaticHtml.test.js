@@ -30,7 +30,7 @@ test("draft HTML keeps Owner to fill notes and the required sections", () => {
   assert.match(terms, /mailto:info@me.com/);
   assert.equal(privacy.includes('href="/delete-account"'), false);
   assert.equal(terms.includes('href="/delete-account"'), false);
-  assert.match(privacy, /kept hidden for 90 days and then permanently deleted/);
+  assert.match(privacy, /kept hidden for 90 days, then a daily job permanently deletes them/);
   assert.match(privacy, /not visible or accessible in the app/);
   assert.match(privacy, /\(former member\)/);
   assert.match(terms, /kept hidden for 90 days, then a daily job permanently deletes them/);
