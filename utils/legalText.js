@@ -406,7 +406,7 @@ export const termsOfService = {
           parts: [
             "You can stop using the app. Deleting the account is described in the ",
             { href: "/privacy", label: "privacy policy" },
-            ", under Retention and deletion. When the app includes that control, it is under You, in Privacy and data. Shared household money stays with the household. Private asset inventory, vehicle, and cash or investment account records that are not in a household, including investment holdings and vehicle service history, are kept hidden for 90 days and then permanently deleted. They are not visible or accessible in the app during that time. The publisher can stop offering the app.",
+            ", under Retention and deletion. When the app includes that control, it is under You, in Privacy and data. Shared household money stays with the household. Private asset inventory, vehicle, and cash or investment account records that are not in a household, including investment holdings and vehicle service history, are kept hidden for 90 days and then permanently deleted. They are not visible or accessible in the app during that time. A daily job then deletes them. The publisher can stop offering the app.",
           ],
         },
       ],

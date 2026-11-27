@@ -40,6 +40,7 @@ export const TERMS_CONTENT = [
   "When the app includes that control",
   "90 days",
   "not visible or accessible in the app",
+  "A daily job then deletes them.",
   "Sample text for the owner's review",
   "as is",
   "$100",
