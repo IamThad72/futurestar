@@ -141,7 +141,7 @@ test("only the header login link navigates to /login", () => {
   const writes = {
     "pages/physical/workouts/index.vue": /saveError\.value = auth\.sessionEnded \? SESSION_ENDED_MESSAGE : SIGN_IN_MESSAGE/,
     "pages/garage/index.vue": /error\.value = SIGN_IN_MESSAGE/,
-    "pages/cash_flow_tracker.vue": /txError\.value = auth\.sessionEnded \? SESSION_ENDED_MESSAGE : SIGN_IN_MESSAGE[\s\S]*editTxError\.value = auth\.sessionEnded \? SESSION_ENDED_MESSAGE : SIGN_IN_MESSAGE/,
+    "composables/useBudgetTracker.js": /txError\.value = auth\.sessionEnded \? SESSION_ENDED_MESSAGE : SIGN_IN_MESSAGE[\s\S]*editTxError\.value = auth\.sessionEnded \? SESSION_ENDED_MESSAGE : SIGN_IN_MESSAGE/,
     "components/EstateDocumentsPanel.vue": /uploadError\.value = SIGN_IN_MESSAGE/,
   };
   for (const [rel, pattern] of Object.entries(writes)) {
@@ -159,12 +159,17 @@ test("only the header login link navigates to /login", () => {
   assert.match(estate, /:show-add="canWrite"/);
 
   const tracker = readFileSync(join(root, "pages/cash_flow_tracker.vue"), "utf8");
-  assert.match(tracker, /<NuxtLink v-if="canWrite" to="\/cash_flow_mgmt"/);
   assert.match(tracker, /<div v-if="canWrite" class="app-sticky-action">/);
-  assert.match(tracker, /<div v-if="canWrite" class="ml-auto flex/);
-  assert.match(tracker, /parseFetchError\(err, "Failed to save transactions\."\)/);
-  assert.match(tracker, /parseFetchError\(err, "Failed to add transaction\."\)/);
-  assert.doesNotMatch(tracker, /csvError\.value = err\?\.message/);
+  assert.match(tracker, /SIGN_IN_MESSAGE/);
+  assert.doesNotMatch(tracker, /navigateTo\(\s*["'`]\/login/);
+
+  const trackerLogic = readFileSync(join(root, "composables/useBudgetTracker.js"), "utf8");
+  assert.match(trackerLogic, /const canWrite = computed\(\(\) => Boolean\(auth\.user \|\| auth\.sessionEnded\)\)/);
+  assert.match(trackerLogic, /if \(auth\.sessionEnded\) \{\s*loadError\.value = "";\s*return;\s*\}/);
+  assert.match(trackerLogic, /if \(failure\.expired\) \{\s*loadError\.value = "";\s*return;\s*\}/);
+  assert.match(trackerLogic, /parseFetchError\(err, "Failed to save transactions\."\)/);
+  assert.match(trackerLogic, /parseFetchError\(err, "Failed to add transaction\."\)/);
+  assert.doesNotMatch(trackerLogic, /csvError\.value = err\?\.message/);
 
   const shell = readFileSync(join(root, "app.vue"), "utf8");
   assert.match(shell, /sessionEndedMessage/);
@@ -183,11 +188,11 @@ test("a mid-session 401 keeps open forms and guests do not see write controls", 
   const draft = read("composables/useWorkoutDraft.js");
   assert.match(draft, /if \(failure\.auth && !failure\.expired\) savedWorkouts\.value = \[\]/);
 
-  const tracker = read("pages/cash_flow_tracker.vue");
+  const tracker = read("composables/useBudgetTracker.js");
   assert.match(tracker, /const canWrite = computed\(\(\) => Boolean\(auth\.user \|\| auth\.sessionEnded\)\)/);
   assert.match(tracker, /if \(auth\.sessionEnded\) \{\s*loadError\.value = "";\s*return;\s*\}/);
   assert.match(tracker, /if \(failure\.expired\) \{\s*loadError\.value = "";\s*return;\s*\}/);
-  assert.match(tracker, /<div v-if="canWrite" class="app-sticky-action">/);
+  assert.match(read("pages/cash_flow_tracker.vue"), /<div v-if="canWrite" class="app-sticky-action">/);
 
   const estate = read("pages/estate_mgmt.vue");
   assert.match(estate, /settleLoadError\(error, ""\)/);

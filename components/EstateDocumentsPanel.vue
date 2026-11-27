@@ -12,7 +12,7 @@
     />
 
     <div v-else-if="!documents.length && !searchText" class="estate-docs-empty">
-      No documents yet. Upload a PDF, image, or office file to keep it with this household.
+      {{ emptyDocumentsCopy }}
     </div>
 
     <div v-else class="flex flex-col gap-6">
@@ -172,6 +172,11 @@ const acceptTypes = [
 ].join(",");
 
 const auth = useAuthStore();
+const emptyDocumentsCopy = computed(() =>
+  !auth.user && !auth.sessionEnded
+    ? "No documents yet."
+    : "No documents yet. Upload a PDF, image, or office file to keep it with this household.",
+);
 const documents = ref([]);
 const searchText = ref("");
 const visibleDocuments = computed(() => {

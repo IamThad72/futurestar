@@ -11,7 +11,7 @@ const pages = [
     message: "The budget could not be loaded. Try again in a moment.",
   },
   {
-    file: "pages/cash_flow_tracker.vue",
+    file: "composables/useBudgetTracker.js",
     message: "The budget tracker could not be loaded. Try again in a moment.",
   },
 ];
