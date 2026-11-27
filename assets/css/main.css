@@ -1754,6 +1754,41 @@ ion-app .textarea:focus-visible {
   padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
 }
 
+/* Phone You sub-pages. The shell toolbar already consumes the status-bar inset.
+   This sheet covers that toolbar, then sizes its own toolbar with the same inset
+   so the body starts below the header instead of underneath it. */
+.you-subpage.ion-page {
+  z-index: 20;
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  --ion-safe-area-top: env(safe-area-inset-top, 0px);
+  --ion-safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --ion-safe-area-left: env(safe-area-inset-left, 0px);
+  --ion-safe-area-right: env(safe-area-inset-right, 0px);
+}
+
+.you-subpage ion-header ion-toolbar {
+  --background: var(--color-base-100);
+  --color: var(--color-base-content);
+  --border-width: 0 0 1px;
+  --border-color: var(--color-base-300, #e6dfd3);
+  --min-height: 3.5rem;
+}
+
+.you-subpage ion-content.you-subpage__content {
+  --background: var(--color-base-100);
+  --padding-top: var(--ion-padding, 16px);
+  --padding-bottom: calc(var(--ion-padding, 16px) + var(--ion-safe-area-bottom, env(safe-area-inset-bottom, 0px)));
+  --padding-start: calc(var(--ion-padding, 16px) + var(--ion-safe-area-left, env(safe-area-inset-left, 0px)));
+  --padding-end: calc(var(--ion-padding, 16px) + var(--ion-safe-area-right, env(safe-area-inset-right, 0px)));
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.you-subpage__close {
+  margin-inline-end: 0.25rem;
+}
+
 .mobile-ionic-shell :is(.checkbox-sm, .radio-sm, .toggle-sm) {
   --size: 1.5rem;
 }

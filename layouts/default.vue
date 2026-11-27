@@ -41,8 +41,8 @@
               >
                 <span class="sr-only">Open user menu</span>
                 <img
-                  v-if="auth.user?.profile_photo"
-                  :src="auth.user.profile_photo"
+                  v-if="showHeaderAvatar"
+                  :src="headerAvatarUrl"
                   alt="Profile"
                   class="size-10 rounded-full bg-primary object-cover ring-2 ring-white"
                 />
@@ -137,8 +137,9 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { homePathForUser } from '~/utils/primaryNav'
+import { profilePhotoUrl, showProfileAvatar } from '~/utils/profileAvatar'
 
 const {
   auth,
@@ -149,6 +150,8 @@ const {
   sectionLabel,
 } = useAppNav();
 const homePath = computed(() => homePathForUser(auth.user));
+const headerAvatarUrl = computed(() => profilePhotoUrl(auth.user));
+const showHeaderAvatar = computed(() => showProfileAvatar(auth.user));
 const { useMobileChrome } = useMobileShell();
 const showAccountManagement = ref(false);
 const showLinkedAccounts = ref(false);

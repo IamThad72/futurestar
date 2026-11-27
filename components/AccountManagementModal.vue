@@ -1,19 +1,17 @@
 <template>
-  <div v-if="modelValue" class="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4">
-    <div class="absolute inset-0 bg-black/50" @click="close" aria-hidden="true"></div>
-    <div
-      class="relative w-full h-full sm:w-auto sm:h-auto sm:min-w-[20rem] sm:max-w-[35.2rem] sm:max-h-[90vh] sm:shrink-0 overflow-y-auto overscroll-contain bg-base-100 p-4 pt-6 pb-safe-content sm:p-6 shadow-lg sm:rounded-lg text-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="account-management-title"
-      @click.stop
-    >
-      <div class="flex items-center justify-between">
-        <h2 id="account-management-title" class="text-base font-semibold">Account Management</h2>
-        <button class="btn btn-ghost btn-sm min-h-8 min-w-12 text-xs" type="button" @click="close">Close</button>
-      </div>
+  <YouSubpage
+    :model-value="modelValue"
+    title="Account Management"
+    labelled-by="account-management-title"
+    panel-class="text-sm sm:min-w-[20rem] sm:max-w-[35.2rem] sm:shrink-0"
+    close-class="btn btn-ghost btn-sm min-h-8 min-w-12 shrink-0 text-xs"
+    @update:model-value="emit('update:modelValue', $event)"
+  >
+    <template #heading>
+      <h2 id="account-management-title" class="text-base font-semibold">Account Management</h2>
+    </template>
 
-      <div v-if="!auth.ready" class="mt-3 text-xs text-base-content/70">Loading...</div>
+    <div v-if="!auth.ready" class="mt-3 text-xs text-base-content/70">Loading...</div>
 
       <div v-else-if="!auth.user" class="mt-3 rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-base-content">
         You must be logged in.
@@ -31,8 +29,8 @@
                   :class="{ 'ring-2 ring-primary': !!photoPreview }"
                 >
                   <img
-                    v-if="auth.user?.profile_photo || photoDataUrl"
-                    :src="photoDataUrl || auth.user?.profile_photo"
+                    v-if="savedPhotoUrl || photoDataUrl"
+                    :src="photoDataUrl || savedPhotoUrl"
                     alt="Profile"
                     class="w-full h-full object-cover"
                   />
@@ -189,20 +187,19 @@
           </div>
         </details>
       </div>
-    </div>
-  </div>
+  </YouSubpage>
 </template>
 
 <script setup>
-import { ref, watch, nextTick } from 'vue';
+import { computed, ref, watch, nextTick } from 'vue';
 import { useAuthStore } from '~/stores/auth';
+import { profilePhotoUrl } from '~/utils/profileAvatar';
 
 const props = defineProps({ modelValue: Boolean });
 const emit = defineEmits(['update:modelValue']);
 
 const auth = useAuthStore();
-
-const close = () => emit('update:modelValue', false);
+const savedPhotoUrl = computed(() => profilePhotoUrl(auth.user));
 
 // Photo state
 const photoInputRef = ref(null);
@@ -237,8 +234,8 @@ function loadExistingPhoto(dataUrl) {
 }
 
 watch(() => props.modelValue, (open) => {
-  if (open && auth.user?.profile_photo) {
-    loadExistingPhoto(auth.user.profile_photo);
+  if (open && savedPhotoUrl.value) {
+    loadExistingPhoto(savedPhotoUrl.value);
   } else if (!open) {
     clearPhoto();
   }

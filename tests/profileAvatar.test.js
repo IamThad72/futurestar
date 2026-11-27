@@ -9,10 +9,15 @@ import {
   profilePhotoUrl,
   showProfileAvatar,
 } from "../utils/profileAvatar.js";
+import { PROFILE_PHOTO_MAX_LENGTH } from "../utils/profilePhoto.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-const PHOTO = "data:image/png;base64,abc";
+const PHOTO = `data:image/png;base64,${btoa("ok")}`;
+
+function photo(type) {
+  return `data:image/${type};base64,${btoa("ok")}`;
+}
 
 test("a saved profile photo is shown until it fails to load", () => {
   const user = { profile_photo: PHOTO, display_name: "Thaddeus" };
@@ -20,6 +25,35 @@ test("a saved profile photo is shown until it fails to load", () => {
   assert.equal(showProfileAvatar(user), true);
   assert.equal(showProfileAvatar(user, false), true);
   assert.equal(showProfileAvatar(user, true), false);
+});
+
+test("only a raster image data URL is used as the img src", () => {
+  for (const type of ["png", "jpeg", "jpg", "gif", "webp"]) {
+    const url = photo(type);
+    assert.equal(profilePhotoUrl({ profile_photo: `  ${url}  ` }), url);
+    assert.equal(showProfileAvatar({ profile_photo: url }), true);
+  }
+
+  const svg = `data:image/svg+xml;base64,${btoa("<svg xmlns='http://www.w3.org/2000/svg' onload='alert(1)'></svg>")}`;
+  const rejected = [
+    "javascript:alert(1)",
+    "JavaScript:alert(document.cookie)",
+    "http://example.com/a.png",
+    "https://example.com/a.png",
+    svg,
+    "data:image/svg+xml;base64," + btoa("ok"),
+    "data:image/png;base64,abc",
+    "data:image/png;base64,@@@@",
+    "data:image/png;base64,aa==",
+    "data:image/png;base64,",
+    "data:image/PNG;base64," + btoa("ok"),
+    `data:image/png;base64,${"A".repeat(PROFILE_PHOTO_MAX_LENGTH)}`,
+  ];
+  for (const url of rejected) {
+    assert.equal(profilePhotoUrl({ profile_photo: url }), "", url);
+    assert.equal(showProfileAvatar({ profile_photo: url }), false, url);
+  }
+  assert.equal(YOU_TAB_FALLBACK_ICON, "circle-user");
 });
 
 test("missing or blank photos fall back to the current You tab icon", () => {
