@@ -712,6 +712,72 @@ describe("throttle, households, and handoff details", () => {
     expect(logged).not.toContain("former_user_id");
   });
 
+  it("keeps private holdings and service history with the parent for 90 days", async () => {
+    const db = install(new AccountDeletionDb());
+    db.users.push(user({ user_id: 1, email: "owner@example.com" }), user({ user_id: 2, email: "member@example.com" }));
+    session(db, 2, "session-m");
+    db.groups.push({ group_id: 4, group_name: "Home", created_by: 1 });
+    db.members.push(
+      { group_id: 4, user_id: 1, role: "owner", created_at: "2024-01-01" },
+      { group_id: 4, user_id: 2, role: "member", created_at: "2024-02-01" },
+    );
+    db.rows.cash_and_investments.push(
+      { ci_id: 10, user_id: 2, group_id: 4, institution: "shared-bank" },
+      { ci_id: 11, user_id: 2, group_id: null, institution: "private-bank" },
+    );
+    db.rows.investment_positions.push(
+      { position_id: 1, ci_id: 10, user_id: 2, group_id: 4, symbol: "AAA" },
+      { position_id: 2, ci_id: 11, user_id: 2, group_id: null, symbol: "BBB" },
+    );
+    db.rows.asset_vehicles.push({ vh_id: 3, user_id: 2, group_id: null, make: "Bike" });
+    db.rows.vehicle_service_records.push({ vsr_id: 5, vh_id: 3, user_id: 2, group_id: null, service_name: "oil" });
+    await call(db, { cookie: "session-m", body: { confirmEmail: "member@example.com", password: PASSWORD } });
+    expect(db.users.map((item) => item.user_id)).toEqual([1]);
+    expect(db.rows.cash_and_investments.find((row) => row.ci_id === 10)?.user_id).toBe(1);
+    expect(db.rows.investment_positions.find((row) => row.position_id === 1)?.user_id).toBe(1);
+    expect(db.rows.cash_and_investments.find((row) => row.ci_id === 11)?.user_id).toBeNull();
+    expect(db.rows.investment_positions.find((row) => row.position_id === 2)?.user_id).toBeNull();
+    expect(db.rows.asset_vehicles[0]?.user_id).toBeNull();
+    expect(db.rows.vehicle_service_records[0]?.user_id).toBeNull();
+    expect(db.rows.deleted_user_private_rows.map((row) => row.table_name).sort()).toEqual(["asset_vehicles", "cash_and_investments"]);
+
+    const cashHold = db.rows.deleted_user_private_rows.find((row) => row.table_name === "cash_and_investments");
+    if (cashHold) cashHold.purge_after = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    process.env.CRON_SECRET = "1234567890123456";
+    const result = await (accountCleanup as (event: HandlerEvent) => Promise<{ privateRowsPurged: number }>)(makeEvent({
+      method: "GET",
+      url: "/api/cron/account-cleanup",
+      headers: { authorization: "Bearer 1234567890123456" },
+    }));
+    expect(result.privateRowsPurged).toBe(2);
+    expect(db.rows.investment_positions.map((row) => row.position_id)).toEqual([1]);
+    expect(db.rows.cash_and_investments.map((row) => row.ci_id)).toEqual([10]);
+    expect(db.rows.vehicle_service_records).toHaveLength(1);
+    expect(db.rows.asset_vehicles).toHaveLength(1);
+    expect(db.queries.some((query) => query.includes("LIMIT") && query.includes("investment_positions"))).toBe(true);
+    const logged = vi.mocked(console.error).mock.calls.map((args) => JSON.stringify(args)).join(" ");
+    expect(logged).toContain("investment_positions");
+    expect(logged).not.toContain("BBB");
+    expect(logged).not.toContain("private-bank");
+  });
+
+  it("refuses to delete when holding a child still requires a user id", async () => {
+    const db = install(new AccountDeletionDb());
+    db.userIdNotNull.add("investment_positions");
+    db.users.push(user({ user_id: 1, email: "a@example.com" }));
+    session(db, 1, "session-a");
+    db.rows.cash_and_investments.push({ ci_id: 4, user_id: 1, group_id: null });
+    db.rows.investment_positions.push({ position_id: 8, ci_id: 4, user_id: 1, group_id: null, symbol: "BBB" });
+    await expectStatus(
+      call(db, { cookie: "session-a", body: { confirmEmail: "a@example.com", password: PASSWORD } }).then((item) => item.value),
+      500,
+      "Account deletion is not ready. Run scripts/alter_hold_child_user_id_nullable.sql before deleting accounts.",
+    );
+    expect(db.users).toHaveLength(1);
+    expect(db.rows.investment_positions[0]?.user_id).toBe(1);
+    expect(db.rows.cash_and_investments[0]?.user_id).toBe(1);
+  });
+
   it("refuses to delete when the private-row queue is missing", async () => {
     const db = install(new AccountDeletionDb());
     db.relations.delete("deleted_user_private_rows");

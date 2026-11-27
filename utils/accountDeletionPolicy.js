@@ -12,6 +12,9 @@
  *   record_shares is not in the production schema. Deletion does not query it.
  *   Private asset_inventory, asset_vehicles, and cash_and_investments rows
  *   (group_id null) are detached for 90 days, then deleted. Shared rows stay.
+ *   Holdings on a private cash account and service history on a private
+ *   vehicle stay with that parent for the same 90 days. Household copies
+ *   of those children are reowned with the parent.
  *   When the last person leaves, household rows are deleted, including rows
  *   that still name someone who already left. They are not made private.
  *

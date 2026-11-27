@@ -30,6 +30,11 @@ const DEFAULT_COLUMNS: Record<string, string[]> = {
   nutrition_intake_entries: ["user_id"],
   tax_household_profiles: ["user_id", "group_id", "household_key"],
   tax_deduction_overrides: ["user_id", "household_key"],
+  cash_and_investments: ["user_id", "group_id"],
+  asset_vehicles: ["user_id", "group_id"],
+  asset_inventory: ["user_id", "group_id"],
+  investment_positions: ["user_id", "group_id"],
+  vehicle_service_records: ["user_id", "group_id"],
 };
 
 function clone<T>(value: T): T {
@@ -48,6 +53,7 @@ export class AccountDeletionDb {
   rows: Record<string, Row[]> = {};
   columns: Record<string, string[]> = clone(DEFAULT_COLUMNS);
   queries: string[] = [];
+  userIdNotNull = new Set<string>();
   relations = new Set([
     "deleted_auth_users",
     "pending_storage_deletes",
@@ -56,6 +62,8 @@ export class AccountDeletionDb {
     "asset_inventory",
     "asset_vehicles",
     "cash_and_investments",
+    "investment_positions",
+    "vehicle_service_records",
   ]);
   failDeleteUser = false;
   private jwtToSupabase = new Map<string, string>();
@@ -78,6 +86,8 @@ export class AccountDeletionDb {
     this.rows.asset_inventory = [];
     this.rows.asset_vehicles = [];
     this.rows.cash_and_investments = [];
+    this.rows.investment_positions = [];
+    this.rows.vehicle_service_records = [];
   }
 
   client() {
@@ -130,6 +140,7 @@ export class AccountDeletionDb {
     if (text.startsWith("INSERT INTO app_users")) return this.insertAppUser(params);
     if (text.startsWith("INSERT INTO groups")) return this.insertGroup(params);
     if (text.startsWith("INSERT INTO group_members")) return this.insertMembers(params);
+    if (text.includes("is_nullable")) return this.userIdNullability(params);
     if (text.includes("information_schema.columns")) return this.columnRows(params);
     if (text.includes("FROM app_sessions")) return this.sessionUser(params);
     if (text.includes("password_hash") && text.includes("FROM app_users")) return this.lockUser(params);
@@ -148,6 +159,18 @@ export class AccountDeletionDb {
     if (text.startsWith("UPDATE") && text.includes("source_id =")) return this.renameSource(text, params);
     if (text.startsWith("UPDATE") && text.includes("NOT EXISTS")) return this.reownSkippingNames(text, params);
     if (text.startsWith("UPDATE") && text.includes("household_key")) return this.reownByHouseholdKey(text, params);
+    if (text.includes("SET user_id = NULL") && (text.includes("investment_positions") || text.includes("vehicle_service_records"))) {
+      return this.detachHoldChildren(text, params);
+    }
+    if (text.includes("COUNT(*)::int") && (text.includes("investment_positions") || text.includes("vehicle_service_records"))) {
+      return this.countHeldChildren(text, params);
+    }
+    if (
+      (text.startsWith("DELETE FROM \"investment_positions\"") || text.startsWith("DELETE FROM \"vehicle_service_records\""))
+      && text.includes("LIMIT")
+    ) {
+      return this.deleteHeldChildren(text, params);
+    }
     if (text.includes("SET user_id = NULL")) return this.detachPrivateAsset(text, params);
     if (text.startsWith("UPDATE") && text.includes("SET user_id")) return this.reownByGroup(text, params);
     if (text.includes("AS pk") && text.includes("group_id IS NULL")) return this.privateAssetPks(text, params);
@@ -349,6 +372,54 @@ export class AccountDeletionDb {
     row.user_id = newOwner;
     row.name = name;
     return result([], 1);
+  }
+
+  private userIdNullability(params: unknown[]) {
+    const table = String(params[0] ?? "");
+    return result([{ is_nullable: this.userIdNotNull.has(table) ? "NO" : "YES" }]);
+  }
+
+  private detachHoldChildren(text: string, params: unknown[]) {
+    const positions = text.includes("investment_positions");
+    const table = positions ? "investment_positions" : "vehicle_service_records";
+    const parent = positions ? "cash_and_investments" : "asset_vehicles";
+    const fk = positions ? "ci_id" : "vh_id";
+    const userId = Number(params[0]);
+    const parentIds = new Set(
+      (this.rows[parent] ?? [])
+        .filter((row) => Number(row.user_id) === userId && (row.group_id == null || row.group_id === undefined))
+        .map((row) => Number(row[fk])),
+    );
+    let count = 0;
+    for (const row of this.rows[table] ?? []) {
+      if (Number(row.user_id) !== userId || !parentIds.has(Number(row[fk]))) continue;
+      row.user_id = null;
+      count += 1;
+    }
+    return result([], count);
+  }
+
+  private countHeldChildren(text: string, params: unknown[]) {
+    const positions = text.includes("investment_positions");
+    const table = positions ? "investment_positions" : "vehicle_service_records";
+    const fk = positions ? "ci_id" : "vh_id";
+    const parentPk = Number(params[0]);
+    const n = (this.rows[table] ?? []).filter((row) => Number(row[fk]) === parentPk).length;
+    return result([{ n }]);
+  }
+
+  private deleteHeldChildren(text: string, params: unknown[]) {
+    const positions = text.includes("investment_positions");
+    const table = positions ? "investment_positions" : "vehicle_service_records";
+    const pk = positions ? "position_id" : "vsr_id";
+    const fk = positions ? "ci_id" : "vh_id";
+    const parentPk = Number(params[0]);
+    const limit = Number(params[1] ?? 0);
+    const matches = (this.rows[table] ?? []).filter((row) => Number(row[fk]) === parentPk);
+    const drop = new Set(matches.slice(0, limit).map((row) => Number(row[pk])));
+    const before = this.rows[table] ?? [];
+    this.rows[table] = before.filter((row) => !drop.has(Number(row[pk])));
+    return result([], drop.size);
   }
 
   private privateAssetPks(text: string, params: unknown[]) {

@@ -113,6 +113,7 @@ const migrations = [
   "create_pending_storage_deletes.sql",
   "create_account_deletion_attempts.sql",
   "create_deleted_user_private_rows.sql",
+  "alter_hold_child_user_id_nullable.sql",
 ];
 
 async function run() {

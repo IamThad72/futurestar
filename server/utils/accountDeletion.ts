@@ -54,6 +54,7 @@ export const MIGRATION_ATTEMPTS = "scripts/create_account_deletion_attempts.sql"
 export const MIGRATION_TOMBSTONE = "scripts/create_deleted_auth_users.sql";
 export const MIGRATION_STORAGE = "scripts/create_pending_storage_deletes.sql";
 export const MIGRATION_PRIVATE_ROWS = "scripts/create_deleted_user_private_rows.sql";
+export const MIGRATION_HOLD_CHILDREN = "scripts/alter_hold_child_user_id_nullable.sql";
 
 /** Private rows with no user_id foreign key. group_id null is kept 90 days, then purged. */
 const PRIVATE_HOLD_TABLES = [
@@ -63,6 +64,29 @@ const PRIVATE_HOLD_TABLES = [
 ] as const;
 
 const PRIVATE_PURGE_BATCH = 500;
+
+/**
+ * Children of a held parent. They are not queued on their own: the parent row
+ * is the retention clock, and these foreign keys already cascade when the
+ * parent is deleted. user_id is cleared first so app_users CASCADE does not
+ * erase them on the day the account is deleted.
+ */
+const PRIVATE_HOLD_CHILDREN = [
+  {
+    parent: "cash_and_investments",
+    parentPk: "ci_id",
+    child: "investment_positions",
+    childPk: "position_id",
+    childFk: "ci_id",
+  },
+  {
+    parent: "asset_vehicles",
+    parentPk: "vh_id",
+    child: "vehicle_service_records",
+    childPk: "vsr_id",
+    childFk: "vh_id",
+  },
+] as const;
 
 export function missingMigrationError(script: string) {
   return createError({
@@ -289,10 +313,80 @@ async function collectEstateFiles(
  * Clear user_id so a later account cannot inherit them, and remember the row
  * until purge_after. Household rows are already reowned or deleted by group_id.
  */
+async function assertHoldChildNullable(client: QueryClient, table: string) {
+  const found = await client.query(
+    `SELECT is_nullable
+     FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = $1 AND column_name = 'user_id'`,
+    [table],
+  );
+  if (String(found.rows[0]?.is_nullable ?? "") === "NO") {
+    throw missingMigrationError(MIGRATION_HOLD_CHILDREN);
+  }
+}
+
+/** Clear user_id on holdings and service rows of private parents before those parents are detached. */
+async function detachPrivateHoldChildren(client: QueryClient, userId: number) {
+  for (const spec of PRIVATE_HOLD_CHILDREN) {
+    if (!(await relationExists(client, `public.${spec.child}`))) continue;
+    if (!(await relationExists(client, `public.${spec.parent}`))) continue;
+    await assertHoldChildNullable(client, spec.child);
+    const childFk = quoteIdent(spec.childFk);
+    const parentPk = quoteIdent(spec.parentPk);
+    await client.query(
+      `UPDATE ${quoteIdent(spec.child)}
+       SET user_id = NULL
+       WHERE user_id = $1
+         AND ${childFk} IN (
+           SELECT ${parentPk} FROM ${quoteIdent(spec.parent)}
+           WHERE user_id = $1 AND group_id IS NULL
+         )`,
+      [userId],
+    );
+  }
+}
+
+function holdChildOf(parent: string) {
+  return PRIVATE_HOLD_CHILDREN.find((item) => item.parent === parent);
+}
+
+async function heldChildrenRemain(client: QueryClient, parent: string, parentPk: string) {
+  const spec = holdChildOf(parent);
+  if (!spec) return false;
+  if (!(await relationExists(client, `public.${spec.child}`))) return false;
+  const count = await client.query(
+    `SELECT COUNT(*)::int AS n
+     FROM ${quoteIdent(spec.child)}
+     WHERE ${quoteIdent(spec.childFk)} = $1::bigint`,
+    [parentPk],
+  );
+  return Number(count.rows[0]?.n ?? 0) > 0;
+}
+
+async function deleteHeldChildren(client: QueryClient, parent: string, parentPk: string, limit: number) {
+  const spec = holdChildOf(parent);
+  if (!spec || limit <= 0) return { table: spec?.child ?? parent, count: 0 };
+  if (!(await relationExists(client, `public.${spec.child}`))) return { table: spec.child, count: 0 };
+  const childPk = quoteIdent(spec.childPk);
+  const deleted = await client.query(
+    `DELETE FROM ${quoteIdent(spec.child)}
+     WHERE ${childPk} IN (
+       SELECT ${childPk}
+       FROM ${quoteIdent(spec.child)}
+       WHERE ${quoteIdent(spec.childFk)} = $1::bigint
+       ORDER BY ${childPk}
+       LIMIT $2
+     )`,
+    [parentPk, limit],
+  );
+  return { table: spec.child, count: Number(deleted.rowCount ?? 0) };
+}
+
 async function holdPrivateAssetRows(client: QueryClient, userId: number) {
   if (!(await relationExists(client, "public.deleted_user_private_rows"))) {
     throw missingMigrationError(MIGRATION_PRIVATE_ROWS);
   }
+  await detachPrivateHoldChildren(client, userId);
   for (const spec of PRIVATE_HOLD_TABLES) {
     if (!(await relationExists(client, `public.${spec.table}`))) continue;
     const table = quoteIdent(spec.table);
@@ -666,16 +760,32 @@ export async function runAccountCleanup(client: QueryClient) {
        LIMIT ${PRIVATE_PURGE_BATCH}`,
     );
     const purgedByTable = new Map<string, number>();
+    let budget = PRIVATE_PURGE_BATCH;
+    const note = (table: string, count: number) => {
+      if (count <= 0) return;
+      purgedByTable.set(table, (purgedByTable.get(table) ?? 0) + count);
+      privateRowsPurged += count;
+    };
     for (const row of due.rows) {
+      if (budget <= 0) break;
       const spec = PRIVATE_HOLD_TABLES.find((item) => item.table === String(row.table_name ?? ""));
       if (!spec) continue;
+      const parentPk = String(row.row_pk ?? "");
+      while (budget > 0 && (await heldChildrenRemain(client, spec.table, parentPk))) {
+        const removed = await deleteHeldChildren(client, spec.table, parentPk, budget);
+        if (removed.count <= 0) break;
+        budget -= removed.count;
+        note(removed.table, removed.count);
+      }
+      if (await heldChildrenRemain(client, spec.table, parentPk)) break;
+      if (budget <= 0) break;
       await client.query(
         `DELETE FROM ${quoteIdent(spec.table)} WHERE ${quoteIdent(spec.pk)} = $1::bigint`,
-        [row.row_pk],
+        [parentPk],
       );
       await client.query(`DELETE FROM deleted_user_private_rows WHERE id = $1`, [row.id]);
-      purgedByTable.set(spec.table, (purgedByTable.get(spec.table) ?? 0) + 1);
-      privateRowsPurged += 1;
+      budget -= 1;
+      note(spec.table, 1);
     }
     for (const [table, count] of purgedByTable) {
       console.error("[cron/account-cleanup] private rows purged", { table, count });
