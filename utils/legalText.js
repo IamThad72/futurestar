@@ -85,11 +85,7 @@ export const privacyPolicy = {
         { type: "h3", text: "Estate documents" },
         {
           type: "p",
-          text: "You can upload files. We store the file, its original name, its type, its size, and any title or note you add. Files sit on the server disk, or in Supabase Storage when that is configured. Household members can see household documents.",
-        },
-        {
-          type: "placeholder",
-          text: "Say whether production stores estate files on the server disk or in Supabase Storage. The code uses Supabase Storage when a service-role key is set, and the server disk otherwise.",
+          text: "You can upload files. We store the file in Supabase Storage. We also store its original name, its type, its size, and any title or note you add. Household members can see household documents.",
         },
         { type: "h3", text: "Vehicles" },
         {
@@ -103,7 +99,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "The barcode scanner reads the code on your device. Only the digits go to our server, which asks Open Food Facts for that product. A food search sends the words you type to USDA FoodData Central. Exercise names and instructions come from ExerciseDB. The moving images load in your browser from ExerciseDB’s image host. The camera picture is not uploaded.",
+          text: "The barcode scanner reads the code on your device. Only the digits go to our server, which asks Open Food Facts for that product. A food search sends the words you type to USDA FoodData Central. Exercise names and instructions come from oss.exercisedb.dev. That request sends an exercise name, a body-part filter, or an equipment filter, not your journal. The moving images load in your browser from static.exercisedb.dev. The camera picture is not uploaded.",
         },
         { type: "h3", text: "Faith practice" },
         {
@@ -149,23 +145,19 @@ export const privacyPolicy = {
         {
           type: "ul",
           items: [
-            "Supabase. Sign-in, and file storage for estate documents when Supabase Storage is configured. Account records are stored in PostgreSQL. When the database URL points at Supabase, the connection uses that host.",
+            "Supabase. Sign-in, and estate files in Supabase Storage. Account records are stored in PostgreSQL. When the database URL points at Supabase, the connection uses that host.",
             "Vercel. Hosts the web app and runs the scheduled job that refreshes investment prices.",
             "Groq. Optional written suggestions. See AI features. Called only when a server key is set.",
             "USDA FoodData Central. The food words you search, and a food id when a result is opened. Needs a server API key.",
             "Open Food Facts. The barcode digits only.",
             "Alpha Vantage. Ticker symbols from investment holdings, from a server job. Not your name or email.",
             "NHTSA vPIC. Your browser requests vehicle makes, models, and years while you fill in a vehicle. That request does not go through our server, and it does not include a stored VIN.",
-            "ExerciseDB. The server asks for exercise names and instructions. By default that host is oss.exercisedb.dev. If a RapidAPI key is configured, the server uses that ExerciseDB host instead. Your browser loads exercise images from static.exercisedb.dev. The search is an exercise name or a body-part filter, not your journal.",
+            "ExerciseDB at oss.exercisedb.dev. The server asks for exercise names and instructions. The request sends an exercise name, a body-part filter, or an equipment filter, not your journal. No API key is sent. Your browser loads exercise images from static.exercisedb.dev.",
           ],
         },
         {
           type: "p",
           text: "Fonts are bundled with the app. The app does not load fonts from Google.",
-        },
-        {
-          type: "placeholder",
-          text: "Say which ExerciseDB host production uses. The code calls oss.exercisedb.dev unless a RapidAPI key is set, and the browser loads images from static.exercisedb.dev.",
         },
       ],
     },
@@ -223,7 +215,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "Account deletion is a separate control. When this copy of the app includes it, you will find it under You, in the section named Privacy and data, labeled Delete account. The same steps are on the public page /delete-account when that page is part of the app. If you do not see that section or that page, account deletion is not available in this copy yet.",
+          text: "Account deletion is under You, in the section named Privacy and data, labeled Delete account. The same steps are on the public page /delete-account.",
         },
         {
           type: "p",
@@ -245,7 +237,7 @@ export const privacyPolicy = {
       blocks: [
         {
           type: "p",
-          text: "Sign-in is handled by Supabase Auth. On the web, a session cookie identifies you. In the phone app, requests send the Supabase access token. Passwords for the older sign-in path are stored as a hash, not as the password you typed. The database is reached from the server. Estate files sit on the server disk or in Supabase Storage.",
+          text: "Sign-in is handled by Supabase Auth. On the web, a session cookie identifies you. In the phone app, requests send the Supabase access token. Passwords for the older sign-in path are stored as a hash, not as the password you typed. The database is reached from the server. Estate files are stored in Supabase Storage.",
         },
         {
           type: "p",
@@ -278,7 +270,7 @@ export const privacyPolicy = {
       blocks: [
         {
           type: "p",
-          text: "You must be 14 or older to use Future Star. If you are under 18, you need a parent or guardian's consent where the law requires it. We do not knowingly collect personal information from children under 14. If we learn that we have, we will delete it.",
+          text: "You must be 14 or older to use Future Star. If you are under 18, you need a parent or guardian's consent where the law requires it. The App Store age rating is 12+. The Google Play content rating is Teen. Those store ratings do not change this 14+ rule. We do not knowingly collect personal information from children under 14. If we learn that we have, we will delete it.",
         },
       ],
     },
@@ -349,7 +341,7 @@ export const termsOfService = {
       blocks: [
         {
           type: "p",
-          text: "You need an account to use the tools. You must be 14 or older. If you are under 18, you need a parent or guardian's consent where the law requires it. You are responsible for your sign-in. If you link a household, money records are visible to the other members, as the privacy policy describes. Faith practice and body data stay on your account.",
+          text: "You need an account to use the tools. You must be 14 or older. If you are under 18, you need a parent or guardian's consent where the law requires it. The App Store age rating is 12+, and the Google Play content rating is Teen. Those store ratings do not change this 14+ rule. You are responsible for your sign-in. If you link a household, money records are visible to the other members, as the privacy policy describes. Faith practice and body data stay on your account.",
         },
       ],
     },
@@ -359,7 +351,7 @@ export const termsOfService = {
       blocks: [
         {
           type: "p",
-          text: "You keep what you enter. You let the publisher store it and show it so the app can run. That includes showing household money records, and household documents, to people you have linked. Estate files are stored on the server disk or in Supabase Storage, as the privacy policy describes.",
+          text: "You keep what you enter. You let the publisher store it and show it so the app can run. That includes showing household money records, and household documents, to people you have linked. Estate files are stored in Supabase Storage, as the privacy policy describes.",
         },
       ],
     },
@@ -402,7 +394,7 @@ export const termsOfService = {
           parts: [
             "You can stop using the app. Deleting the account is described in the ",
             { href: "/privacy", label: "privacy policy" },
-            ", under Retention and deletion. When the app includes that control, it is under You, in Privacy and data. Shared household money stays with the household. Private asset inventory, vehicle, and cash or investment account records that are not in a household, including investment holdings and vehicle service history, are kept hidden for 90 days, then a daily job permanently deletes them. They are not visible or accessible in the app during that time. The publisher can stop offering the app.",
+            ", under Retention and deletion. It is under You, in Privacy and data. Shared household money stays with the household. Private asset inventory, vehicle, and cash or investment account records that are not in a household, including investment holdings and vehicle service history, are kept hidden for 90 days, then a daily job permanently deletes them. They are not visible or accessible in the app during that time. The publisher can stop offering the app.",
           ],
         },
       ],

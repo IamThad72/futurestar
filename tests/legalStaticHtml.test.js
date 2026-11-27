@@ -71,7 +71,7 @@ test("the web build prerenders privacy and terms, and the phone build does not",
   assert.match(config, /assertLegalReleaseAllowed\(\)/);
   assert.match(config, /"\/privacy": \{ ssr: true, prerender: true \}/);
   assert.match(config, /"\/terms": \{ ssr: true, prerender: true \}/);
-  assert.match(config, /routes: isCapacitorBuild \? \["\/"\] : \["\/privacy", "\/terms"\]/);
+  assert.match(config, /routes: isCapacitorBuild \? \["\/"\] : \["\/privacy", "\/terms", "\/delete-account"\]/);
   const plugin = read("server/plugins/legal-html.ts");
   assert.match(plugin, /legal-static-/);
   assert.match(plugin, /prerender:generate/);

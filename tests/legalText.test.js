@@ -52,8 +52,11 @@ test("the owner's answers are in the draft and the open items stay placeholders"
   assert.match(blob, /\$100/);
   assert.match(blob, /Sample text for the owner's review/);
   assert.match(blob, /postal address for Marcelli Enterprises LLC/);
-  assert.match(blob, /which ExerciseDB host production uses/);
-  assert.match(blob, /estate files on the server disk or in Supabase Storage/);
+  assert.match(blob, /oss\.exercisedb\.dev/);
+  assert.match(blob, /stored in Supabase Storage/);
+  assert.match(blob, /App Store age rating is 12\+/);
+  assert.equal(blob.includes("which ExerciseDB host production uses"), false);
+  assert.equal(blob.includes("server disk"), false);
   assert.match(blob, /The weekly mirror note is written inside the app/);
   assert.match(blob, /Its data is not sent to third parties/);
   assert.equal(blob.includes("weekly mirror should keep sending"), false);
