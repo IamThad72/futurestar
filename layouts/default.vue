@@ -125,6 +125,10 @@
           <div class="mx-auto max-w-7xl px-1 py-1 sm:px-6 lg:px-8">
             <p class="text-center text-xs font-medium text-muted">
               &copy; 2026 Marcelli Enterprises LLC. All rights reserved.
+              <span aria-hidden="true"> · </span>
+              <AppLink to="/privacy" class="text-navy underline underline-offset-2 hover:underline">Privacy</AppLink>
+              <span aria-hidden="true"> · </span>
+              <AppLink to="/terms" class="text-navy underline underline-offset-2 hover:underline">Terms</AppLink>
             </p>
           </div>
         </footer>

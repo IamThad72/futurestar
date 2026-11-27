@@ -52,6 +52,18 @@
 
     <FaithSettings v-if="auth.user" class="mt-4" />
 
+    <section class="mt-4" aria-labelledby="privacy-and-legal-heading">
+      <h2 id="privacy-and-legal-heading" class="text-base font-semibold text-ink">Privacy and legal</h2>
+      <div class="mt-2 flex flex-col gap-2">
+        <AppLink to="/privacy" class="btn btn-outline min-h-11 justify-start">
+          Privacy policy
+        </AppLink>
+        <AppLink to="/terms" class="btn btn-outline min-h-11 justify-start">
+          Terms of service
+        </AppLink>
+      </div>
+    </section>
+
     <div class="you-page__logout">
       <button
         type="button"

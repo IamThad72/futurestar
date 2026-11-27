@@ -26,3 +26,5 @@ jobs:
         run: node scripts/check-capacitor-config.mjs
       - run: npm test
       - run: npm run build
+      - name: Check prerendered privacy and terms HTML
+        run: node scripts/verify-legal-prerender.mjs

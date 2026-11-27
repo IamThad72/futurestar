@@ -2,8 +2,11 @@ import tailwindcss from "@tailwindcss/vite";
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { bundledFontPublicPath, bundledFonts, copyBundledFonts } from "./scripts/copy-bundled-fonts.mjs";
+import { assertLegalReleaseAllowed } from "./utils/legalDraftGuard.js";
+import { DEFAULT_SUPPORT_EMAIL } from "./utils/supportEmail.js";
 
 copyBundledFonts();
+assertLegalReleaseAllowed();
 
 const isProd = process.env.NODE_ENV === "production";
 const isMobileProd = process.env.NUXT_MOBILE_PRODUCTION === "true";
@@ -69,6 +72,8 @@ export default defineNuxtConfig({
       nativeApiBase,
       /** Baked in when NUXT_CAPACITOR=true; used by native hash-router plugin */
       isCapacitorBuild,
+      /** NUXT_PUBLIC_SUPPORT_EMAIL overrides support@me.com. Do not invent a postal address. */
+      supportEmail: process.env.NUXT_PUBLIC_SUPPORT_EMAIL || DEFAULT_SUPPORT_EMAIL,
     },
   },
 
@@ -101,13 +106,16 @@ export default defineNuxtConfig({
   },
 
   // Required for Capacitor (app must run fully client-side).
-  // /delete-account is the exception: Play's web link must see the deletion
-  // text in the HTML, not an empty client shell.
+  // /privacy, /terms, and /delete-account are the exception on the web: store
+  // reviewers and curl must see the text in the HTML, not an empty client shell.
+  // The phone build stays a hash-routed shell and does not prerender these routes.
   ssr: false,
   ...(isCapacitorBuild
     ? {}
     : {
         routeRules: {
+          "/privacy": { ssr: true, prerender: true },
+          "/terms": { ssr: true, prerender: true },
           "/delete-account": { ssr: true, prerender: true },
         },
       }),
@@ -129,7 +137,7 @@ export default defineNuxtConfig({
     preset: isVercel || (isProd && !isCapacitorBuild) ? "vercel" : undefined,
     prerender: {
       crawlLinks: false,
-      routes: isCapacitorBuild ? ["/"] : ["/delete-account"],
+      routes: isCapacitorBuild ? ["/"] : ["/privacy", "/terms", "/delete-account"],
     },
     vercel: {
       functions: {

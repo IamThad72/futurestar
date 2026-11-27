@@ -37,6 +37,10 @@ npm run build:mobile:prod   # fails if API base is not HTTPS
 
 Capacitor WebView origins (`https://localhost`, etc.) are allowed by default in `server/middleware/cors.ts`.
 
+## Privacy and terms
+
+`/privacy` and `/terms` are prerendered into the web build. While `LEGAL_DRAFT` is true in `utils/legalText.js`, a production Vercel build and a GitHub Actions build of `main` fail on purpose. Promoting a preview deployment to production does not run the build again, so it skips that guard. Do not promote a preview while the legal text is still a draft. The same is true of `vercel deploy --prebuilt` when `VERCEL_ENV` is unset.
+
 ## Build commands
 
 | Command | Use case |
@@ -102,13 +106,14 @@ The permanent app identifier is `com.futurestar.app` on Capacitor, Android, and 
 
 A signed-in person deletes their account from You → Privacy and data → Delete account, or from the public page `/delete-account` (that page explains the steps when nobody is signed in). Use `https://<production-host>/delete-account` as the web deletion link in App Store Connect and Play Console.
 
-The owner decided on Nov 26, 2026: shared household money stays (`keep-shared`). Household tax profiles and deduction overrides stay. A same-name income, investment, or savings source is kept and renamed with ` (former member)`, then ` 2`, ` 3`, and so on if needed. When the last person leaves, household rows are deleted, including rows that still name someone who already left. Private Faith and Body rows, the profile, and sessions are erased. Private asset, vehicle, and cash or investment rows that are not in a household (group_id is null) are detached from the person and kept for 90 days, then deleted by the daily cleanup job. That hold includes the holdings on a private cash or investment account and the service history on a private vehicle. They are not shown in the app during that time. Shared household copies of those records, including shared holdings and service history, stay with the household. The privacy policy (PR #14) still needs this 90-day disclosure. The sign-in id is kept so that sign-in cannot open a new account; if removing it does not finish immediately, a daily job retries it. The Vercel account is on Hobby, which allows only one run per day and starts that run sometime during the scheduled hour. A more frequent retry would need Vercel Pro, which is an owner decision. Deleting the app does not delete the account. Before release, run the foreign-key audit and all four household scenarios on a preview database with throwaway accounts, never production.
+The owner decided on Nov 26, 2026: shared household money stays (`keep-shared`). Household tax profiles and deduction overrides stay. A same-name income, investment, or savings source is kept and renamed with ` (former member)`, then ` 2`, ` 3`, and so on if needed. When the last person leaves, household rows are deleted, including rows that still name someone who already left. Private Faith and Body rows, the profile, and sessions are erased. Private asset, vehicle, and cash or investment rows that are not in a household (group_id is null) are detached from the person and kept for 90 days, then deleted by the daily cleanup job. That hold includes the holdings on a private cash or investment account and the service history on a private vehicle. They are not shown in the app during that time. Shared household copies of those records, including shared holdings and service history, stay with the household. The privacy policy includes this 90-day disclosure. The sign-in id is kept so that sign-in cannot open a new account; if removing it does not finish immediately, a daily job retries it. The Vercel account is on Hobby, which allows only one run per day and starts that run sometime during the scheduled hour. A more frequent retry would need Vercel Pro, which is an owner decision. Deleting the app does not delete the account. Before release, run the foreign-key audit and all four household scenarios on a preview database with throwaway accounts, never production.
 
 ## Store console requirements (manual)
 
 - [ ] Apple Developer / Google Play developer accounts
 - [ ] App signing (release keystore / App Store Connect certificates)
-- [ ] Privacy policy URL: ________ (required for finance apps and for both stores). No privacy page is in the app yet, so publish the URL before the first upload.
+- [ ] Privacy policy URL: ________ (required for finance apps and for both stores). The page is `/privacy`. Publish that URL before the first upload.
+- [ ] Age ratings: App Store 12+. Google Play Teen. The privacy policy minimum age stays 14+. Owner choice, Nov 27, 2026.
 - [ ] Account deletion URL: ________ (required by Apple). In the app: You → Privacy and data → Delete account. On the web: `/delete-account`. Publish that URL before the first upload.
 - [ ] Build with Xcode 26 or later (App Store Connect requirement since April 28, 2026)
 - [ ] Target API 36 (Google Play requirement from August 31, 2026). Already set: `compileSdkVersion` and `targetSdkVersion` are 36 in `android/variables.gradle`.
