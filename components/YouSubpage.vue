@@ -79,7 +79,11 @@ onMounted(() => {
 
 watch(
   () => props.modelValue,
-  (open) => {
+  (open, wasOpen) => {
+    // This instance stays mounted, so onMounted only sees the first open.
+    if (open && wasOpen === false) {
+      returnFocus = consumeSheetTrigger(document.activeElement, document.body);
+    }
     presented.value = Boolean(open);
   },
   { immediate: true },
