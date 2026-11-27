@@ -114,6 +114,7 @@ const migrations = [
   "create_account_deletion_attempts.sql",
   "create_deleted_user_private_rows.sql",
   "alter_hold_child_user_id_nullable.sql",
+  "alter_held_rows_user_id_detachable.sql",
 ];
 
 async function run() {

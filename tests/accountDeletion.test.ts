@@ -761,6 +761,45 @@ describe("throttle, households, and handoff details", () => {
     expect(logged).not.toContain("private-bank");
   });
 
+  it("drops an unknown queue row so it cannot block the purge", async () => {
+    const db = install(new AccountDeletionDb());
+    const past = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+    const later = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    db.rows.deleted_user_private_rows.push(
+      { id: 1, table_name: "secret_table", row_pk: "secret-pk", former_user_id: 42, purge_after: past },
+      { id: 2, table_name: "asset_inventory", row_pk: "7", former_user_id: 42, purge_after: later },
+    );
+    db.rows.asset_inventory.push({ ai_id: 7, user_id: null, group_id: null, title: "ring" });
+    process.env.CRON_SECRET = "1234567890123456";
+    await (accountCleanup as (event: HandlerEvent) => Promise<unknown>)(makeEvent({
+      method: "GET",
+      url: "/api/cron/account-cleanup",
+      headers: { authorization: "Bearer 1234567890123456" },
+    }));
+    expect(db.rows.deleted_user_private_rows).toEqual([]);
+    expect(db.rows.asset_inventory).toEqual([]);
+    const unknown = vi.mocked(console.error).mock.calls.find((args) => String(args[0]).includes("unknown private queue row removed"));
+    expect(unknown?.[1]).toEqual({ ref: expect.stringMatching(/^[0-9a-f]{12}$/) });
+    const logged = JSON.stringify(unknown);
+    expect(logged).not.toContain("secret_table");
+    expect(logged).not.toContain("secret-pk");
+  });
+
+  it("refuses to delete when a held parent user id is still required", async () => {
+    const db = install(new AccountDeletionDb());
+    db.userIdNotNull.add("asset_inventory");
+    db.users.push(user({ user_id: 1, email: "a@example.com" }));
+    session(db, 1, "session-a");
+    db.rows.asset_inventory.push({ ai_id: 4, user_id: 1, group_id: null, title: "ring" });
+    await expectStatus(
+      call(db, { cookie: "session-a", body: { confirmEmail: "a@example.com", password: PASSWORD } }).then((item) => item.value),
+      500,
+      "Account deletion is not ready. Run scripts/alter_held_rows_user_id_detachable.sql before deleting accounts.",
+    );
+    expect(db.users).toHaveLength(1);
+    expect(db.rows.asset_inventory[0]?.user_id).toBe(1);
+  });
+
   it("refuses to delete when holding a child still requires a user id", async () => {
     const db = install(new AccountDeletionDb());
     db.userIdNotNull.add("investment_positions");
@@ -771,7 +810,7 @@ describe("throttle, households, and handoff details", () => {
     await expectStatus(
       call(db, { cookie: "session-a", body: { confirmEmail: "a@example.com", password: PASSWORD } }).then((item) => item.value),
       500,
-      "Account deletion is not ready. Run scripts/alter_hold_child_user_id_nullable.sql before deleting accounts.",
+      "Account deletion is not ready. Run scripts/alter_held_rows_user_id_detachable.sql before deleting accounts.",
     );
     expect(db.users).toHaveLength(1);
     expect(db.rows.investment_positions[0]?.user_id).toBe(1);

@@ -226,6 +226,7 @@ test("deletion guards cover re-auth, throttle, focus, and the login return path"
   assert.equal(bearerIsFresh(`h.${stale}.s`, now, 5 * 60 * 1000), false);
   assert.equal(bearerIsFresh("not-a-jwt", now, 5 * 60 * 1000), false);
   assert.match(KEPT_ON_DELETE, /household/);
+  assert.doesNotMatch(KEPT_ON_DELETE, /Sharing links/);
   assert.match(RETENTION_ON_DELETE, /sign-in id/);
   assert.match(RETENTION_ON_DELETE, /daily job/);
   assert.match(RETENTION_ON_DELETE, /90 days/);

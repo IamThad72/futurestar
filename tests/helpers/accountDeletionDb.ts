@@ -467,6 +467,7 @@ export class AccountDeletionDb {
     const now = Date.now();
     const due = (this.rows.deleted_user_private_rows ?? [])
       .filter((row) => Date.parse(String(row.purge_after ?? "")) <= now)
+      .sort((left, right) => Date.parse(String(left.purge_after)) - Date.parse(String(right.purge_after)) || Number(left.id) - Number(right.id))
       .slice(0, 500);
     return result(due.map((row) => ({ id: row.id, table_name: row.table_name, row_pk: row.row_pk })));
   }

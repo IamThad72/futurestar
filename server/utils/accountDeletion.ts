@@ -55,6 +55,15 @@ export const MIGRATION_TOMBSTONE = "scripts/create_deleted_auth_users.sql";
 export const MIGRATION_STORAGE = "scripts/create_pending_storage_deletes.sql";
 export const MIGRATION_PRIVATE_ROWS = "scripts/create_deleted_user_private_rows.sql";
 export const MIGRATION_HOLD_CHILDREN = "scripts/alter_hold_child_user_id_nullable.sql";
+export const MIGRATION_DETACH_USER_ID = "scripts/alter_held_rows_user_id_detachable.sql";
+
+const DETACHABLE_USER_ID_TABLES = [
+  "asset_inventory",
+  "asset_vehicles",
+  "cash_and_investments",
+  "investment_positions",
+  "vehicle_service_records",
+] as const;
 
 /** Private rows with no user_id foreign key. group_id null is kept 90 days, then purged. */
 const PRIVATE_HOLD_TABLES = [
@@ -309,11 +318,12 @@ async function collectEstateFiles(
 }
 
 /**
- * Private asset, vehicle, and cash rows have no foreign key to app_users.
- * Clear user_id so a later account cannot inherit them, and remember the row
- * until purge_after. Household rows are already reowned or deleted by group_id.
+ * Clear user_id before DELETE FROM app_users. That holds the row whether or not
+ * user_id still has a foreign key: ON DELETE CASCADE only matches rows that
+ * still point at the person. The former id lives only in the queue.
+ * Household rows are already reowned or deleted by group_id.
  */
-async function assertHoldChildNullable(client: QueryClient, table: string) {
+async function assertUserIdDetachable(client: QueryClient, table: string) {
   const found = await client.query(
     `SELECT is_nullable
      FROM information_schema.columns
@@ -321,7 +331,7 @@ async function assertHoldChildNullable(client: QueryClient, table: string) {
     [table],
   );
   if (String(found.rows[0]?.is_nullable ?? "") === "NO") {
-    throw missingMigrationError(MIGRATION_HOLD_CHILDREN);
+    throw missingMigrationError(MIGRATION_DETACH_USER_ID);
   }
 }
 
@@ -330,7 +340,7 @@ async function detachPrivateHoldChildren(client: QueryClient, userId: number) {
   for (const spec of PRIVATE_HOLD_CHILDREN) {
     if (!(await relationExists(client, `public.${spec.child}`))) continue;
     if (!(await relationExists(client, `public.${spec.parent}`))) continue;
-    await assertHoldChildNullable(client, spec.child);
+    await assertUserIdDetachable(client, spec.child);
     const childFk = quoteIdent(spec.childFk);
     const parentPk = quoteIdent(spec.parentPk);
     await client.query(
@@ -387,6 +397,10 @@ async function holdPrivateAssetRows(client: QueryClient, userId: number) {
     throw missingMigrationError(MIGRATION_PRIVATE_ROWS);
   }
   await detachPrivateHoldChildren(client, userId);
+  for (const table of DETACHABLE_USER_ID_TABLES) {
+    if (!(await relationExists(client, `public.${table}`))) continue;
+    await assertUserIdDetachable(client, table);
+  }
   for (const spec of PRIVATE_HOLD_TABLES) {
     if (!(await relationExists(client, `public.${spec.table}`))) continue;
     const table = quoteIdent(spec.table);
@@ -768,8 +782,16 @@ export async function runAccountCleanup(client: QueryClient) {
     };
     for (const row of due.rows) {
       if (budget <= 0) break;
-      const spec = PRIVATE_HOLD_TABLES.find((item) => item.table === String(row.table_name ?? ""));
-      if (!spec) continue;
+      const tableName = String(row.table_name ?? "");
+      const spec = PRIVATE_HOLD_TABLES.find((item) => item.table === tableName);
+      if (!spec) {
+        await client.query(`DELETE FROM deleted_user_private_rows WHERE id = $1`, [row.id]);
+        budget -= 1;
+        console.error("[cron/account-cleanup] unknown private queue row removed", {
+          ref: deletionLogRef(tableName),
+        });
+        continue;
+      }
       const parentPk = String(row.row_pk ?? "");
       while (budget > 0 && (await heldChildrenRemain(client, spec.table, parentPk))) {
         const removed = await deleteHeldChildren(client, spec.table, parentPk, budget);
