@@ -35,7 +35,13 @@
     <FaithSettings v-if="auth.user" class="mt-4" />
 
     <div class="you-page__logout">
-      <button type="button" class="btn btn-error w-full gap-2" @click="handleLogout">
+      <button
+        type="button"
+        class="btn btn-error w-full gap-2"
+        :disabled="signingOut"
+        :aria-busy="signingOut"
+        @click="handleLogout"
+      >
         <AppIcon name="log-out" :size="18" />
         Logout
       </button>
@@ -52,6 +58,7 @@ import { IonIcon, IonItem, IonLabel, IonList } from "@ionic/vue";
 import { peopleOutline, personOutline } from "ionicons/icons";
 import { useAuthStore } from "~/stores/auth";
 import { profileIdentity, profilePhotoUrl, showProfileAvatar } from "~/utils/profileAvatar";
+import { runGuardedSignOut } from "~/utils/signOutGuard";
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -59,6 +66,7 @@ const { signOut } = useSignOut();
 const showAccountManagement = ref(false);
 const showLinkedAccounts = ref(false);
 const avatarFailed = ref(false);
+const signingOut = ref(false);
 
 const identity = computed(() => profileIdentity(auth.user));
 const showAvatar = computed(() => showProfileAvatar(auth.user, avatarFailed.value));
@@ -72,7 +80,11 @@ watch(
 );
 
 async function handleLogout() {
-  await signOut();
+  try {
+    await runGuardedSignOut(signingOut, signOut);
+  } catch {
+    // runGuardedSignOut re-enables the button. Stay on this page.
+  }
 }
 
 onMounted(async () => {

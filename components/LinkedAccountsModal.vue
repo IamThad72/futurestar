@@ -1,24 +1,23 @@
 <template>
-  <div v-if="modelValue" class="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4">
-    <div class="absolute inset-0 bg-black/50" @click="close"></div>
-    <div
-      class="relative w-full h-full sm:w-auto sm:h-auto sm:max-w-[46.2rem] sm:max-h-[90vh] overflow-y-auto overscroll-contain bg-base-100 p-4 pt-6 pb-safe-content sm:p-6 shadow-lg sm:rounded-lg"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div class="flex items-center justify-between">
-        <div>
-          <h2 class="text-lg font-semibold">Linked Accounts</h2>
-          <p class="text-sm text-base-content/70">
-            Create a group (up to 6 people) so members share the same Financial records —
-            budgets, estate, garage, account map, and tax. Physical and Spiritual data stay
-            private to each person.
-          </p>
-        </div>
-        <button class="btn btn-ghost btn-sm min-h-9 min-w-14" type="button" @click="close">Close</button>
+  <YouSubpage
+    :model-value="modelValue"
+    title="Linked Accounts"
+    labelled-by="linked-accounts-title"
+    panel-class="sm:max-w-[46.2rem]"
+    close-class="btn btn-ghost btn-sm min-h-9 min-w-14 shrink-0"
+    @update:model-value="emit('update:modelValue', $event)"
+  >
+    <template #heading>
+      <div>
+        <h2 id="linked-accounts-title" class="text-lg font-semibold">Linked Accounts</h2>
+        <p class="text-sm text-base-content/70">{{ linkedIntro }}</p>
       </div>
+    </template>
+    <template #intro>
+      <p class="text-sm text-base-content/70">{{ linkedIntro }}</p>
+    </template>
 
-      <div v-if="!auth.ready" class="mt-4 text-sm text-base-content/70">
+    <div v-if="!auth.ready" class="mt-4 text-sm text-base-content/70">
         Loading session...
       </div>
 
@@ -127,8 +126,7 @@
         </div>
 
       </div>
-    </div>
-  </div>
+  </YouSubpage>
 </template>
 
 <script setup>
@@ -141,6 +139,8 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue"]);
 
 const auth = useAuthStore();
+const linkedIntro =
+  "Create a group (up to 6 people) so members share the same Financial records — budgets, estate, garage, account map, and tax. Physical and Spiritual data stay private to each person.";
 const groupLoading = ref(false);
 const groupError = ref("");
 const groupSuccess = ref("");
@@ -151,10 +151,6 @@ const newGroupSecondEmail = ref("");
 const newMemberEmail = ref("");
 const removingUserId = ref(null);
 const addingMember = ref(false);
-
-const close = () => {
-  emit("update:modelValue", false);
-};
 
 const loadGroupMembers = async () => {
   groupLoading.value = true;
