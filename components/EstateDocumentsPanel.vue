@@ -268,7 +268,7 @@ async function submitUpload() {
     uploadModalRef.value?.close();
     await loadDocuments();
   } catch (error) {
-    uploadError.value = parseFetchError(error, "Failed to upload document.");
+    uploadError.value = parseFetchError(error, "Couldn't save the file. Please try again.");
   } finally {
     uploading.value = false;
   }

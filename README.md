@@ -103,6 +103,13 @@ Budget setup and the budget tracker read the budget tables.
 If a page cannot load, people see "The budget could not be loaded. Try again in a moment." on Budget setup, or "The budget tracker could not be loaded. Try again in a moment." on the tracker.
 The migrate command is for operators: it appears in this documentation and in the browser console, not in the app.
 
+## Estate documents
+
+New estate files upload only to the private Supabase Storage bucket `estate-docs`.
+That needs `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. `ESTATE_DOCS_STORAGE` is not used.
+If a file cannot be saved, Estate Management says "Couldn't save the file. Please try again."
+Files already stored on disk stay readable and deletable from `ESTATE_DOCS_DIR` (default `uploads/estate-docs`).
+
 ## iOS & Android
 
 Native apps use **Ionic + Capacitor** with the [@nuxtjs/ionic](https://ionic.nuxtjs.org/) module.
