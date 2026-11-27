@@ -3,7 +3,7 @@
     class="mobile-ionic-shell"
     :class="{ 'mobile-ionic-shell--editing': textFieldFocused }"
   >
-    <div id="main-content" class="ion-page">
+    <div class="ion-page">
       <ion-header>
         <ion-toolbar>
           <ion-title>{{ screenTitle }}</ion-title>
@@ -20,17 +20,18 @@
       </ion-header>
 
       <ion-content ref="contentRef" class="mobile-ionic-content">
-        <div
+        <main
+          id="main-content"
+          tabindex="-1"
           ref="mainRef"
           class="mobile-ionic-main"
           :class="{ 'mobile-ionic-main--flush-end': isSpiritualHome }"
         >
           <slot />
-        </div>
+        </main>
       </ion-content>
 
       <ion-footer
-        v-if="auth.user"
         v-show="!textFieldFocused"
         class="mobile-area-bar"
       >

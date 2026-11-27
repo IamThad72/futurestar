@@ -252,6 +252,11 @@ async function loadDocuments() {
 }
 
 async function submitUpload() {
+  const auth = useAuthStore();
+  if (!auth.user) {
+    uploadError.value = SIGN_IN_MESSAGE;
+    return;
+  }
   const file = selectedFile.value || fileInputRef.value?.files?.[0];
   if (!file) {
     uploadError.value = "Choose a file to upload.";

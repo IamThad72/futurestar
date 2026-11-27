@@ -254,7 +254,7 @@
         <p v-else-if="listLoading && !sessions.length" class="text-sm text-base-content/60">Loading sessions…</p>
         <p v-else-if="!sessions.length" class="text-sm text-base-content/60">No sessions yet.</p>
         <section v-for="group in groupedHistory" :key="group.key" class="space-y-2">
-          <h3 v-if="group.label" class="text-xs font-semibold uppercase tracking-wide text-base-content/50">{{ group.label }}</h3>
+          <h3 v-if="group.label" class="text-xs font-semibold uppercase tracking-wide text-muted">{{ group.label }}</h3>
           <ul class="space-y-2">
             <li v-for="item in group.sessions" :key="item.sessionId">
               <button

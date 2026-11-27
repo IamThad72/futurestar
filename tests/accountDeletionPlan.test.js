@@ -240,7 +240,8 @@ test("deletion guards cover re-auth, throttle, focus, and the login return path"
   assert.match(html, /id="delete-account-static"/);
   assert.match(html, /Stays with the household/);
   assert.match(html, /What is kept afterwards/);
-  assert.match(html, /href="\/login\?next=\/delete-account"/);
+  assert.match(html, /Login is in the header/);
+  assert.doesNotMatch(html, /href="\/login/);
 });
 
 test("the login notice is one line and is read once", () => {

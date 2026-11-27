@@ -1,7 +1,7 @@
 <template>
   <div class="relative isolate overflow-hidden rounded-lg border border-base-300 bg-base-100">
     <div v-if="loading" class="px-4 py-10 text-center text-xs text-base-content/60 md:text-sm">
-      Loading snapshot...
+      Loading…
     </div>
     <div v-else class="border-b border-base-300">
       <dl

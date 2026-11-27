@@ -1,58 +1,39 @@
 <template>
-  <main>
-    <div v-if="!auth.ready" class="mx-auto max-w-7xl px-1 py-8 sm:px-6 lg:px-8">
-      <p class="text-sm text-gray-500 dark:text-gray-400">Loading session...</p>
-    </div>
-
-    <div
-      v-else-if="!auth.user"
-      class="mx-auto max-w-7xl px-1 py-8 sm:px-6 lg:px-8 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
-    >
-      You must be logged in to use the garage.
-    </div>
-
+  <section class="app-page">
+    <p v-if="!auth.ready" class="text-sm text-muted">Loading…</p>
     <template v-else>
-      <header class="pb-4 pt-6 sm:pb-6">
-        <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-1 sm:px-6 lg:px-8">
-          <div>
-            <NuxtLink
-              to="/estate_mgmt"
-              class="inline-flex items-center gap-1 text-sm font-medium text-base-content/60 hover:text-primary md:text-base"
-            >
-              <AppIcon name="chevron-back" :size="18" />
-              Estate Management
-            </NuxtLink>
-            <h1 class="mt-1 text-lg font-semibold text-base-content md:text-xl">Garage</h1>
-            <p class="mt-0.5 text-xs text-base-content/60">
-              Select a vehicle to view service history and recommendations.
-            </p>
-          </div>
+      <header class="page-header">
+        <div class="page-header__copy">
+          <h1>Garage</h1>
+          <p class="page-header__lede">Vehicles and the service history that goes with them.</p>
         </div>
+        <button v-if="auth.user" type="button" class="btn btn-primary" @click="openAddVehicle">Add a vehicle</button>
       </header>
 
-      <div v-if="loading" class="mx-auto max-w-7xl px-1 py-8 text-sm text-gray-500 sm:px-6 lg:px-8 dark:text-gray-400">
-        Loading vehicles...
-      </div>
-      <div v-else-if="error" class="mx-auto max-w-7xl px-1 py-8 sm:px-6 lg:px-8">
-        <p class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200">
-          {{ error }}
-        </p>
-      </div>
-      <div v-else class="mx-auto max-w-7xl px-1 pb-12 sm:px-6 lg:px-8">
-        <EstateRecordList
-          :items="sortedVehicles"
-          item-key="vh_id"
-          :columns="columns"
-          :sort-state="sortState"
-          :map-row="mapVehicleRow"
-          empty-text="No vehicles yet. Add one from Estate Management."
-          click-emits="select"
-          @sort="setSort"
-          @select="openVehicle"
-        />
-      </div>
+      <p v-if="loading" class="text-sm text-muted">Loading…</p>
+      <LoadErrorPanel v-else-if="error" :message="error" @retry="loadVehicles" />
+      <EmptyState
+        v-else-if="!sortedVehicles.length"
+        title="No vehicles yet."
+        sentence="Add a car or truck to keep its service history here."
+        :action="auth.user ? 'Add a vehicle' : ''"
+        @action="openAddVehicle"
+      />
+      <EstateRecordList
+        v-else
+        :items="sortedVehicles"
+        item-key="vh_id"
+        :columns="columns"
+        :sort-state="sortState"
+        :map-row="mapVehicleRow"
+        empty-text="No vehicles yet."
+        click-emits="select"
+        @sort="setSort"
+        @select="openVehicle"
+      />
+      <LazyAddEstateRecordModal v-if="addModalMounted" ref="addModalRef" @saved="loadVehicles" />
     </template>
-  </main>
+  </section>
 </template>
 
 <script setup>
@@ -61,6 +42,8 @@ useHead({ title: "Garage" });
 const auth = useAuthStore();
 const loading = ref(true);
 const error = ref("");
+const addModalRef = ref(null);
+const addModalMounted = ref(false);
 const vehicles = ref([]);
 const sortState = ref({ key: "make", dir: "asc" });
 
@@ -128,25 +111,41 @@ function openVehicle(item) {
   void navigateTo(`/garage/${item.vh_id}`);
 }
 
+async function openAddVehicle() {
+  if (!auth.user) {
+    error.value = SIGN_IN_MESSAGE;
+    return;
+  }
+  addModalMounted.value = true;
+  await nextTick();
+  addModalRef.value?.open("vehicle");
+}
+
 async function loadVehicles() {
+  if (!auth.user) {
+    vehicles.value = [];
+    error.value = "";
+    loading.value = false;
+    return;
+  }
   loading.value = true;
   error.value = "";
   try {
     const res = await $fetch("/api/garage/vehicles");
     vehicles.value = res?.vehicles ?? [];
   } catch (e) {
-    error.value = e?.data?.statusMessage || e?.message || "Failed to load vehicles.";
     vehicles.value = [];
+    const failure = settleLoadError(e, "The garage could not be loaded. Try again in a moment.");
+    error.value = failure.message;
   } finally {
     loading.value = false;
   }
 }
 
 watch(
-  () => Boolean(auth.ready && auth.user),
-  (ok) => {
-    if (ok) void loadVehicles();
-    else if (auth.ready) loading.value = false;
+  () => auth.ready,
+  (ready) => {
+    if (ready) void loadVehicles();
   },
   { immediate: true },
 );

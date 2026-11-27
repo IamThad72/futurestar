@@ -41,7 +41,6 @@ export const FINANCIAL_NAV_TABS = [
     href: "/account_map",
     icon: "git-network",
     description: "How income, accounts, and budgets connect.",
-    hideOnMobile: true,
     match: (path) => path.startsWith("/account_map"),
   },
   {

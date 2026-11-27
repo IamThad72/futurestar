@@ -54,7 +54,7 @@
         </div>
         <p v-if="shortenedIntention" class="mt-2 text-sm text-gray-800">{{ shortenedIntention }}</p>
       </div>
-      <form class="mt-4 grid min-w-0 gap-3" @submit.prevent="saveIntention">
+      <form v-if="auth.user || auth.sessionEnded" class="mt-4 grid min-w-0 gap-3" @submit.prevent="saveIntention">
         <label class="form-control min-w-0">
           <span class="label h-auto min-h-0 items-start py-1">
             <span class="label-text text-sm whitespace-normal break-words">The person I most need to love well today</span>
@@ -126,6 +126,7 @@ const beStillLines = BE_STILL_LINES;
 const beStillPrompts = BE_STILL_PROMPTS;
 const intentionFields = MORNING_INTENTION_FIELDS;
 const faith = useFaithProfile();
+const auth = useAuthStore();
 /** Catechism wording in Catholic mode; Scripture wording otherwise. */
 const virtueGroups = computed(() => virtueGroupsForTradition(faith.tradition.value));
 
@@ -194,7 +195,9 @@ async function loadDay() {
     shortenedIntention.value = "";
     practiceText.value = "";
   } catch (error) {
-    prayerError.value = parseFetchError(error, "Failed to load morning prayer.");
+    const failure = settleLoadError(error, "Failed to load morning prayer.");
+    prayerError.value = failure.message;
+    if (failure.auth) prayers.value = [];
   } finally {
     prayerLoading.value = false;
   }

@@ -1,13 +1,16 @@
 <template>
   <section class="app-page-wide space-y-4 sm:space-y-6">
-    <header class="flex flex-wrap items-center gap-3 sm:gap-4">
-      <h1 class="text-lg sm:text-xl font-semibold text-base-content">Tax</h1>
+    <header class="page-header">
+      <div class="page-header__copy">
+      <h1>Tax</h1>
+      <p v-if="auth.ready && !auth.user" class="page-header__lede">Annual totals and estimated taxes for the year.</p>
       <p v-if="auth.ready && auth.user && !loading && model.profileMissing" class="min-w-0 text-sm text-base-content/80">
         Federal, state, and local estimates wait until you save a filing status for {{ selectedYear }}. Nothing is assumed. Withholding and paycheck totals stay visible either way.
       </p>
       <p v-else-if="auth.ready && auth.user && profileSummary" class="min-w-0 text-sm text-base-content/80">
         {{ profileSummary }}
       </p>
+      </div>
       <button
         v-if="auth.ready && auth.user"
         type="button"
@@ -19,16 +22,7 @@
       </button>
     </header>
 
-    <div v-if="!auth.ready" class="rounded-lg border border-base-200 bg-base-300 p-4">
-      <span class="text-sm text-base-content/70">Loading session...</span>
-    </div>
-
-    <div
-      v-else-if="!auth.user"
-      class="rounded-lg border border-warning/30 bg-warning/10 p-4 text-sm text-base-content"
-    >
-      You must be logged in to use this page.
-    </div>
+    <p v-if="!auth.ready" class="text-sm text-muted">Loading…</p>
 
     <template v-else>
       <nav
@@ -460,7 +454,11 @@ function amountsByKind(rows, key) {
 }
 
 async function loadTotals() {
-  if (!auth.user) return;
+  if (!auth.user) {
+    loadError.value = "";
+    loading.value = false;
+    return;
+  }
   loading.value = true;
   loadError.value = "";
   profileSaveError.value = "";
@@ -478,8 +476,9 @@ async function loadTotals() {
       ...amountsByKind(fiscalData?.posttax, "total_kind"),
     };
   } catch (err) {
-    console.error("Failed to load tax page totals", err);
-    loadError.value = err?.data?.statusMessage || err?.message || "Failed to load totals.";
+    const failure = settleLoadError(err, "The tax totals could not be loaded. Try again in a moment.");
+    loadError.value = failure.message;
+    if (!failure.auth) console.error("Failed to load tax page totals", err);
     grossIncome.value = 0;
     netIncome.value = 0;
     deductionAmounts.value = {};

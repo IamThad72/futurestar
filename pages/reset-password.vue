@@ -4,7 +4,7 @@
   >
     <div class="sm:mx-auto sm:w-full sm:max-w-sm">
       <NuxtLink
-        to="/login"
+        to="/"
         class="flex items-center justify-center gap-2 text-lg font-semibold tracking-tight text-base-content"
       >
         Future Star
@@ -82,7 +82,7 @@
         class="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-200 ring-inset"
         role="alert"
       >
-        This reset link is invalid or has expired. Request a new link from the sign-in page.
+        This reset link is invalid or has expired. Use Login in the header to request a new link.
       </p>
 
       <div
@@ -101,18 +101,18 @@
       </div>
 
       <p class="mt-8 text-center text-sm text-zinc-600">
-        <NuxtLink to="/login" class="font-semibold text-primary hover:text-primary/80">
-          Back to sign in
-        </NuxtLink>
-        <span v-if="linkError"> · </span>
-        <NuxtLink
+        Login stays in the header.
+        <button
           v-if="linkError"
-          to="/login"
+          type="button"
           class="font-semibold text-primary hover:text-primary/80"
           @click="openForgotOnLogin"
         >
           Request a new reset link
-        </NuxtLink>
+        </button>
+      </p>
+      <p v-if="resetLinkReady" class="mt-2 text-center text-sm text-zinc-600">
+        Use Login in the header. The reset form will be open.
       </p>
     </div>
   </div>
@@ -125,12 +125,14 @@ import {
   parseSupabaseAuthParams,
 } from "~/utils/supabaseAuthHash";
 
+useHead({ title: "Reset password" });
+
 const auth = useAuthStore();
-const { go } = useAppNavigate();
 const router = useRouter();
 const loading = ref(false);
 const ready = ref(false);
 const canReset = ref(false);
+const resetLinkReady = ref(false);
 const linkError = ref("");
 const error = ref("");
 const success = ref("");
@@ -143,6 +145,7 @@ function openForgotOnLogin() {
   if (import.meta.client) {
     sessionStorage.setItem("loginForgotPassword", "1");
   }
+  resetLinkReady.value = true;
 }
 
 function clearAuthHashFromUrl() {
@@ -219,10 +222,9 @@ const submit = async () => {
   loading.value = true;
   try {
     await auth.completePasswordReset(form.password);
-    success.value = "Your password has been updated. You can sign in now.";
+    success.value = "Your password has been updated. You can sign in from the header.";
     form.password = "";
     form.confirmPassword = "";
-    setTimeout(() => go("/login"), 2000);
   } catch (err) {
     error.value = err?.data?.statusMessage || err?.message || "Could not update password.";
   } finally {

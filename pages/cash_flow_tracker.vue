@@ -1,26 +1,17 @@
 <template>
-  <main>
-    <div v-if="!auth.ready" class="mx-auto max-w-7xl px-1 py-8 sm:px-6 lg:px-8">
-      <p class="text-sm text-gray-500 dark:text-gray-400">Loading session...</p>
-    </div>
-
-    <div
-      v-else-if="!auth.user"
-      class="mx-auto max-w-7xl px-1 py-8 sm:px-6 lg:px-8 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
-    >
-      You must be logged in to use this page.
-    </div>
+  <section class="app-page">
+    <p v-if="!auth.ready" class="text-sm text-muted">Loading…</p>
 
     <template v-else>
-      <div>
-        <header class="pb-4 pt-6 sm:pb-6">
-          <div class="mx-auto flex max-w-7xl flex-col gap-4 px-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-6 sm:px-6 lg:px-8">
-            <div class="min-w-0">
-              <h1 class="text-lg font-semibold text-base-content md:text-xl">Budget Tracker</h1>
-              <p class="mt-0.5 hidden text-xs text-base-content/60 lg:block">
-                <NuxtLink to="/account_map" class="underline hover:no-underline">Manage budgets on Account Map</NuxtLink>
-              </p>
-            </div>
+      <header class="page-header">
+        <div class="page-header__copy">
+          <h1>Budget Tracker</h1>
+          <p class="page-header__lede">Log spending against this month's plan.</p>
+        </div>
+        <NuxtLink v-if="canWrite" to="/cash_flow_mgmt" class="btn btn-primary shrink-0">Add a budget line</NuxtLink>
+      </header>
+      <div class="pb-4">
+        <div class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-6">
             <div class="flex flex-wrap items-center gap-3 text-xs md:gap-4 md:text-sm">
               <label class="flex items-center gap-1.5 text-base-content/70">
                 <span class="font-medium">Month</span>
@@ -91,7 +82,7 @@
                 Pin for this month
               </button>
             </div>
-            <div class="ml-auto flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <div v-if="canWrite" class="ml-auto flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               <input ref="csvFileInputRef" type="file" accept=".csv" class="hidden" @change="onCsvFileSelected" />
               <button
                 type="button"
@@ -111,24 +102,19 @@
               </button>
             </div>
             <p v-if="csvPageNotice" class="w-full text-sm text-base-content/70">{{ csvPageNotice }}</p>
-          </div>
-        </header>
+        </div>
       </div>
 
-      <div v-if="loading" class="mx-auto max-w-7xl px-1 py-8 text-xs text-gray-500 sm:px-6 md:py-12 md:text-sm lg:px-8 dark:text-gray-400">Loading...</div>
+      <p v-if="loading" class="py-8 text-sm text-muted">Loading…</p>
 
-      <div v-else-if="loadError" class="mx-auto max-w-7xl px-1 py-4 sm:px-6 lg:px-8">
-        <LoadErrorPanel :message="loadError" @retry="loadData" />
-      </div>
+      <LoadErrorPanel v-else-if="loadError" :message="loadError" @retry="loadData" />
 
       <div v-else class="py-4 md:py-6">
-        <div class="app-sticky-action">
-        <p class="mx-auto max-w-7xl mb-2 px-1 text-xs text-gray-500 sm:px-6 md:mb-3 md:text-sm lg:px-8 dark:text-gray-400">
-          {{ monthNames[selectedMonth - 1] }} {{ selectedYear }} — tap a category to view or add transactions. The budget is this month’s plan; recorded amounts stay on the category you choose.
-        </p>
-        <form class="mx-auto mb-4 grid max-w-7xl gap-2 px-1 sm:px-6 lg:px-8" @submit.prevent="draftTransaction">
+        <div v-if="canWrite" class="app-sticky-action">
+        <form class="mb-4 grid gap-2" @submit.prevent="draftTransaction">
           <label class="form-control">
             <span class="label py-1"><span class="label-text text-sm">Describe a transaction</span></span>
+            <p class="mb-1 text-sm text-muted">Type a store, amount, and day. You'll review it before it's saved.</p>
             <input
               v-model.trim="sentenceText"
               type="text"
@@ -197,9 +183,13 @@
           </EstateSection>
         </div>
 
-        <p v-if="!loadError && !budgetTrackerDisplaySections.length && !previousCategorySection.rows.length" class="mx-auto max-w-7xl px-1 py-8 text-center text-xs text-gray-500 sm:px-6 md:text-sm lg:px-8 dark:text-gray-400">
-          No budget items yet. Add budget items in Budget Setup first.
-        </p>
+        <EmptyState
+          v-if="!loadError && !budgetTrackerDisplaySections.length && !previousCategorySection.rows.length"
+          title="No budget lines yet."
+          sentence="Add a line in Budget Setup, then record spending against it here."
+          :action="canWrite ? 'Add a budget line' : ''"
+          :to="canWrite ? '/cash_flow_mgmt' : ''"
+        />
       </div>
 
       <!-- Add Transaction Modal -->
@@ -225,6 +215,7 @@
                   v-if="incomeSources.length"
                   v-model="txForm.incomeSourceId"
                   class="select select-bordered w-full"
+                  aria-label="Source"
                 >
                   <option value="">Select…</option>
                   <option v-for="s in incomeSources" :key="s.id" :value="String(s.id)">{{ s.name }}</option>
@@ -242,7 +233,7 @@
               <div v-if="showNewIncomeFromInput" class="space-y-2 rounded-lg border border-base-300 p-3">
                 <label class="form-control w-full">
                   <span class="label-text text-sm">New From name</span>
-                  <input v-model.trim="txForm.incomeSourceName" class="input input-bordered w-full" type="text" placeholder="Income source" />
+                  <input v-model.trim="txForm.incomeSourceName" class="input input-bordered w-full" type="text" aria-label="Source" placeholder="Income source" />
                 </label>
                 <div class="flex flex-wrap gap-2">
                   <button type="button" class="btn btn-primary btn-sm" @click="addIncomeSourceFromForm">Add</button>
@@ -257,6 +248,7 @@
                   v-if="investmentSources.length"
                   v-model="txForm.investmentSourceId"
                   class="select select-bordered w-full"
+                  aria-label="Source"
                 >
                   <option value="">Select…</option>
                   <option v-for="s in investmentSources" :key="s.id" :value="String(s.id)">{{ s.name }}</option>
@@ -274,7 +266,7 @@
               <div v-if="showNewInvestmentFromInput" class="space-y-2 rounded-lg border border-base-300 p-3">
                 <label class="form-control w-full">
                   <span class="label-text text-sm">New From name</span>
-                  <input v-model.trim="txForm.investmentSourceName" class="input input-bordered w-full" type="text" placeholder="Investment source" />
+                  <input v-model.trim="txForm.investmentSourceName" class="input input-bordered w-full" type="text" aria-label="Source" placeholder="Investment source" />
                 </label>
                 <div class="flex flex-wrap gap-2">
                   <button type="button" class="btn btn-primary btn-sm" @click="addInvestmentSourceFromForm">Add</button>
@@ -289,6 +281,7 @@
                   v-if="savingsSources.length"
                   v-model="txForm.savingsSourceId"
                   class="select select-bordered w-full"
+                  aria-label="Source"
                 >
                   <option value="">Select…</option>
                   <option v-for="s in savingsSources" :key="s.id" :value="String(s.id)">{{ s.name }}</option>
@@ -306,7 +299,7 @@
               <div v-if="showNewSavingsFromInput" class="space-y-2 rounded-lg border border-base-300 p-3">
                 <label class="form-control w-full">
                   <span class="label-text text-sm">New From name</span>
-                  <input v-model.trim="txForm.savingsSourceName" class="input input-bordered w-full" type="text" placeholder="Savings source" />
+                  <input v-model.trim="txForm.savingsSourceName" class="input input-bordered w-full" type="text" aria-label="Source" placeholder="Savings source" />
                 </label>
                 <div class="flex flex-wrap gap-2">
                   <button type="button" class="btn btn-primary btn-sm" @click="addSavingsSourceFromForm">Add</button>
@@ -316,7 +309,7 @@
             </div>
             <label v-if="txForm.type !== 'tax' && txForm.type !== 'insurance' && txForm.type !== 'savings'" class="form-control w-full">
               <span class="label-text text-sm">Payee</span>
-              <input v-model.trim="txForm.payee" class="input input-bordered w-full" type="text" placeholder="Who you paid or received from" />
+              <input v-model.trim="txForm.payee" class="input input-bordered w-full" type="text" aria-label="Payee" placeholder="Who you paid or received from" />
             </label>
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
               <label class="form-control w-full">
@@ -514,11 +507,11 @@
               <span class="label-text text-sm">Description</span>
               <input v-model.trim="txForm.description" class="input input-bordered w-full" type="text" placeholder="Optional notes" />
             </label>
-            <div v-if="txError" class="text-sm text-error">{{ txError }}</div>
+            <div v-if="txError" class="text-sm text-error" role="alert">{{ txError }}</div>
             <div class="modal-action">
               <button type="button" class="btn btn-ghost" @click="addDialogRef?.close()">Cancel</button>
               <button type="submit" class="btn btn-primary" :disabled="txSubmitting">
-                {{ txSubmitting ? "Adding..." : isGrossIncomePaycheckMode ? "Save paycheck" : "Add Transaction" }}
+                {{ txSubmitting ? "Adding…" : isGrossIncomePaycheckMode ? "Save paycheck" : "Add Transaction" }}
               </button>
             </div>
           </form>
@@ -543,7 +536,7 @@
                     <label class="form-control w-full">
                       <span class="label-text text-sm">Category / Sub-category</span>
                       <select v-model="editTxForm.budgetItemId" class="select select-bordered select-sm w-full" required>
-                        <option value="">Select...</option>
+                        <option value="">Select…</option>
                         <template v-if="editTxForm.type === 'income'">
                           <optgroup v-for="group in incomeGroupedByCategory" :key="`edit-inc-${group.category}`" :label="group.category">
                             <option v-for="item in group.items" :key="categoryOptionValue(item)" :value="categoryOptionValue(item)">
@@ -596,7 +589,7 @@
                         </option>
                       </select>
                     </label>
-                    <div v-if="editTxError" class="text-sm text-error">{{ editTxError }}</div>
+                    <div v-if="editTxError" class="text-sm text-error" role="alert">{{ editTxError }}</div>
                     <div class="flex gap-2">
                       <button type="submit" class="btn btn-primary btn-sm" :disabled="editTxSaving">Save</button>
                       <button type="button" class="btn btn-ghost btn-sm" @click="cancelEdit">Cancel</button>
@@ -661,7 +654,7 @@
           <div class="modal-action">
             <button type="button" class="btn btn-ghost" @click="deleteDialogRef?.close()">Cancel</button>
             <button type="button" class="btn btn-error" :disabled="deleting" @click="performDelete">
-              {{ deleting ? "Deleting..." : "Delete" }}
+              {{ deleting ? "Deleting…" : "Delete" }}
             </button>
           </div>
         </div>
@@ -743,7 +736,7 @@
                       class="select select-bordered select-sm w-48"
                       :disabled="row.ignored || row.csvImported"
                     >
-                      <option value="">Select...</option>
+                      <option value="">Select…</option>
                       <option
                         v-for="opt in csvPaymentSourceOptions"
                         :key="opt.value"
@@ -760,7 +753,7 @@
                       :disabled="row.ignored || row.csvImported"
                       @change="onCsvExpenseItemChange"
                     >
-                      <option value="">Select...</option>
+                      <option value="">Select…</option>
                       <optgroup v-for="group in csvExpenseGroups" :key="`csv-exp-${group.category}`" :label="group.category">
                         <option v-for="item in group.items" :key="csvKeyForBudgetItem(item, 'expense')" :value="csvKeyForBudgetItem(item, 'expense')">
                           {{ item.sub_category || group.category }}<template v-if="item.off_plan"> (previous)</template>
@@ -816,7 +809,7 @@
             >
               {{
                 csvSaving
-                  ? "Saving..."
+                  ? "Saving…"
                   : `Save ${csvPendingImportCount} Expense${csvPendingImportCount !== 1 ? "s" : ""}`
               }}
             </button>
@@ -827,7 +820,7 @@
         </form>
       </dialog>
     </template>
-  </main>
+  </section>
 </template>
 
 <script setup>
@@ -872,6 +865,7 @@ import {
 useHead({ title: "Budget Tracker" });
 
 const auth = useAuthStore();
+const canWrite = computed(() => Boolean(auth.user || auth.sessionEnded));
 const addDialogRef = ref(null);
 const deleteDialogRef = ref(null);
 const subCategoryModalRef = ref(null);
@@ -1644,7 +1638,18 @@ function formatDate(dateStr) {
 }
 
 async function loadData() {
-  if (!auth.user) return;
+  if (!auth.user) {
+    loading.value = false;
+    if (auth.sessionEnded) {
+      loadError.value = "";
+      return;
+    }
+    budgets.value = { income: [], expenses: [] };
+    transactions.value = [];
+    orphans.value = [];
+    loadError.value = "";
+    return;
+  }
   loading.value = true;
   loadError.value = "";
   try {
@@ -1672,8 +1677,15 @@ async function loadData() {
       posttax: indexAnnualTotals(data?.annual_totals?.posttax, "total_kind"),
     };
   } catch (err) {
-    console.error("Failed to load budget tracker. If you recently updated the app, run: npm run migrate", err);
-    loadError.value = parseFetchError(err, "The budget tracker could not be loaded. Try again in a moment.");
+    const failure = settleLoadError(err, "The budget tracker could not be loaded. Try again in a moment.");
+    if (failure.expired) {
+      loadError.value = "";
+      return;
+    }
+    loadError.value = failure.message;
+    if (!failure.auth) {
+      console.error("Failed to load budget tracker. If you recently updated the app, run: npm run migrate", err);
+    }
     budgets.value = { income: [], expenses: [] };
     budgetOptions.value = [];
     periodBudgetId.value = null;
@@ -2375,7 +2387,7 @@ async function forceAddCsvExpenseRow(idx) {
       closeCsvModal();
     }
   } catch (err) {
-    csvError.value = err?.data?.message || err?.message || "Failed to add transaction.";
+    csvError.value = parseFetchError(err, "Failed to add transaction.");
   } finally {
     row.csvForceAdding = false;
   }
@@ -2434,7 +2446,7 @@ async function saveCsvTransactions() {
       closeCsvModal();
     }
   } catch (err) {
-    csvError.value = err?.data?.message || err?.message || "Failed to save transactions.";
+    csvError.value = parseFetchError(err, "Failed to save transactions.");
   } finally {
     csvSaving.value = false;
   }
@@ -2449,6 +2461,10 @@ function buildAddTxDescription(payee, description) {
 }
 
 async function submitTransaction() {
+  if (!auth.user) {
+    txError.value = auth.sessionEnded ? SESSION_ENDED_MESSAGE : SIGN_IN_MESSAGE;
+    return;
+  }
   txError.value = "";
   const id = txForm.value.budgetItemId;
   const amount = txForm.value.amount;
@@ -2763,6 +2779,10 @@ function cancelEdit() {
 }
 
 async function saveEditTransaction() {
+  if (!auth.user) {
+    editTxError.value = auth.sessionEnded ? SESSION_ENDED_MESSAGE : SIGN_IN_MESSAGE;
+    return;
+  }
   if (!editingTxId.value) return;
   editTxError.value = "";
   const amount = editTxForm.value.amount;
@@ -2865,6 +2885,14 @@ function draftTransactionSentence(draft) {
 async function draftTransaction() {
   const text = sentenceText.value.trim();
   if (text.length < 2 || sentenceBusy.value) return;
+  if (!auth.user) {
+    if (auth.sessionEnded) {
+      sentenceError.value = SESSION_ENDED_MESSAGE;
+      return;
+    }
+    sentenceNotice.value = "No draft for that yet.";
+    return;
+  }
   sentenceBusy.value = true;
   sentenceError.value = "";
   sentenceNotice.value = "";
@@ -2899,7 +2927,16 @@ async function draftTransaction() {
     sentenceNotice.value = "";
     draftTransactionSentence(draft);
   } catch (error) {
-    sentenceError.value = parseFetchError(error, "Could not draft that transaction.");
+    const failure = settleLoadError(error, "Could not draft that transaction.");
+    if (failure.expired) {
+      sentenceError.value = failure.message;
+      return;
+    }
+    if (failure.auth) {
+      sentenceNotice.value = "No draft for that yet.";
+      return;
+    }
+    sentenceError.value = failure.message;
   } finally {
     sentenceBusy.value = false;
   }
@@ -2981,9 +3018,9 @@ onMounted(() => {
 });
 
 watch(
-  () => auth.user,
-  (user) => {
-    if (user) loadData();
+  () => [auth.ready, auth.user],
+  ([ready]) => {
+    if (ready) void loadData();
   },
   { immediate: true },
 );

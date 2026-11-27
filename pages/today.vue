@@ -1,7 +1,7 @@
 <template>
   <section class="app-page today-page">
     <div v-if="!auth.ready" class="app-card px-5 py-6 text-base text-muted">
-      Loading session...
+      Loading…
     </div>
 
     <template v-else>
@@ -102,6 +102,11 @@ function greetingName(user) {
 }
 
 async function loadLiturgicalDay() {
+  if (!auth.user) {
+    liturgicalPending.value = false;
+    liturgicalLabel.value = "";
+    return;
+  }
   liturgicalPending.value = true;
   liturgicalLabel.value = "";
   try {
@@ -130,6 +135,13 @@ async function loadLiturgicalDay() {
 }
 
 async function loadPhysical() {
+  if (!auth.user) {
+    physicalLoading.value = false;
+    physicalError.value = "";
+    physicalDetail.value = "";
+    physicalText.value = "No session is logged today.";
+    return;
+  }
   physicalLoading.value = true;
   physicalError.value = "";
   try {
@@ -146,9 +158,16 @@ async function loadPhysical() {
   } catch (error) {
     physicalText.value = "";
     physicalDetail.value = "";
-    const status = error?.statusCode || error?.status;
-    if (status === 401) return;
-    physicalError.value = error?.data?.statusMessage || error?.statusMessage || "Could not load today.";
+    const failure = settleLoadError(error, "Could not load today.");
+    if (failure.expired) {
+      physicalError.value = failure.message;
+      return;
+    }
+    if (failure.auth) {
+      physicalText.value = "No session is logged today.";
+      return;
+    }
+    physicalError.value = failure.message;
   } finally {
     physicalLoading.value = false;
   }
@@ -166,12 +185,8 @@ onMounted(() => {
 
 watch(
   () => [auth.ready, auth.user],
-  ([ready, user]) => {
+  ([ready]) => {
     if (!ready) return;
-    if (!user) {
-      void navigateTo("/login", { replace: true });
-      return;
-    }
     loadToday();
   },
   { immediate: true },

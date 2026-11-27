@@ -26,7 +26,7 @@ test("budget load failures stay friendly and keep the migrate hint in the consol
     const source = read(page.file);
     assert.match(source, new RegExp(page.message.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
     assert.match(source, /console\.error\(\s*"[^"]*npm run migrate/);
-    const fallbacks = [...source.matchAll(/parseFetchError\(\s*(?:err|error),\s*\n?\s*"([^"]+)"/g)].map((match) => match[1]);
+    const fallbacks = [...source.matchAll(/(?:parseFetchError|settleLoadError)\(\s*(?:err|error),\s*\n?\s*"([^"]+)"/g)].map((match) => match[1]);
     assert.ok(fallbacks.includes(page.message));
     for (const fallback of fallbacks) {
       assert.equal(/npm run migrate|scripts\//.test(fallback), false, `${page.file} shows operators a script: ${fallback}`);

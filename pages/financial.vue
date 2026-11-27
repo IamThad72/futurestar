@@ -30,6 +30,10 @@ const monthCloseError = ref("");
 
 async function loadMonthClose() {
   monthCloseError.value = "";
+  if (!auth.user) {
+    monthCloseText.value = "";
+    return;
+  }
   try {
     const data = await $fetch("/api/budget/month-close", {
       query: { year: expenseYear.value, month: expenseMonth.value },
@@ -37,17 +41,16 @@ async function loadMonthClose() {
     monthCloseText.value = String(data?.text || "");
   } catch (error) {
     monthCloseText.value = "";
-    monthCloseError.value = error?.data?.statusMessage || error?.statusMessage || "Could not summarize this month.";
+    const failure = settleLoadError(error, "Could not summarize this month.");
+    monthCloseError.value = failure.message;
   }
 }
 
-const { isStacked } = useMobileShell();
 const homeGroups = computed(() =>
   financialSidebarGroups(financialTabsForPath("/financial"))
     .map((group) => ({
       name: group.name,
       links: group.tabs
-        .filter((tab) => (isStacked.value ? !tab.hideOnMobile : true))
         .map((tab) => ({
           name: tab.name,
           href: tab.href,
@@ -68,16 +71,14 @@ onMounted(() => {
   if (!auth.ready) {
     auth.fetchSession();
   }
-  if (auth.user) {
-    loadDashboard();
-  }
 });
 
 watch(
-  () => auth.user,
-  (user) => {
-    if (user) loadDashboard();
+  () => [auth.ready, auth.user],
+  ([ready]) => {
+    if (ready) loadDashboard();
   },
+  { immediate: true },
 );
 
 watch([expenseMonth, expenseYear], () => {
@@ -86,26 +87,14 @@ watch([expenseMonth, expenseYear], () => {
 </script>
 
 <template>
-  <div v-if="!auth.ready" class="app-page">
-    <p class="text-sm text-base-content/60">Loading session...</p>
-  </div>
-
-  <div
-    v-else-if="!auth.user"
-    class="app-page rounded-lg border border-warning/30 bg-warning/10 text-base text-base-content"
-  >
-    You must be logged in to use Money.
-  </div>
-
-  <section v-else class="app-page overflow-x-hidden">
-    <header class="mb-6 sm:mb-8">
-      <h1 class="text-ink">
-        Money
-      </h1>
-      <p class="mt-2 text-base leading-6 text-muted">
-        Steward cash, accounts, and tax in one place. The snapshot is the current picture.
-        Open a tool under it.
-      </p>
+  <section class="app-page overflow-x-hidden">
+    <p v-if="!auth.ready" class="text-sm text-muted">Loading…</p>
+    <template v-else>
+    <header class="page-header">
+      <div class="page-header__copy">
+        <h1 class="text-ink">Money</h1>
+        <p class="page-header__lede">See where you stand, then open a tool.</p>
+      </div>
     </header>
 
     <header class="mb-4 sm:mb-6">
@@ -149,7 +138,7 @@ watch([expenseMonth, expenseYear], () => {
 
     <div class="mt-8 space-y-6">
       <section v-for="group in homeGroups" :key="group.name">
-        <h2 class="text-xs font-semibold uppercase tracking-wide text-base-content/50">{{ group.name }}</h2>
+        <h2 class="text-xs font-semibold uppercase tracking-wide text-muted">{{ group.name }}</h2>
         <ul class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <li v-for="item in group.links" :key="item.href">
             <AppLink :to="item.href" class="app-card-link app-card-link--financial">
@@ -163,5 +152,6 @@ watch([expenseMonth, expenseYear], () => {
         </ul>
       </section>
     </div>
+    </template>
   </section>
 </template>

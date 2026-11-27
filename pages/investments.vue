@@ -1,43 +1,28 @@
 <template>
-  <div v-if="!auth.ready || loading" class="app-page">
-    <p class="text-sm text-base-content/60">Loading investments...</p>
-  </div>
-
-  <div
-    v-else-if="!auth.user"
-    class="app-page rounded-lg border border-warning/30 bg-warning/10 text-sm text-base-content"
-  >
-    You must be logged in to use Investments.
-  </div>
-
-  <div
-    v-else-if="loadError"
-    class="app-page rounded-lg border border-error/30 bg-error/10 p-4 text-sm text-error"
-  >
-    <p>{{ loadError }}</p>
-    <button type="button" class="btn btn-sm mt-3" @click="loadHoldings">Try again</button>
-  </div>
-
-  <section v-else class="app-page overflow-x-hidden">
+  <section class="app-page overflow-x-hidden">
+    <p v-if="!auth.ready || loading" class="text-sm text-muted">Loading…</p>
+    <template v-else>
+    <header class="page-header">
+      <div class="page-header__copy">
+        <h1>Investments</h1>
+        <p class="page-header__lede">Cost basis, current value, and unrealized gain or loss.</p>
+      </div>
+    </header>
+    <LoadErrorPanel v-if="loadError" class="mb-4" :message="loadError" @retry="loadHoldings" />
+    <template v-else>
     <header class="mb-6">
-      <h1 class="text-lg font-semibold text-base-content sm:text-xl">Investments</h1>
-      <p class="mt-1 max-w-3xl text-xs leading-5 text-base-content/60">
-        Based on current holdings and cost basis. Excludes realized gains/losses and cash distributions not reflected in the supplied values.
-      </p>
       <p v-for="line in holdingNotes" :key="line" class="mt-2 max-w-3xl text-sm leading-6 text-base-content/80">
         {{ line }}
       </p>
     </header>
 
-    <div
+    <EmptyState
       v-if="!holdings.length"
-      class="rounded-lg border border-base-300 bg-base-100 px-4 py-10 text-center text-sm text-base-content/60"
-    >
-      <p>No holdings to show.</p>
-      <div class="mt-3 flex justify-center">
-        <button type="button" class="investment-edit-btn" @click="openAdd">Add holding</button>
-      </div>
-    </div>
+      title="No holdings to show."
+      sentence="Cost basis and unrealized gain show up after a holding is saved."
+      :action="auth.user ? 'Add holding' : ''"
+      @action="openAdd"
+    />
 
     <template v-else>
       <dl class="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4 sm:gap-3">
@@ -137,7 +122,7 @@
         <p class="text-xs leading-5 text-base-content/60">
           Share counts are not added into the portfolio total. Edits are saved on the Estate account.
         </p>
-        <button type="button" class="investment-edit-btn" @click="openAdd">Add holding</button>
+        <button v-if="auth.user" type="button" class="investment-edit-btn" @click="openAdd">Add holding</button>
       </div>
       <p v-if="saveError" class="mt-2 text-xs text-error">{{ saveError }}</p>
 
@@ -263,6 +248,8 @@
       @cancel="closeEditor"
       @remove="removeHolding"
     />
+    </template>
+    </template>
   </section>
 </template>
 
@@ -472,7 +459,7 @@ function closeEditor() {
 }
 
 function requestError(error, fallback) {
-  return error?.data?.statusMessage || error?.statusMessage || fallback;
+  return parseFetchError(error, fallback);
 }
 
 async function saveHolding(draft) {
@@ -551,8 +538,9 @@ async function loadHoldings({ silent = false } = {}) {
     holdings.value = Array.isArray(data?.positions) ? data.positions : [];
     accounts.value = Array.isArray(cashData?.records) ? cashData.records : [];
   } catch (error) {
-    if (!silent) holdings.value = [];
-    loadError.value = requestError(error, "Could not load investment holdings.");
+    const failure = settleLoadError(error, "Could not load investment holdings.");
+    if (!silent || failure.auth) holdings.value = [];
+    loadError.value = failure.message;
   } finally {
     loading.value = false;
   }
@@ -560,15 +548,16 @@ async function loadHoldings({ silent = false } = {}) {
 
 onMounted(() => {
   if (!auth.ready) auth.fetchSession();
-  if (auth.user) void loadHoldings();
-  else loading.value = false;
 });
 
 watch(
-  () => auth.user,
-  (user) => {
-    if (user) void loadHoldings();
+  () => [auth.ready, auth.user],
+  ([ready]) => {
+    if (!ready) return;
+    if (auth.user) void loadHoldings();
+    else loading.value = false;
   },
+  { immediate: true },
 );
 </script>
 

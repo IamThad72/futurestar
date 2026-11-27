@@ -15,7 +15,7 @@
     <section class="app-card min-w-0 max-w-full overflow-hidden px-4 py-4">
       <h2 class="text-sm font-semibold text-gray-900">{{ faith.evening.value }}</h2>
       <p v-if="loadError" class="mt-2 text-sm text-red-600">{{ loadError }}</p>
-      <form class="mt-4 grid min-w-0 gap-3" @submit.prevent="saveExamen">
+      <form v-if="auth.user || auth.sessionEnded" class="mt-4 grid min-w-0 gap-3" @submit.prevent="saveExamen">
         <label v-for="(field, index) in examenFields" :key="field.key" class="form-control min-w-0">
           <span class="label h-auto min-h-0 items-start py-1">
             <span class="label-text text-sm whitespace-normal break-words">
@@ -64,6 +64,7 @@ import { todayIsoDate } from "~/utils/liturgicalCalendar";
 import { CLOSING_PRAYER_LINES, EXAMEN_FIELDS, emptySpiritualReview } from "~/utils/spiritualReview";
 
 const faith = useFaithProfile();
+const auth = useAuthStore();
 const examenFields = EXAMEN_FIELDS;
 const followFields = new Set(["grateful", "troubled", "shortfall"]);
 const closingLines = CLOSING_PRAYER_LINES;
@@ -97,7 +98,9 @@ async function loadDay() {
     followQuestions.value = {};
     form.value = { ...emptySpiritualReview(), ...(data?.review || {}) };
   } catch (error) {
-    loadError.value = parseFetchError(error, `Failed to load this day’s ${faith.eveningWord.value}.`);
+    const failure = settleLoadError(error, `Failed to load this day’s ${faith.eveningWord.value}.`);
+    loadError.value = failure.message;
+    if (failure.auth) form.value = emptySpiritualReview();
   } finally {
     loading.value = false;
   }

@@ -1,19 +1,18 @@
 <template>
   <section class="app-page overflow-x-hidden">
-    <header class="mb-6 sm:mb-8">
-      <h1 class="text-ink">
-        Body
-      </h1>
-      <p class="mt-2 text-base leading-6 text-muted">
-        Train and track the body across strength, cardio, mobility, and composition.
-        Exercise catalogs are shared; any logs or nutrition you record stay private to you.
-      </p>
+    <header class="page-header">
+      <div class="page-header__copy">
+        <h1 class="text-ink">Body</h1>
+        <p class="page-header__lede">Log meals, record workouts, and save plans you can start again.</p>
+      </div>
+    </header>
+    <div class="mb-6 sm:mb-8">
       <div v-if="todayText || todayError" class="mt-4 max-w-xl">
         <p v-if="todayError" class="text-sm text-error">{{ todayError }}</p>
         <p v-else class="text-base leading-6 text-ink">{{ todayText }}</p>
         <p v-if="todayDetail" class="mt-1 text-xs text-base-content/60">{{ todayDetail }}</p>
       </div>
-    </header>
+    </div>
 
     <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <li v-for="item in homeLinks" :key="item.href">
@@ -53,9 +52,9 @@ onMounted(async () => {
     }
     todayDetail.value = bits.join(" · ");
   } catch (error) {
-    const status = error?.statusCode || error?.status;
-    if (status === 401) return;
-    todayError.value = error?.data?.statusMessage || error?.statusMessage || "Could not load today.";
+    const failure = settleLoadError(error, "Could not load today.");
+    if (failure.auth) return;
+    todayError.value = failure.message;
   }
 });
 </script>

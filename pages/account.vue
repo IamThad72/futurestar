@@ -19,7 +19,7 @@
       </div>
     </section>
 
-    <div class="you-menu app-card">
+    <div v-if="auth.user" class="you-menu app-card">
       <ion-list lines="none" class="you-menu__list">
         <ion-item button detail class="you-menu__item" @click="showAccountManagement = true">
           <ion-icon slot="start" :icon="personOutline" aria-hidden="true" />
@@ -31,8 +31,9 @@
         </ion-item>
       </ion-list>
     </div>
+    <p v-else class="mt-4 text-base text-muted">Sign in to manage your profile, linked accounts, and privacy.</p>
 
-    <section class="mt-4" aria-labelledby="privacy-and-data-heading">
+    <section v-if="auth.user" class="mt-4" aria-labelledby="privacy-and-data-heading">
       <h2 id="privacy-and-data-heading" class="text-base font-semibold text-ink">Privacy and data</h2>
       <div class="you-menu app-card">
         <ion-list lines="none" class="you-menu__list">
@@ -52,7 +53,7 @@
 
     <FaithSettings v-if="auth.user" class="mt-4" />
 
-    <div class="you-page__logout">
+    <div v-if="auth.user" class="you-page__logout">
       <button
         type="button"
         class="btn btn-error w-full gap-2"
@@ -85,8 +86,9 @@ import { rememberAccountDeleted } from "~/utils/accountDeletedNotice";
 import { profileIdentity, profilePhotoUrl, showProfileAvatar } from "~/utils/profileAvatar";
 import { runGuardedSignOut } from "~/utils/signOutGuard";
 
+useHead({ title: "You" });
+
 const auth = useAuthStore();
-const router = useRouter();
 const { signOut } = useSignOut();
 const showAccountManagement = ref(false);
 const showLinkedAccounts = ref(false);
@@ -94,7 +96,9 @@ const showDeleteAccount = ref(false);
 const avatarFailed = ref(false);
 const signingOut = ref(false);
 
-const identity = computed(() => profileIdentity(auth.user));
+const identity = computed(() =>
+  auth.user ? profileIdentity(auth.user) : { name: "Your profile", email: "" },
+);
 const showAvatar = computed(() => showProfileAvatar(auth.user, avatarFailed.value));
 const avatarUrl = computed(() => (showAvatar.value ? profilePhotoUrl(auth.user) : ""));
 
@@ -122,9 +126,6 @@ async function handleLogout() {
 onMounted(async () => {
   if (!auth.ready) {
     await auth.fetchSession();
-  }
-  if (!auth.user) {
-    await router.replace("/login");
   }
 });
 </script>

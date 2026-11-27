@@ -121,7 +121,13 @@ async function loadDay() {
     questions.value = [];
     questionsError.value = "";
   } catch (error) {
-    loadError.value = parseFetchError(error, "Failed to load Scripture.");
+    const failure = settleLoadError(error, "Failed to load Scripture.");
+    loadError.value = failure.message;
+    if (failure.auth) {
+      weekly.value = null;
+      oldTestament.value = null;
+      newTestament.value = null;
+    }
   } finally {
     loading.value = false;
   }

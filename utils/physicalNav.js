@@ -133,6 +133,20 @@ export function physicalTrainingBySlug(slug) {
 
 export const PHYSICAL_HOME_LINKS = PHYSICAL_NAV_TABS.filter((tab) => tab.href !== "/physical");
 
+/** Sidebar groups. Names match PHYSICAL_NAV_TABS. */
+export const PHYSICAL_NAV_GROUPS = [
+  { name: "Journals", names: ["Nutrition Journal", "Exercise Journal"] },
+  { name: "Plans", names: ["Workout Manager"] },
+];
+
+export function physicalSidebarGroups(tabs) {
+  const byName = new Map(tabs.map((tab) => [tab.name, tab]));
+  return PHYSICAL_NAV_GROUPS.map((group) => ({
+    name: group.name,
+    tabs: group.names.map((name) => byName.get(name)).filter(Boolean),
+  })).filter((group) => group.tabs.length);
+}
+
 export const PHYSICAL_TRAINING_LINKS = PHYSICAL_CATEGORIES.map((category) => ({
   ...category,
   href: `/physical/workouts/${category.slug}`,

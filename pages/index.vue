@@ -26,19 +26,13 @@
       </li>
     </ul>
 
-    <p v-if="auth.ready && !auth.user" class="mt-8 text-center text-base text-muted">
-      <AppLink to="/login" class="font-semibold text-navy">
-        Log in
-      </AppLink>
-      to use your tools in each area.
-    </p>
   </section>
 </template>
 
 <script setup>
 const auth = useAuthStore();
 
-useHead({ title: "Future Star" });
+useHead({ title: "Future Star", titleTemplate: "%s" });
 
 watch(
   () => [auth.ready, auth.user],

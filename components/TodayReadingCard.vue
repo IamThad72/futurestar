@@ -89,7 +89,9 @@ async function load() {
     unavailable.value = Boolean(data?.unavailable);
     plans.value = data?.plans || [];
   } catch (err) {
-    error.value = parseFetchError(err, "Could not load your reading plan.");
+    const failure = settleLoadError(err, "Could not load your reading plan.");
+    error.value = failure.message;
+    if (failure.auth) plans.value = [];
   } finally {
     loading.value = false;
   }

@@ -9,11 +9,12 @@
           {{ introText }}
           Anything you write stays private to your account.
         </p>
-        <div v-if="auth.user" class="mt-4">
+        <div class="mt-4">
           <button type="button" class="training-chip btn btn-ghost btn-sm rounded-full" :disabled="mirrorLoading" @click="loadMirror">
-            {{ mirrorLoading ? "Reading…" : "This week" }}
+            {{ mirrorLoading ? "Reading…" : "See this week's note" }}
           </button>
           <p v-if="mirrorError" class="mt-2 text-sm text-red-600">{{ mirrorError }}</p>
+          <p v-else-if="mirrorNote" class="mt-2 text-base text-muted">{{ mirrorNote }}</p>
           <p v-else-if="mirrorText" class="mt-2 max-w-xl text-sm leading-6 text-base-content/80">{{ mirrorText }}</p>
         </div>
       </header>
@@ -23,14 +24,14 @@
       <TodayReadingCard v-if="auth.user" class="mb-4" />
 
       <template v-for="group in homeGroups" :key="group.key">
-        <h2 v-if="group.key !== 'daily'" class="sl-caption mb-2 mt-6">{{ group.name }}</h2>
+        <h2 class="sl-caption mb-2 mt-6">{{ group.name }}</h2>
         <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <li v-for="item in group.links" :key="item.href">
             <AppLink :to="item.href" class="app-card-link app-card-link--spiritual">
               <span v-if="item.icon" class="app-icon-chip app-icon-chip--lead is-spiritual" aria-hidden="true">
                 <AppIcon :name="item.icon" :size="20" />
               </span>
-              <h2 class="text-ink">{{ item.name }}</h2>
+              <h3 class="text-ink">{{ item.name }}</h3>
               <p class="mt-2 flex-1 text-base leading-6 text-muted">
                 {{ item.description }}
               </p>
@@ -41,19 +42,8 @@
     </div>
 
     <div v-if="showDock" class="spiritual-page__dock">
-      <div
-        v-if="!auth.ready"
-        class="app-card px-4 py-6 text-sm text-base-content/60"
-      >
-        Loading session...
-      </div>
-      <div
-        v-else-if="!auth.user"
-        class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
-      >
-        Sign in to see the {{ faith.calendarName.value }}.
-      </div>
-      <LiturgicalCalendarFrame v-else-if="faith.loaded.value" :key="calendarKey" />
+      <div v-if="!faith.loaded.value" class="app-card px-4 py-6 text-sm text-muted">Loading…</div>
+      <LiturgicalCalendarFrame v-else :key="calendarKey" />
     </div>
   </section>
 </template>
@@ -79,22 +69,41 @@ const introText = computed(() =>
     : "A daily review: be still, remember, hear Scripture, and close the day with examen.",
 );
 /** Hidden when the calendar is turned off in Faith settings. */
-const showDock = computed(() => !auth.user || !faith.loaded.value || faith.calendarKind.value !== "off");
+const showDock = computed(() => {
+  if (!auth.user) return false;
+  if (!faith.loaded.value) return true;
+  return faith.calendarKind.value !== "off";
+});
 /** Reload the panel when the tradition changes (Roman vs church-year days). */
 const calendarKey = computed(() => `${faith.tradition.value}-${faith.calendarKind.value}`);
 const mirrorText = ref("");
+const mirrorNote = ref("");
 const mirrorError = ref("");
 const mirrorLoading = ref(false);
 
 async function loadMirror() {
   if (mirrorLoading.value) return;
-  mirrorLoading.value = true;
   mirrorError.value = "";
+  mirrorNote.value = "";
+  if (!auth.user) {
+    mirrorNote.value = "No note for this week yet.";
+    return;
+  }
+  mirrorLoading.value = true;
   try {
     const data = await $fetch("/api/spiritual/mirror");
     mirrorText.value = String(data?.text || "");
   } catch (error) {
-    mirrorError.value = error?.data?.statusMessage || error?.statusMessage || "Could not read this week.";
+    const failure = settleLoadError(error, "Could not read this week.");
+    if (failure.expired) {
+      mirrorError.value = failure.message;
+      return;
+    }
+    if (failure.auth) {
+      mirrorNote.value = "No note for this week yet.";
+      return;
+    }
+    mirrorError.value = failure.message;
   } finally {
     mirrorLoading.value = false;
   }

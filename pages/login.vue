@@ -124,6 +124,8 @@ import { takeAccountDeletedNotice } from "~/utils/accountDeletedNotice";
 import { safeDeleteAccountNext } from "~/utils/deletionGuards";
 import { isPasswordRecoveryRedirect, parseSupabaseAuthParams } from "~/utils/supabaseAuthHash";
 
+useHead({ title: "Sign in" });
+
 const { go } = useAppNavigate();
 const route = useRoute();
 const router = useRouter();
@@ -151,6 +153,8 @@ function switchToSignIn() {
 }
 
 onMounted(() => {
+  if (auth.sessionEnded && auth.error) error.value = auth.error;
+
   const deletedNotice = takeAccountDeletedNotice();
   if (deletedNotice) success.value = deletedNotice;
 

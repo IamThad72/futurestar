@@ -68,7 +68,7 @@
 
       <dl v-if="expanded" class="grid gap-3 sm:grid-cols-2" :class="allowDrag ? 'pl-10 sm:pl-[3.75rem]' : ''">
         <div>
-          <dt class="text-xs font-semibold uppercase tracking-wide text-base-content/50">
+          <dt class="text-xs font-semibold uppercase tracking-wide text-muted">
             Instructions
           </dt>
           <dd class="mt-1">
@@ -78,7 +78,7 @@
           </dd>
         </div>
         <div>
-          <dt class="text-xs font-semibold uppercase tracking-wide text-base-content/50">
+          <dt class="text-xs font-semibold uppercase tracking-wide text-muted">
             Benefits
           </dt>
           <dd class="mt-1">

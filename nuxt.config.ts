@@ -2,6 +2,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { bundledFontPublicPath, bundledFonts, copyBundledFonts } from "./scripts/copy-bundled-fonts.mjs";
+import { documentTitle } from "./utils/documentTitle.js";
 
 copyBundledFonts();
 
@@ -17,10 +18,15 @@ const nativeApiBase = isCapacitorBuild ? process.env.NUXT_PUBLIC_API_BASE || "" 
 export default defineNuxtConfig({
   compatibilityDate: "2025-07-15",
   devtools: { enabled: !isProd },
+  spaLoadingTemplate: "spa-loading-template.html",
   app: {
     head: {
+      htmlAttrs: { lang: "en" },
+      title: "Future Star",
+      titleTemplate: documentTitle,
       viewport: "width=device-width, initial-scale=1, viewport-fit=cover",
       meta: [
+        { name: "description", content: "A household app for money, faith, and the body." },
         { name: "theme-color", content: "#FBF8F3", media: "(prefers-color-scheme: light)" },
         { name: "theme-color", content: "#0F1621", media: "(prefers-color-scheme: dark)" },
         { name: "color-scheme", content: "light dark" },

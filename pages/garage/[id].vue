@@ -1,46 +1,27 @@
 <template>
-  <main>
-    <div v-if="!auth.ready" class="mx-auto max-w-7xl px-1 py-8 sm:px-6 lg:px-8">
-      <p class="text-sm text-gray-500 dark:text-gray-400">Loading session...</p>
-    </div>
-
-    <div
-      v-else-if="!auth.user"
-      class="mx-auto max-w-7xl px-1 py-8 sm:px-6 lg:px-8 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
-    >
-      You must be logged in to use the garage.
-    </div>
-
+  <section class="app-page">
+    <p v-if="!auth.ready || loading" class="text-sm text-muted">Loading…</p>
     <template v-else>
-      <header class="pb-4 pt-6 sm:pb-6">
-        <div class="mx-auto flex max-w-7xl flex-wrap items-start justify-between gap-4 px-1 sm:px-6 lg:px-8">
-          <div>
-            <NuxtLink
-              to="/garage"
-              class="inline-flex items-center gap-1 text-sm font-medium text-gray-500 hover:text-gray-800 md:text-base dark:text-gray-400 dark:hover:text-gray-200"
-            >
-              <AppIcon name="chevron-back" :size="18" />
-              Garage
-            </NuxtLink>
-            <h1 class="mt-1 text-base font-semibold text-gray-900 md:text-lg dark:text-white">
-              {{ vehicleTitle }}
-            </h1>
-            <p v-if="vehicle?.vin" class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">VIN {{ vehicle.vin }}</p>
-          </div>
-          <button type="button" class="estate-action-btn" @click="openAddModal">Add Service</button>
+      <header class="page-header">
+        <div class="page-header__copy">
+          <NuxtLink to="/garage" class="text-sm font-medium text-muted no-underline hover:text-primary">Garage</NuxtLink>
+          <h1>{{ vehicle ? vehicleTitle : "Vehicle" }}</h1>
+          <p class="page-header__lede">{{ vehicle?.vin ? `VIN ${vehicle.vin}` : "Service history for this vehicle." }}</p>
         </div>
+        <button v-if="vehicle && (auth.user || auth.sessionEnded)" type="button" class="btn btn-primary" @click="openAddModal">Add Service</button>
+        <p v-if="writeNotice" class="text-sm text-error" role="alert">{{ writeNotice }}</p>
       </header>
 
-      <div v-if="loading" class="mx-auto max-w-7xl px-1 py-8 text-sm text-gray-500 sm:px-6 lg:px-8 dark:text-gray-400">
-        Loading vehicle...
-      </div>
-      <div v-else-if="error" class="mx-auto max-w-7xl px-1 py-8 sm:px-6 lg:px-8">
-        <p class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200">
-          {{ error }}
-        </p>
-      </div>
+      <LoadErrorPanel v-if="error" :message="error" @retry="loadDetail" />
+      <EmptyState
+        v-else-if="!vehicle"
+        title="No vehicle to show."
+        sentence="Open a vehicle from the garage, or add one there."
+        action="Back to garage"
+        to="/garage"
+      />
 
-      <div v-else class="mx-auto grid max-w-7xl gap-8 px-1 pb-16 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-10 sm:px-6 lg:px-8">
+      <div v-else class="grid gap-8 pb-16 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-10">
         <section>
           <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Known services</h2>
           <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Service records you have entered for this vehicle.</p>
@@ -48,7 +29,7 @@
             <li v-for="item in dueItems" :key="item.service_name" class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-500/30 dark:bg-amber-500/10">
               <p class="text-sm font-medium text-gray-900 dark:text-white">{{ item.service_name }}</p>
               <p class="mt-0.5 text-xs text-gray-600 dark:text-gray-300">{{ item.reason }}</p>
-              <button type="button" class="btn btn-ghost btn-xs mt-2" @click="openDueService(item)">Add this service</button>
+              <button v-if="auth.user || auth.sessionEnded" type="button" class="btn btn-ghost btn-xs mt-2" @click="openDueService(item)">Add this service</button>
             </li>
           </ul>
 
@@ -70,7 +51,7 @@
                     :disabled="deleteSavingId === svc.vsr_id"
                   >
                     <span class="sr-only">Options for {{ svc.service_name }}</span>
-                    <span v-if="deleteSavingId === svc.vsr_id" class="text-xs" aria-hidden="true">...</span>
+                    <span v-if="deleteSavingId === svc.vsr_id" class="text-xs" aria-hidden="true">…</span>
                     <AppIcon v-else :name="overflowIcon" :size="20" />
                   </HeadlessMenuButton>
                   <HeadlessMenuItems class="budget-row-menu absolute right-0 z-10 mt-2 w-44 origin-top-right focus:outline-none">
@@ -218,7 +199,7 @@
       </div>
       <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
-  </main>
+  </section>
 </template>
 
 <script setup>
@@ -231,6 +212,7 @@ useHead({ title: "Vehicle Details" });
 const { confirm: askUser } = useConfirm();
 
 const auth = useAuthStore();
+const writeNotice = ref("");
 const overflowIcon = overflowIconName(Capacitor.getPlatform());
 const route = useRoute();
 const vehicleId = computed(() => String(route.params.id || ""));
@@ -276,6 +258,11 @@ const dueItems = computed(() => {
 });
 
 function openDueService(item) {
+  if (!auth.user) {
+    writeNotice.value = auth.sessionEnded ? SESSION_ENDED_MESSAGE : SIGN_IN_MESSAGE;
+    return;
+  }
+  writeNotice.value = "";
   editingService.value = null;
   resetForm();
   form.service_name = item.service_name;
@@ -328,6 +315,11 @@ function resetForm() {
 }
 
 function openAddModal() {
+  if (!auth.user) {
+    writeNotice.value = auth.sessionEnded ? SESSION_ENDED_MESSAGE : SIGN_IN_MESSAGE;
+    return;
+  }
+  writeNotice.value = "";
   editingService.value = null;
   resetForm();
   serviceModalRef.value?.showModal();
@@ -366,8 +358,9 @@ async function loadDetail() {
     recommendedUnavailableReason.value = res?.recommendedUnavailableReason ?? null;
     useHead({ title: vehicleTitle.value });
   } catch (e) {
-    error.value = e?.data?.statusMessage || e?.message || "Failed to load vehicle.";
     vehicle.value = null;
+    const failure = settleLoadError(e, "The vehicle could not be loaded. Try again in a moment.");
+    error.value = failure.message;
     knownServices.value = [];
     recommendedServices.value = [];
     recommendedSource.value = null;
@@ -425,7 +418,7 @@ async function deleteService(svc) {
 }
 
 watch(
-  () => Boolean(auth.ready && auth.user && vehicleId.value),
+  () => Boolean(auth.ready && vehicleId.value),
   (ok) => {
     if (ok) void loadDetail();
     else if (auth.ready) loading.value = false;
@@ -434,6 +427,6 @@ watch(
 );
 
 watch(vehicleId, () => {
-  if (auth.ready && auth.user) void loadDetail();
+  if (auth.ready) void loadDetail();
 });
 </script>

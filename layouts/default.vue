@@ -102,7 +102,7 @@
         </nav>
 
         <div class="app-shell-body">
-          <aside v-if="auth.user" class="app-nav-column" aria-label="Primary">
+          <aside class="app-nav-column" aria-label="Primary">
             <AppPrimaryNav :links="links" />
             <AppSidebar
               v-if="sidebarGroups.length"
@@ -113,6 +113,8 @@
           </aside>
           <div class="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden bg-base-200">
             <main
+              id="main-content"
+              tabindex="-1"
               class="layout-main flex-1"
               :class="{ 'layout-main--flush-end': isSpiritualHome }"
             >
