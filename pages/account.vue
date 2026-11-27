@@ -21,11 +21,11 @@
 
     <div v-if="auth.user" class="you-menu app-card">
       <ion-list lines="none" class="you-menu__list">
-        <ion-item button detail class="you-menu__item" @click="showAccountManagement = true">
+        <ion-item button detail class="you-menu__item" @click="openAccountManagement">
           <ion-icon slot="start" :icon="personOutline" aria-hidden="true" />
           <ion-label>Account Management</ion-label>
         </ion-item>
-        <ion-item button detail class="you-menu__item" @click="showLinkedAccounts = true">
+        <ion-item button detail class="you-menu__item" @click="openLinkedAccounts">
           <ion-icon slot="start" :icon="peopleOutline" aria-hidden="true" />
           <ion-label>Linked Accounts</ion-label>
         </ion-item>
@@ -66,8 +66,8 @@
       </button>
     </div>
 
-    <LazyAccountManagementModal v-if="showAccountManagement" v-model="showAccountManagement" />
-    <LazyLinkedAccountsModal v-if="showLinkedAccounts" v-model="showLinkedAccounts" />
+    <LazyAccountManagementModal v-if="accountSheetMounted" v-model="showAccountManagement" />
+    <LazyLinkedAccountsModal v-if="linkedSheetMounted" v-model="showLinkedAccounts" />
     <LazyDeleteAccountModal
       v-if="showDeleteAccount"
       v-model="showDeleteAccount"
@@ -85,6 +85,7 @@ import { useAuthStore } from "~/stores/auth";
 import { rememberAccountDeleted } from "~/utils/accountDeletedNotice";
 import { profileIdentity, profilePhotoUrl, showProfileAvatar } from "~/utils/profileAvatar";
 import { runGuardedSignOut } from "~/utils/signOutGuard";
+import { focusSheetControl, rememberSheetTrigger } from "~/utils/sheetFocus";
 
 useHead({ title: "You" });
 
@@ -92,6 +93,8 @@ const auth = useAuthStore();
 const { signOut } = useSignOut();
 const showAccountManagement = ref(false);
 const showLinkedAccounts = ref(false);
+const accountSheetMounted = ref(false);
+const linkedSheetMounted = ref(false);
 const showDeleteAccount = ref(false);
 const avatarFailed = ref(false);
 const signingOut = ref(false);
@@ -108,6 +111,24 @@ watch(
     avatarFailed.value = false;
   },
 );
+
+function focusTrigger(event) {
+  const trigger = event?.currentTarget ?? null;
+  rememberSheetTrigger(trigger);
+  focusSheetControl(trigger);
+}
+
+function openAccountManagement(event) {
+  focusTrigger(event);
+  accountSheetMounted.value = true;
+  showAccountManagement.value = true;
+}
+
+function openLinkedAccounts(event) {
+  focusTrigger(event);
+  linkedSheetMounted.value = true;
+  showLinkedAccounts.value = true;
+}
 
 async function onAccountDeleted(payload) {
   rememberAccountDeleted(Boolean(payload?.authRemovalPending));

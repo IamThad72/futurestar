@@ -5,8 +5,13 @@ import { runGuardedSignOut } from "../utils/signOutGuard.js";
 
 test("logout ignores a second tap while sign-out is running and re-enables after failure", async () => {
   const page = readFileSync(new URL("../pages/account.vue", import.meta.url), "utf8");
+  const menu = readFileSync(new URL("../layouts/default.vue", import.meta.url), "utf8");
   assert.match(page, /:disabled="signingOut"/);
   assert.match(page, /runGuardedSignOut\(signingOut,\s*signOut\)/);
+  assert.match(menu, /:disabled="signingOut"/);
+  assert.match(menu, /:aria-busy="signingOut"/);
+  assert.match(menu, /runGuardedSignOut\(signingOut,\s*signOut\)/);
+  assert.match(menu, /if \(signingOut\.value\) return/);
 
   const signingOut = { value: false };
   let calls = 0;
