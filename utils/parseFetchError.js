@@ -1,3 +1,37 @@
+const GENERIC_SERVER_STATUS =
+  /^(?:bad gateway|service unavailable|internal server error|server error|error|request error)$/i;
+
+/** ofetch's FetchError message is `[METHOD] "url": 503 Service Unavailable`. */
+function unwrapFetchMessage(value) {
+  const text = String(value ?? "").trim();
+  if (!text || text === "[object Object]") return "";
+  const match = text.match(/^\[[A-Z]+\]\s+".*?":\s+\d{3}(?:\s+([\s\S]*))?$/);
+  return (match ? match[1] || "" : text).trim();
+}
+
+function messageCandidates(error) {
+  const data = error?.data;
+  const nested = data && typeof data === "object" ? data.data : undefined;
+  return [
+    data?.statusMessage,
+    data?.message,
+    nested?.statusMessage,
+    nested?.message,
+    error?.statusMessage,
+    error?.message,
+  ];
+}
+
+/** First human sentence, skipping standard HTTP reason phrases and raw fetch wrappers. */
+function usefulServerMessage(error) {
+  for (const candidate of messageCandidates(error)) {
+    const text = unwrapFetchMessage(candidate);
+    if (!text || GENERIC_SERVER_STATUS.test(text)) continue;
+    return text;
+  }
+  return "";
+}
+
 /**
  * Map $fetch / network errors to user-facing messages.
  */
@@ -7,13 +41,12 @@ export function parseFetchError(error, fallback = "Something went wrong. Please 
   const status =
     error?.statusCode ?? error?.status ?? error?.response?.status ?? error?.data?.statusCode;
 
-  const msg = String(
-    error?.data?.statusMessage ?? error?.data?.message ?? error?.message ?? "",
-  ).trim();
+  const raw = messageCandidates(error).map((value) => String(value ?? "")).join(" ");
+  const msg = usefulServerMessage(error);
 
   const causeCode = error?.cause?.code ?? error?.code;
   const isNetworkMessage =
-    /failed to fetch|network error|load failed|networkrequestfailed|fetch failed/i.test(msg);
+    /failed to fetch|network error|load failed|networkrequestfailed|fetch failed/i.test(raw);
 
   // Prefer HTTP status handling before treating FetchError as a network outage.
   // (ofetch uses FetchError for 4xx/5xx as well as true connectivity failures.)
@@ -26,7 +59,9 @@ export function parseFetchError(error, fallback = "Something went wrong. Please 
   }
 
   if (typeof status === "number" && status >= 500) {
-    return msg || "The server had a problem. Please try again in a moment.";
+    if (msg) return msg;
+    if (fallback !== "Something went wrong. Please try again.") return fallback;
+    return "The server had a problem. Please try again in a moment.";
   }
 
   if (
@@ -42,7 +77,7 @@ export function parseFetchError(error, fallback = "Something went wrong. Please 
     return "Can't reach the server. Check your internet connection and try again.";
   }
 
-  if (/timeout|timed out|aborted/i.test(msg) || error?.name === "AbortError") {
+  if (/timeout|timed out|aborted/i.test(raw) || error?.name === "AbortError") {
     return "The request timed out. Check your connection and try again.";
   }
 

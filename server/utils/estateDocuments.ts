@@ -1,13 +1,14 @@
 import { createError } from "h3";
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
-import { dirname, extname, join, resolve } from "node:path";
+import { readFile, unlink } from "node:fs/promises";
+import { extname, join, resolve } from "node:path";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseAdmin } from "./supabaseAdmin";
 import { groupAccessClause, soloUserClause } from "./group";
 
 export const MAX_ESTATE_DOC_BYTES = 10 * 1024 * 1024;
 export const ESTATE_DOCS_BUCKET = "estate-docs";
+export const ESTATE_FILE_SAVE_MESSAGE = "Couldn't save the file. Please try again.";
 
 const EXT_TO_MIME: Record<string, string> = {
   ".pdf": "application/pdf",
@@ -59,6 +60,7 @@ type StoredFile = {
 
 let bucketReady: Promise<void> | null = null;
 
+/** Directory for rows already stored with storage_backend=disk. New uploads do not write here. */
 export function getEstateDocsRoot() {
   return process.env.ESTATE_DOCS_DIR || join(process.cwd(), "uploads", "estate-docs");
 }
@@ -151,10 +153,51 @@ async function ensureBucket(admin: SupabaseClient) {
   await bucketReady;
 }
 
-async function writeDiskFile(storagePath: string, data: Buffer) {
-  const abs = resolveDiskPath(storagePath);
-  await mkdir(dirname(abs), { recursive: true });
-  await writeFile(abs, data);
+function estateSaveError(statusCode: 502 | 503) {
+  return createError({
+    statusCode,
+    statusMessage: ESTATE_FILE_SAVE_MESSAGE,
+    message: ESTATE_FILE_SAVE_MESSAGE,
+    data: { message: ESTATE_FILE_SAVE_MESSAGE },
+  });
+}
+
+function isEstateSaveError(error: unknown) {
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      (error as { statusMessage?: unknown }).statusMessage === ESTATE_FILE_SAVE_MESSAGE &&
+      typeof (error as { statusCode?: unknown }).statusCode === "number",
+  );
+}
+
+function redactSecrets(text: string) {
+  let safe = text;
+  for (const secret of [
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    process.env.SUPABASE_PUBLISHABLE_KEY,
+    process.env.DATABASE_URL,
+    process.env.SUPABASE_DB_PASSWORD,
+  ]) {
+    if (secret && secret.length >= 8) safe = safe.split(secret).join("[redacted]");
+  }
+  return safe
+    .replace(/\bBearer\s+\S+/gi, "Bearer [redacted]")
+    .replace(/\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g, "[redacted]")
+    .replace(/\bsb_(?:secret|publishable)_[A-Za-z0-9_-]+\b/g, "[redacted]")
+    .slice(0, 400);
+}
+
+function logEstateUploadFailure(detail: unknown) {
+  const raw =
+    detail instanceof Error
+      ? detail.message
+      : detail && typeof detail === "object" && "message" in detail
+        ? String((detail as { message?: unknown }).message ?? "")
+        : typeof detail === "string"
+          ? detail
+          : "";
+  console.error("estate document supabase upload failed", redactSecrets(raw || "unknown error"));
 }
 
 export async function persistEstateFile(opts: {
@@ -165,30 +208,26 @@ export async function persistEstateFile(opts: {
 }): Promise<StoredFile> {
   const storagePath = relativeStoragePath(opts.ownerKey, opts.ext);
   const admin = getSupabaseAdmin();
-  if (admin && process.env.ESTATE_DOCS_STORAGE !== "disk") {
-    try {
-      await ensureBucket(admin);
-      const { error } = await admin.storage.from(ESTATE_DOCS_BUCKET).upload(storagePath, opts.data, {
-        contentType: opts.mime,
-        upsert: false,
-      });
-      if (!error) return { storagePath, backend: "supabase" };
-      console.error("estate document supabase upload failed", error.message);
-    } catch (error) {
-      console.error("estate document supabase upload failed", error);
-    }
+  if (!admin) {
+    logEstateUploadFailure("admin client is not configured");
+    throw estateSaveError(503);
   }
   try {
-    await writeDiskFile(storagePath, opts.data);
-  } catch (error) {
-    console.error("estate document disk upload failed", error);
-    throw createError({
-      statusCode: 500,
-      statusMessage:
-        "Could not store the file. Ensure uploads/estate-docs is writable, or set SUPABASE_SERVICE_ROLE_KEY for Storage.",
+    await ensureBucket(admin);
+    const { error } = await admin.storage.from(ESTATE_DOCS_BUCKET).upload(storagePath, opts.data, {
+      contentType: opts.mime,
+      upsert: false,
     });
+    if (error) {
+      logEstateUploadFailure(error);
+      throw estateSaveError(502);
+    }
+    return { storagePath, backend: "supabase" };
+  } catch (error) {
+    if (isEstateSaveError(error)) throw error;
+    logEstateUploadFailure(error);
+    throw estateSaveError(502);
   }
-  return { storagePath, backend: "disk" };
 }
 
 export async function readEstateFile(storagePath: string, backend: EstateDocBackend) {
