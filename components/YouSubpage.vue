@@ -23,35 +23,42 @@
   </div>
 
   <!--
-    On a phone this sheet used to be position:fixed inside ion-content, so the
-    shell toolbar painted over the title. Teleport it onto the shell page and
-    use ion-header + ion-content. fullscreen is false so the body is laid out
-    under the toolbar (Ionic pads that toolbar with --ion-safe-area-top, which
-    this sheet sets from env(safe-area-inset-top)) instead of scrolling underneath it.
+    Phone sheet. ion-modal (not a teleported ion-page) dismisses on Escape and
+    on the hardware back button, traps focus while open, and restores it on
+    dismiss. keyboardClose, focusTrap, and backdropDismiss stay at Ionic's
+    defaults. The inner ion-page keeps the header above the body; fullscreen
+    is false so the body is laid out under the toolbar. Safe-area insets use
+    Ionic's --safe-area-inset-* / env() chain in CSS.
+    is-open is local so the modal can finish dismiss and restore focus before
+    the parent unmounts it.
   -->
-  <Teleport v-else-if="modelValue" to="#main-content">
-    <div class="ion-page you-subpage" role="dialog" aria-modal="true" :aria-label="title">
-      <ion-header class="ion-no-border">
-        <ion-toolbar>
-          <ion-title>{{ title }}</ion-title>
-          <ion-buttons slot="end">
-            <button type="button" class="btn btn-ghost btn-sm you-subpage__close" @click="close">Close</button>
-          </ion-buttons>
-        </ion-toolbar>
-      </ion-header>
-      <ion-content :fullscreen="false" class="ion-padding you-subpage__content">
-        <slot name="intro" />
-        <slot />
-      </ion-content>
-    </div>
+  <Teleport v-else to="ion-app">
+    <ion-modal ref="modalRef" class="you-subpage" :is-open="presented" @didDismiss="onDismiss">
+      <div class="ion-page">
+        <ion-header class="ion-no-border">
+          <ion-toolbar>
+            <ion-title>{{ title }}</ion-title>
+            <ion-buttons slot="end">
+              <button type="button" class="btn btn-ghost btn-sm you-subpage__close" @click="close">Close</button>
+            </ion-buttons>
+          </ion-toolbar>
+        </ion-header>
+        <ion-content :fullscreen="false" class="ion-padding you-subpage__content">
+          <slot name="intro" />
+          <slot />
+        </ion-content>
+      </div>
+    </ion-modal>
   </Teleport>
 </template>
 
 <script setup>
-import { computed } from "vue";
-import { IonButtons, IonContent, IonHeader, IonTitle, IonToolbar } from "@ionic/vue";
+import { computed, onMounted, ref, watch } from "vue";
+import { IonButtons, IonContent, IonHeader, IonModal, IonTitle, IonToolbar } from "@ionic/vue";
+import { dismissModal } from "~/utils/sheetDismiss";
+import { consumeSheetTrigger, focusSheetControl } from "~/utils/sheetFocus";
 
-defineProps({
+const props = defineProps({
   modelValue: { type: Boolean, default: false },
   title: { type: String, required: true },
   labelledBy: { type: String, required: true },
@@ -62,8 +69,44 @@ defineProps({
 const emit = defineEmits(["update:modelValue"]);
 const { useMobileChrome } = useMobileShell();
 const mobile = computed(() => useMobileChrome.value);
+const presented = ref(false);
+const modalRef = ref(null);
+let returnFocus = null;
 
-function close() {
+onMounted(() => {
+  returnFocus = consumeSheetTrigger(document.activeElement, document.body);
+});
+
+watch(
+  () => props.modelValue,
+  (open, wasOpen) => {
+    // This instance stays mounted, so onMounted only sees the first open.
+    if (open && wasOpen === false) {
+      returnFocus = consumeSheetTrigger(document.activeElement, document.body);
+    }
+    presented.value = Boolean(open);
+  },
+  { immediate: true },
+);
+
+async function close() {
+  if (!mobile.value) {
+    emit("update:modelValue", false);
+    return;
+  }
+  const pending = dismissModal(modalRef.value);
+  if (pending) {
+    await pending;
+    return;
+  }
+  presented.value = false;
+}
+
+function onDismiss() {
+  presented.value = false;
+  const trigger = returnFocus;
+  returnFocus = null;
   emit("update:modelValue", false);
+  focusSheetControl(trigger);
 }
 </script>

@@ -90,6 +90,8 @@
                       type="button"
                       class="app-user-menu__item"
                       :class="{ 'app-user-menu__item--active': active }"
+                      :disabled="signingOut"
+                      :aria-busy="signingOut"
                       @click="logoutFromMenu(close)"
                     >
                       Logout
@@ -142,6 +144,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { homePathForUser } from '~/utils/primaryNav'
 import { profilePhotoUrl, showProfileAvatar } from '~/utils/profileAvatar'
+import { runGuardedSignOut } from '~/utils/signOutGuard'
 
 const {
   auth,
@@ -157,11 +160,17 @@ const showHeaderAvatar = computed(() => showProfileAvatar(auth.user));
 const { useMobileChrome } = useMobileShell();
 const showAccountManagement = ref(false);
 const showLinkedAccounts = ref(false);
+const signingOut = ref(false);
+const { signOut } = useSignOut();
 
 async function logoutFromMenu(close) {
+  if (signingOut.value) return;
   close?.();
-  const { signOut } = useSignOut();
-  await signOut();
+  try {
+    await runGuardedSignOut(signingOut, signOut);
+  } catch {
+    // runGuardedSignOut re-enables the menu item.
+  }
 }
 
 function openAccountManagement(close) {

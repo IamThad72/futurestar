@@ -1,5 +1,6 @@
 import { App } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
+import { hardwareBackAction, PRESENTED_OVERLAY_SELECTOR } from "~/utils/hardwareBack";
 
 /**
  * Capacitor static WebView helpers: hash URL normalization + Android back button.
@@ -37,6 +38,8 @@ export default defineNuxtPlugin(() => {
   normalizeToHashRoute();
 
   App.addListener("backButton", () => {
+    const hasPresentedOverlay = Boolean(document.querySelector(PRESENTED_OVERLAY_SELECTOR));
+    if (hardwareBackAction(hasPresentedOverlay) === "overlay") return;
     router.back();
   });
 });
