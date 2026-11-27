@@ -189,7 +189,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "You start these yourself: a transaction sentence (the description and amount, plus your category names) to suggest a category; a bank-import file (up to forty descriptions and amounts, plus category names); a meal sentence to split it into foods and estimate nutrition; a workout description, with the goal, schedule, equipment limits, exercises to avoid, recent exercise names, and catalog exercise names, to draft a plan; a verse already on the page (the citation and the text) to write two reflection questions; a virtue name and its published definition to suggest one act; a daily-review answer you wrote in grateful, troubled, or shortfall, to ask a follow-up; and an intention you wrote, to shorten it.",
+          text: "You start these yourself: a transaction sentence (the description and amount, plus your category names) to suggest a category; a bank-import file (up to forty descriptions and amounts, plus category names); a workout description, with the goal, schedule, equipment limits, exercises to avoid, recent exercise names, and catalog exercise names, to draft a plan; a verse already on the page (the citation and the text) to write two reflection questions; a virtue name and its published definition to suggest one act; a daily-review answer you wrote in grateful, troubled, or shortfall, to ask a follow-up; and an intention you wrote, to shorten it.",
         },
         {
           type: "p",
@@ -371,7 +371,7 @@ export const termsOfService = {
       blocks: [
         {
           type: "p",
-          text: "Suggestions and short notes can be wrong. They can misread a sentence, pick the wrong category, or estimate nutrition that does not match the food. Check them before you rely on them. If the model is unavailable, the app may show a sentence written on the server instead, or no suggestion.",
+          text: "Suggestions and short notes can be wrong. They can misread a sentence or pick the wrong category. Check them before you rely on them. If the model is unavailable, the app may show a sentence written on the server instead, or no suggestion.",
         },
       ],
     },
