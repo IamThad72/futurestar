@@ -31,10 +31,7 @@
         </ion-item>
       </ion-list>
     </div>
-    <div v-else class="mt-4 space-y-3">
-      <p class="text-base text-muted">Sign in to manage your profile, linked accounts, and privacy.</p>
-      <NuxtLink to="/login" class="btn btn-primary">Sign in</NuxtLink>
-    </div>
+    <p v-else class="mt-4 text-base text-muted">Sign in to manage your profile, linked accounts, and privacy.</p>
 
     <section v-if="auth.user" class="mt-4" aria-labelledby="privacy-and-data-heading">
       <h2 id="privacy-and-data-heading" class="text-base font-semibold text-ink">Privacy and data</h2>

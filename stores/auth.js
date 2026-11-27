@@ -270,13 +270,9 @@ bindSessionAuth(
     try {
       const auth = useAuthStore();
       if (!auth.user && auth.sessionEnded) return;
-      const wasSignedIn = Boolean(auth.user);
       auth.user = null;
       auth.sessionEnded = true;
       auth.error = SESSION_ENDED_MESSAGE;
-      if (wasSignedIn && import.meta.client && !String(window.location.pathname || "").startsWith("/login")) {
-        void navigateTo("/login", { replace: true });
-      }
     } catch {
       /* tests bind their own ender */
     }

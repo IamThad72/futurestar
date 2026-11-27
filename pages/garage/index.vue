@@ -113,7 +113,7 @@ function openVehicle(item) {
 
 async function openAddVehicle() {
   if (!auth.user) {
-    void navigateTo("/login");
+    error.value = SIGN_IN_MESSAGE;
     return;
   }
   addModalMounted.value = true;

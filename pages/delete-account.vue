@@ -32,14 +32,7 @@
             <li>Choose Delete account, type your email, and enter your password.</li>
           </ol>
         </div>
-        <p>After you sign in, you return to this page to finish.</p>
-        <NuxtLink
-          to="/login?next=/delete-account"
-          class="btn btn-primary min-h-11 w-full"
-          data-testid="delete-account-sign-in"
-        >
-          Sign in to delete your account
-        </NuxtLink>
+        <p>Login is in the header. After you sign in, open You, then Privacy and data, then Delete account.</p>
       </template>
     </div>
 

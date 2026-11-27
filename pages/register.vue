@@ -1,3 +1,3 @@
 <script setup>
-await navigateTo("/login", { replace: true });
+await navigateTo("/", { replace: true });
 </script>

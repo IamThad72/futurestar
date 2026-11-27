@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import { documentTitle } from "../utils/documentTitle.js";
 import {
   bindSessionAuth,
@@ -91,6 +93,7 @@ test("the You page hides account controls when there is no session", () => {
   const page = readFileSync(new URL("../pages/account.vue", import.meta.url), "utf8");
   assert.match(page, /Your profile/);
   assert.match(page, /Sign in to manage your profile/);
+  assert.doesNotMatch(page, /to="\/login"/);
   assert.match(page, /v-if="auth\.user" class="you-menu/);
   assert.match(page, /v-if="auth\.user" class="you-page__logout"/);
   assert.match(page, /v-if="auth\.user" class="mt-4" aria-labelledby="privacy-and-data-heading"/);
@@ -102,6 +105,70 @@ test("document titles do not repeat the brand", () => {
   assert.equal(documentTitle(undefined), "Future Star");
   assert.equal(documentTitle("Budget Setup"), "Budget Setup · Future Star");
   assert.equal(documentTitle("Delete your account"), "Delete your account · Future Star");
+});
+
+function sourceFiles(dir, out = []) {
+  for (const name of readdirSync(dir)) {
+    if (name === "node_modules" || name === ".nuxt" || name === ".output" || name === "ARCHIVE") continue;
+    const full = join(dir, name);
+    if (statSync(full).isDirectory()) sourceFiles(full, out);
+    else if (/\.(vue|js|ts)$/.test(name)) out.push(full);
+  }
+  return out;
+}
+
+test("only the header login link navigates to /login", () => {
+  const root = fileURLToPath(new URL("..", import.meta.url)).replace(/[/\\]$/, "");
+  const allowed = new Set(["layouts/default.vue", "components/MobileIonicShell.vue"]);
+  const navigates = /(?:navigateTo|go)\(\s*["'`]\/login|to=["']\/login|href=["']\/login/;
+  const offenders = [];
+  for (const dir of ["pages", "components", "composables", "stores", "layouts", "utils"]) {
+    for (const file of sourceFiles(join(root, dir))) {
+      const rel = file.slice(root.length + 1).replaceAll("\\", "/");
+      if (allowed.has(rel)) continue;
+      const source = readFileSync(file, "utf8");
+      if (navigates.test(source)) offenders.push(rel);
+    }
+  }
+  const app = readFileSync(join(root, "app.vue"), "utf8");
+  if (navigates.test(app)) offenders.push("app.vue");
+  assert.deepEqual(offenders, []);
+
+  const auth = readFileSync(join(root, "stores/auth.js"), "utf8");
+  assert.match(auth, /SESSION_ENDED_MESSAGE/);
+  assert.doesNotMatch(auth, /navigateTo\(\s*["'`]\/login/);
+
+  const writes = {
+    "pages/physical/workouts/index.vue": /saveError\.value = SIGN_IN_MESSAGE/,
+    "pages/garage/index.vue": /error\.value = SIGN_IN_MESSAGE/,
+    "pages/cash_flow_tracker.vue": /txError\.value = SIGN_IN_MESSAGE[\s\S]*editTxError\.value = SIGN_IN_MESSAGE/,
+    "components/EstateDocumentsPanel.vue": /uploadError\.value = SIGN_IN_MESSAGE/,
+  };
+  for (const [rel, pattern] of Object.entries(writes)) {
+    const source = readFileSync(join(root, rel), "utf8");
+    assert.match(source, pattern, rel);
+    assert.doesNotMatch(source, /navigateTo\(\s*["'`]\/login/, rel);
+  }
+
+  const workouts = readFileSync(join(root, "pages/physical/workouts/index.vue"), "utf8");
+  assert.match(workouts, /v-if="!editing && auth\.user"/);
+  assert.match(workouts, /<WorkoutPlanAssistant v-if="auth\.user"/);
+
+  const estate = readFileSync(join(root, "pages/estate_mgmt.vue"), "utf8");
+  assert.match(estate, /v-if="auth\.user"[\s\S]{0,240}Upload document/);
+  assert.match(estate, /:show-add="Boolean\(auth\.user\)"/);
+
+  const tracker = readFileSync(join(root, "pages/cash_flow_tracker.vue"), "utf8");
+  assert.match(tracker, /<NuxtLink v-if="auth\.user" to="\/cash_flow_mgmt"/);
+  assert.match(tracker, /<div v-if="auth\.user" class="app-sticky-action">/);
+  assert.match(tracker, /<div v-if="auth\.user" class="ml-auto flex/);
+  assert.match(tracker, /parseFetchError\(err, "Failed to save transactions\."\)/);
+  assert.match(tracker, /parseFetchError\(err, "Failed to add transaction\."\)/);
+  assert.doesNotMatch(tracker, /csvError\.value = err\?\.message/);
+
+  const shell = readFileSync(join(root, "app.vue"), "utf8");
+  assert.match(shell, /sessionEndedMessage/);
+  assert.match(shell, /role="alert"/);
 });
 
 test("named loaders map anonymous responses through settleLoadError", () => {

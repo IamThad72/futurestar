@@ -8,7 +8,7 @@
           <h1>Budget Tracker</h1>
           <p class="page-header__lede">Log spending against this month's plan.</p>
         </div>
-        <NuxtLink to="/cash_flow_mgmt" class="btn btn-primary shrink-0">Add a budget line</NuxtLink>
+        <NuxtLink v-if="auth.user" to="/cash_flow_mgmt" class="btn btn-primary shrink-0">Add a budget line</NuxtLink>
       </header>
       <div class="pb-4">
         <div class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-6">
@@ -82,7 +82,7 @@
                 Pin for this month
               </button>
             </div>
-            <div class="ml-auto flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <div v-if="auth.user" class="ml-auto flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               <input ref="csvFileInputRef" type="file" accept=".csv" class="hidden" @change="onCsvFileSelected" />
               <button
                 type="button"
@@ -110,7 +110,7 @@
       <LoadErrorPanel v-else-if="loadError" :message="loadError" @retry="loadData" />
 
       <div v-else class="py-4 md:py-6">
-        <div class="app-sticky-action">
+        <div v-if="auth.user" class="app-sticky-action">
         <form class="mb-4 grid gap-2" @submit.prevent="draftTransaction">
           <label class="form-control">
             <span class="label py-1"><span class="label-text text-sm">Describe a transaction</span></span>
@@ -187,8 +187,8 @@
           v-if="!loadError && !budgetTrackerDisplaySections.length && !previousCategorySection.rows.length"
           title="No budget lines yet."
           sentence="Add a line in Budget Setup, then record spending against it here."
-          action="Add a budget line"
-          to="/cash_flow_mgmt"
+          :action="auth.user ? 'Add a budget line' : ''"
+          :to="auth.user ? '/cash_flow_mgmt' : ''"
         />
       </div>
 
@@ -2378,7 +2378,7 @@ async function forceAddCsvExpenseRow(idx) {
       closeCsvModal();
     }
   } catch (err) {
-    csvError.value = err?.data?.message || err?.message || "Failed to add transaction.";
+    csvError.value = parseFetchError(err, "Failed to add transaction.");
   } finally {
     row.csvForceAdding = false;
   }
@@ -2437,7 +2437,7 @@ async function saveCsvTransactions() {
       closeCsvModal();
     }
   } catch (err) {
-    csvError.value = err?.data?.message || err?.message || "Failed to save transactions.";
+    csvError.value = parseFetchError(err, "Failed to save transactions.");
   } finally {
     csvSaving.value = false;
   }
@@ -2453,7 +2453,7 @@ function buildAddTxDescription(payee, description) {
 
 async function submitTransaction() {
   if (!auth.user) {
-    void navigateTo("/login");
+    txError.value = SIGN_IN_MESSAGE;
     return;
   }
   txError.value = "";
@@ -2771,7 +2771,7 @@ function cancelEdit() {
 
 async function saveEditTransaction() {
   if (!auth.user) {
-    void navigateTo("/login");
+    editTxError.value = SIGN_IN_MESSAGE;
     return;
   }
   if (!editingTxId.value) return;

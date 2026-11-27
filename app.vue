@@ -6,6 +6,20 @@
   >
     <a class="skip-link" href="#main-content">Skip to content</a>
     <OfflineBanner />
+    <p
+      v-if="sessionEndedMessage"
+      class="px-4 py-3 text-center text-base text-base-content"
+      role="alert"
+    >
+      {{ sessionEndedMessage }}
+    </p>
+    <p
+      v-else-if="accountDeletedNotice"
+      class="px-4 py-3 text-center text-base text-base-content"
+      role="status"
+    >
+      {{ accountDeletedNotice }}
+    </p>
     <div class="app-shell__main">
       <NuxtLayout>
         <NuxtPage />
@@ -17,12 +31,30 @@
 <script setup>
 import { IonApp } from "@ionic/vue";
 import { useAuthStore } from "~/stores/auth";
+import { takeAccountDeletedNotice } from "~/utils/accountDeletedNotice";
 import { isFinancialPath } from "~/utils/financialNav";
 import { isPhysicalPath } from "~/utils/physicalNav";
 import { isSpiritualPath } from "~/utils/spiritualNav";
 
 const auth = useAuthStore();
 const route = useRoute();
+const accountDeletedNotice = ref("");
+const sessionEndedMessage = computed(() => {
+  if (route.path.startsWith("/login")) return "";
+  return auth.sessionEnded && auth.error ? auth.error : "";
+});
+
+function pullAccountDeletedNotice() {
+  const notice = takeAccountDeletedNotice();
+  if (notice) accountDeletedNotice.value = notice;
+}
+
+watch(
+  () => auth.user,
+  (user, previous) => {
+    if (previous && !user) pullAccountDeletedNotice();
+  },
+);
 const themeName = ref("sacredledger");
 
 const pillar = computed(() => {
@@ -42,6 +74,7 @@ function syncTheme() {
 let themeQuery;
 
 onMounted(() => {
+  pullAccountDeletedNotice();
   syncTheme();
   themeQuery = window.matchMedia("(prefers-color-scheme: dark)");
   themeQuery.addEventListener("change", syncTheme);

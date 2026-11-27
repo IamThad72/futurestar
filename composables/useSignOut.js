@@ -1,5 +1,5 @@
 /**
- * Sign out and return to the login page (replace history so Back does not reopen the app).
+ * Sign out and stay in the app. Login remains a header link.
  */
 export function useSignOut() {
   const auth = useAuthStore();
@@ -7,7 +7,7 @@ export function useSignOut() {
 
   async function signOut() {
     await auth.logout();
-    await go("/login", { replace: true });
+    await go("/today", { replace: true });
   }
 
   return { signOut };

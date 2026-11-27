@@ -28,5 +28,5 @@ function escapeHtml(value) {
 /** HTML for /delete-account that is present before JavaScript runs. */
 export function deleteAccountStaticHtml() {
   const items = ERASED_ON_DELETE.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
-  return `<section id="delete-account-static"><h1>Delete your account</h1><h2>Erased</h2><ul>${items}</ul><h2>Stays with the household</h2><p>${escapeHtml(KEPT_ON_DELETE)}</p><h2>What is kept afterwards</h2><p>${escapeHtml(RETENTION_ON_DELETE)}</p><p>${escapeHtml(PASSWORDLESS_HINT)}</p><p><a href="/login?next=/delete-account">Sign in to delete your account</a></p></section>`;
+  return `<section id="delete-account-static"><h1>Delete your account</h1><h2>Erased</h2><ul>${items}</ul><h2>Stays with the household</h2><p>${escapeHtml(KEPT_ON_DELETE)}</p><h2>What is kept afterwards</h2><p>${escapeHtml(RETENTION_ON_DELETE)}</p><p>${escapeHtml(PASSWORDLESS_HINT)}</p><p>Login is in the header. Then open You, Privacy and data, and Delete account.</p></section>`;
 }

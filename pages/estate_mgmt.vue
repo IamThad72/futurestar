@@ -12,6 +12,7 @@
           </div>
           <div class="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
               <button
+                v-if="auth.user"
                 type="button"
                 class="btn btn-primary"
                 @click="openUploadDocument"
@@ -58,7 +59,7 @@
 
       <div class="space-y-10 py-8 md:space-y-16 md:py-16 xl:space-y-20">
         <div id="estate-documents">
-          <EstateSection title="Documents" add-label="Upload" @add="openUploadDocument">
+          <EstateSection title="Documents" add-label="Upload" :show-add="Boolean(auth.user)" @add="openUploadDocument">
             <EstateDocumentsPanel ref="docsPanelRef" />
           </EstateSection>
         </div>

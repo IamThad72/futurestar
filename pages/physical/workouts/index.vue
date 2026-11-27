@@ -11,20 +11,20 @@
           }}
         </p>
       </div>
-      <button v-if="!editing" type="button" class="btn btn-primary" @click="onNew">New workout</button>
+      <button v-if="!editing && auth.user" type="button" class="btn btn-primary" @click="onNew">New workout</button>
     </header>
 
     <WorkoutBuilderPanel v-if="editing" @back="editing = false" />
 
     <div v-else class="space-y-4">
-      <WorkoutPlanAssistant @saved="loadList" />
+      <WorkoutPlanAssistant v-if="auth.user" @saved="loadList" />
       <LoadErrorPanel v-if="listError || saveError" :message="listError || saveError" :show-retry="Boolean(listError)" @retry="loadList" />
       <p v-else-if="listLoading" class="text-sm text-muted">Loading…</p>
       <EmptyState
         v-else-if="!savedWorkouts.length"
         title="No saved workouts yet."
         sentence="Start a plan you can open again from the Exercise Journal."
-        action="New workout"
+        :action="auth.user ? 'New workout' : ''"
         @action="onNew"
       />
       <ul v-else class="space-y-2">
@@ -67,7 +67,7 @@ const {
 
 function onNew() {
   if (!auth.user) {
-    void navigateTo("/login");
+    saveError.value = SIGN_IN_MESSAGE;
     return;
   }
   startNew();

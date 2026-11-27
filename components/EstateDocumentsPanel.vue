@@ -254,7 +254,7 @@ async function loadDocuments() {
 async function submitUpload() {
   const auth = useAuthStore();
   if (!auth.user) {
-    void navigateTo("/login");
+    uploadError.value = SIGN_IN_MESSAGE;
     return;
   }
   const file = selectedFile.value || fileInputRef.value?.files?.[0];

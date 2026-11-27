@@ -26,12 +26,6 @@
       </li>
     </ul>
 
-    <p v-if="auth.ready && !auth.user" class="mt-8 text-center text-base text-muted">
-      <AppLink to="/login" class="font-semibold text-navy">
-        Log in
-      </AppLink>
-      to use your tools in each area.
-    </p>
   </section>
 </template>
 
