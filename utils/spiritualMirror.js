@@ -1,4 +1,7 @@
-/** Counts for a week of spiritual reviews. The sentence uses only those counts. */
+/**
+ * Counts for a week of spiritual reviews, and the note written from those counts.
+ * That note is the whole weekly mirror. It never calls a model or sends the week's words out.
+ */
 
 function countValues(reviews, key) {
   const counts = new Map();
@@ -55,4 +58,10 @@ export function mirrorSentence(facts) {
     parts.push(`repeated words include ${facts.words.map((row) => row.word).join(", ")}`);
   }
   return `${parts.join(". ")}.`;
+}
+
+/** Facts and the app-written note for one week. This is the only mirror text. */
+export function weeklyMirror(reviews) {
+  const facts = mirrorFacts(reviews);
+  return { facts, text: mirrorSentence(facts) };
 }

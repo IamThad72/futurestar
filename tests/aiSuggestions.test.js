@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { parseTransactionSentence } from "../utils/transactionSentence.js";
 import { buildMonthClose, monthCloseSentence } from "../utils/monthCloseFacts.js";
@@ -6,7 +7,7 @@ import { candidateMerchants } from "../utils/budgetLineSuggestions.js";
 import { describeHoldings } from "../utils/holdingsNote.js";
 import { parseSessionSentence } from "../utils/sessionSentence.js";
 import { dueServices } from "../utils/serviceDue.js";
-import { mirrorFacts, mirrorSentence } from "../utils/spiritualMirror.js";
+import { mirrorFacts, mirrorSentence, weeklyMirror } from "../utils/spiritualMirror.js";
 import { pickFoodsForGap } from "../utils/mealGap.js";
 import { summarizeTraining, todaySentence } from "../utils/todayNote.js";
 
@@ -73,16 +74,49 @@ test("a service is due when the mileage interval has passed", () => {
   assert.match(due[0].reason, /miles/);
 });
 
-test("the weekly mirror counts virtues and repeated words", () => {
-  const facts = mirrorFacts([
+test("the weekly mirror counts virtues and repeated words and never calls Groq", async () => {
+  const reviews = [
     { virtue: "Patience", tomorrow: "Call home", troubled: "hurry at work", shortfall: "" },
     { virtue: "Patience", tomorrow: "", troubled: "hurry again", shortfall: "hurry" },
-  ]);
-  assert.equal(facts.virtues[0].name, "Patience");
-  assert.equal(facts.virtues[0].count, 2);
-  assert.equal(facts.tomorrowFilled, 1);
-  assert.ok(facts.words.some((word) => word.word === "hurry"));
-  assert.match(mirrorSentence(facts), /Patience 2 times/);
+  ];
+  const previousFetch = globalThis.fetch;
+  const previousKey = process.env.GROQ_API_KEY;
+  const previousNuxtKey = process.env.NUXT_GROQ_API_KEY;
+  const calls = [];
+  process.env.GROQ_API_KEY = "gsk_test_mirror_must_not_send";
+  process.env.NUXT_GROQ_API_KEY = "gsk_test_mirror_must_not_send";
+  globalThis.fetch = async (url, init) => {
+    calls.push({ url, init });
+    return new Response(JSON.stringify({ choices: [{ message: { content: '{"text":"A model wrote this weekly mirror."}' } }] }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+  try {
+    const facts = mirrorFacts(reviews);
+    const note = weeklyMirror(reviews);
+    assert.equal(facts.virtues[0].name, "Patience");
+    assert.equal(facts.virtues[0].count, 2);
+    assert.equal(facts.tomorrowFilled, 1);
+    assert.ok(facts.words.some((word) => word.word === "hurry"));
+    assert.match(mirrorSentence(facts), /Patience 2 times/);
+    assert.deepEqual(note.facts, facts);
+    assert.equal(note.text, mirrorSentence(facts));
+    assert.equal(note.text, "2 days have a review. virtues named: Patience 2 times. tomorrow was filled 1 time. repeated words include hurry.");
+    assert.equal(process.env.GROQ_API_KEY, "gsk_test_mirror_must_not_send");
+    assert.equal(calls.length, 0);
+
+    const route = readFileSync(new URL("../server/api/spiritual/mirror.get.ts", import.meta.url), "utf8");
+    const util = readFileSync(new URL("../utils/spiritualMirror.js", import.meta.url), "utf8");
+    assert.equal(/groq|GROQ_|generateNote|generateJson|api\.groq\.com/i.test(route), false);
+    assert.equal(/groq|GROQ_|generateNote|generateJson|api\.groq\.com|fetch\s*\(/i.test(util), false);
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousKey === undefined) delete process.env.GROQ_API_KEY;
+    else process.env.GROQ_API_KEY = previousKey;
+    if (previousNuxtKey === undefined) delete process.env.NUXT_GROQ_API_KEY;
+    else process.env.NUXT_GROQ_API_KEY = previousNuxtKey;
+  }
 });
 
 test("foods that fit the remaining calories are preferred for protein", () => {
