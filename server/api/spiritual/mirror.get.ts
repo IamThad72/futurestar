@@ -3,8 +3,7 @@ import { createDbClient } from "../../utils/db";
 import { omitGroupScope, requirePrivateUserId } from "../../utils/privateUserAccess";
 import { todayIsoDate, sundaySaturdayBounds } from "~/utils/liturgicalCalendar";
 import { parseReviewDate, listSpiritualReviews } from "../../utils/spiritualReview";
-import { generateNote } from "../../utils/aiNote";
-import { mirrorFacts, mirrorSentence } from "~/utils/spiritualMirror.js";
+import { weeklyMirror } from "~/utils/spiritualMirror.js";
 
 export default defineEventHandler(async (event) => {
   const userId = await requirePrivateUserId(event);
@@ -17,13 +16,7 @@ export default defineEventHandler(async (event) => {
   try {
     await client.connect();
     const reviews = await listSpiritualReviews(client, userId, bounds.start, bounds.end);
-    const facts = mirrorFacts(reviews);
-    const fallback = mirrorSentence(facts);
-    const text =
-      (await generateNote(
-        "Write a private weekly mirror in two sentences from these counts. Do not give spiritual direction or add events that are not in the counts.",
-        { start: bounds.start, end: bounds.end, ...facts },
-      )) || fallback;
+    const { facts, text } = weeklyMirror(reviews);
     return { start: bounds.start, end: bounds.end, facts, text };
   } catch (error: unknown) {
     if (error && typeof error === "object" && "statusCode" in error) throw error;
