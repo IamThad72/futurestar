@@ -99,7 +99,7 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "The barcode scanner reads the code on your device. Only the digits go to our server, which asks Open Food Facts for that product. A food search sends the words you type to USDA FoodData Central. Exercise names and instructions come from oss.exercisedb.dev. That request sends an exercise name, a body-part filter, or an equipment filter, not your journal. The moving images load in your browser from static.exercisedb.dev. The camera picture is not uploaded.",
+          text: "The barcode scanner reads the code on your device. Only the digits go to our server, which asks Open Food Facts for that product. A food search sends the words you type to USDA FoodData Central. Exercise names and instructions come from oss.exercisedb.dev. That request sends an exercise name, a body-part filter, an equipment filter, or an exercise id, not your journal. The moving images load in your browser from static.exercisedb.dev. The camera picture is not uploaded.",
         },
         { type: "h3", text: "Faith practice" },
         {
@@ -152,7 +152,7 @@ export const privacyPolicy = {
             "Open Food Facts. The barcode digits only.",
             "Alpha Vantage. Ticker symbols from investment holdings, from a server job. Not your name or email.",
             "NHTSA vPIC. Your browser requests vehicle makes, models, and years while you fill in a vehicle. That request does not go through our server, and it does not include a stored VIN.",
-            "ExerciseDB at oss.exercisedb.dev. The server asks for exercise names and instructions. The request sends an exercise name, a body-part filter, or an equipment filter, not your journal. No API key is sent. Your browser loads exercise images from static.exercisedb.dev.",
+            "ExerciseDB at oss.exercisedb.dev. The server asks for exercise names and instructions. The request sends an exercise name, a body-part filter, an equipment filter, or an exercise id, not your journal. No API key is sent. Your browser loads exercise images from static.exercisedb.dev.",
           ],
         },
         {

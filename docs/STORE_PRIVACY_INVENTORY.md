@@ -6,7 +6,7 @@ Account deletion follows the rule the owner confirmed: `keep-shared`. It is in t
 
 No advertising SDK, analytics SDK, or advertising-identifier request was found in the app code. Third-party calls below are for the named feature. The owner has said personal information is not sold, and that it is not shared for cross-context behavioral advertising. Confirm “no tracking” and “no advertising” on the store forms before submitting.
 
-## Minimum age and proposed store ratings
+## Minimum age and store ratings
 
 The privacy policy and terms say a person must be 14 or older. Someone under 18 needs a parent or guardian's consent where the law requires it. The app does not knowingly collect personal information from children under 14, and the policy says that data will be deleted if we learn of it. The app does not ask for a date of birth, so 14+ and under-18 consent are not enforced in code.
 
