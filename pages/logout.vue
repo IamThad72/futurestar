@@ -8,6 +8,8 @@
 </template>
 
 <script setup>
+useHead({ title: "Signing out" });
+
 const { signOut } = useSignOut();
 
 onMounted(async () => {

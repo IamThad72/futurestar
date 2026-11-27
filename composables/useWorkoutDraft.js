@@ -1,4 +1,4 @@
-import { parseFetchError } from "~/utils/parseFetchError";
+import { parseFetchError, settleLoadError } from "~/utils/parseFetchError";
 import {
   catalogExerciseId,
   isTimeBasedExercise,
@@ -202,7 +202,9 @@ export function useWorkoutDraft() {
       savedWorkouts.value = data.workouts || [];
       listLoaded = true;
     } catch (error) {
-      listError.value = parseFetchError(error, "Could not load saved workouts.");
+      const failure = settleLoadError(error, "Could not load saved workouts.");
+      listError.value = failure.message;
+      if (failure.auth) savedWorkouts.value = [];
     } finally {
       listLoading.value = false;
     }

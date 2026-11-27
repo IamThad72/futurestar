@@ -19,13 +19,17 @@
       </button>
     </div>
 
-    <input
-      v-model.trim="searchInput"
-      type="search"
-      class="input input-bordered w-full max-w-md rounded-full"
-      :placeholder="searchPlaceholder"
-      autocomplete="off"
-    />
+    <label class="block max-w-md">
+      <span class="sr-only">Search exercises</span>
+      <input
+        v-model.trim="searchInput"
+        type="search"
+        class="input input-bordered w-full rounded-full"
+        :placeholder="searchPlaceholder"
+        aria-label="Search exercises"
+        autocomplete="off"
+      />
+    </label>
 
     <p v-if="loadError" class="text-sm text-red-600 dark:text-red-400">{{ loadError }}</p>
     <p v-else-if="warning" class="text-sm text-amber-700 dark:text-amber-400">{{ warning }}</p>
@@ -214,7 +218,7 @@ async function loadExercises() {
     }).map(toLocalFeatured);
     catalog.value = [];
     hasMore.value = false;
-    loadError.value = parseFetchError(error, "Could not load the flexibility catalog.");
+    loadError.value = settleLoadError(error, "Could not load the flexibility catalog.").message;
   } finally {
     loading.value = false;
   }

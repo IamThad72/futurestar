@@ -1,29 +1,16 @@
 <template>
-  <div v-if="!auth.ready || loading" class="app-page">
-    <p class="text-sm text-base-content/60">Loading investments...</p>
-  </div>
-
-  <div
-    v-else-if="!auth.user"
-    class="app-page rounded-lg border border-warning/30 bg-warning/10 text-sm text-base-content"
-  >
-    You must be logged in to use Investments.
-  </div>
-
-  <div
-    v-else-if="loadError"
-    class="app-page rounded-lg border border-error/30 bg-error/10 p-4 text-sm text-error"
-  >
-    <p>{{ loadError }}</p>
-    <button type="button" class="btn btn-sm mt-3" @click="loadHoldings">Try again</button>
-  </div>
-
-  <section v-else class="app-page overflow-x-hidden">
+  <section class="app-page overflow-x-hidden">
+    <p v-if="!auth.ready || loading" class="text-sm text-muted">Loading…</p>
+    <template v-else>
+    <header class="page-header">
+      <div class="page-header__copy">
+        <h1>Investments</h1>
+        <p class="page-header__lede">Cost basis, current value, and unrealized gain or loss.</p>
+      </div>
+    </header>
+    <LoadErrorPanel v-if="loadError" class="mb-4" :message="loadError" @retry="loadHoldings" />
+    <template v-else>
     <header class="mb-6">
-      <h1 class="text-lg font-semibold text-base-content sm:text-xl">Investments</h1>
-      <p class="mt-1 max-w-3xl text-xs leading-5 text-base-content/60">
-        Based on current holdings and cost basis. Excludes realized gains/losses and cash distributions not reflected in the supplied values.
-      </p>
       <p v-for="line in holdingNotes" :key="line" class="mt-2 max-w-3xl text-sm leading-6 text-base-content/80">
         {{ line }}
       </p>
@@ -263,6 +250,8 @@
       @cancel="closeEditor"
       @remove="removeHolding"
     />
+    </template>
+    </template>
   </section>
 </template>
 
@@ -472,7 +461,7 @@ function closeEditor() {
 }
 
 function requestError(error, fallback) {
-  return error?.data?.statusMessage || error?.statusMessage || fallback;
+  return settleLoadError(error, fallback).message;
 }
 
 async function saveHolding(draft) {
@@ -551,8 +540,9 @@ async function loadHoldings({ silent = false } = {}) {
     holdings.value = Array.isArray(data?.positions) ? data.positions : [];
     accounts.value = Array.isArray(cashData?.records) ? cashData.records : [];
   } catch (error) {
-    if (!silent) holdings.value = [];
-    loadError.value = requestError(error, "Could not load investment holdings.");
+    const failure = settleLoadError(error, "Could not load investment holdings.");
+    if (!silent || failure.auth) holdings.value = [];
+    loadError.value = failure.message;
   } finally {
     loading.value = false;
   }
@@ -560,15 +550,16 @@ async function loadHoldings({ silent = false } = {}) {
 
 onMounted(() => {
   if (!auth.ready) auth.fetchSession();
-  if (auth.user) void loadHoldings();
-  else loading.value = false;
 });
 
 watch(
-  () => auth.user,
-  (user) => {
-    if (user) void loadHoldings();
+  () => [auth.ready, auth.user],
+  ([ready]) => {
+    if (!ready) return;
+    if (auth.user) void loadHoldings();
+    else loading.value = false;
   },
+  { immediate: true },
 );
 </script>
 

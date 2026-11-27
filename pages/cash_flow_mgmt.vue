@@ -2,9 +2,10 @@
   <section
     class="app-page-wide space-y-4 sm:space-y-6"
   >
-    <header class="flex flex-wrap items-center gap-4 sm:gap-6">
+    <header class="page-header">
       <div class="min-w-0">
-        <h1 class="text-lg sm:text-xl font-semibold text-base-content">Budget Setup</h1>
+        <h1>Budget Setup</h1>
+        <p class="page-header__lede">Create and edit the lines Budget Tracker records against.</p>
         <p v-if="activeBudgetName" class="mt-0.5 text-xs text-base-content/60">
           Active budget:
           <span class="font-medium text-base-content/80">{{ activeBudgetName }}</span>
@@ -45,16 +46,7 @@
       <p v-if="suggestionError" class="mt-2 text-sm text-error">{{ suggestionError }}</p>
     </section>
 
-    <div v-if="!auth.ready" class="rounded-lg border border-base-200 bg-base-300 p-4">
-      <span class="text-sm text-base-content/70">Loading session...</span>
-    </div>
-
-    <div
-      v-else-if="!auth.user"
-      class="rounded-lg border border-warning/30 bg-warning/10 p-4 text-sm text-base-content"
-    >
-      You must be logged in to use this page.
-    </div>
+    <p v-if="!auth.ready" class="text-sm text-muted">Loading…</p>
 
     <LoadErrorPanel
       v-else-if="loadError"
@@ -97,7 +89,7 @@
             </h2>
           </div>
           <div class="pl-2.5 pr-1.5 py-4 pb-6">
-          <div v-if="loading" class="text-sm text-base-content/70">Loading...</div>
+          <div v-if="loading" class="text-sm text-muted">Loading…</div>
           <div v-else-if="!expensesGroupedByCategory.length" class="text-sm text-base-content/60 italic">
             No expense categories yet. Use Add Expense above.
           </div>
@@ -206,7 +198,7 @@
             </h2>
           </div>
           <div class="pl-2.5 pr-1.5 py-4 pb-6">
-          <div v-if="loading" class="text-sm text-base-content/70">Loading...</div>
+          <div v-if="loading" class="text-sm text-muted">Loading…</div>
           <template v-else>
             <div v-if="incomeGroupedByCategory.length" class="space-y-8">
               <div
@@ -317,7 +309,7 @@
             </h2>
           </div>
           <div class="pl-2.5 pr-1.5 py-4 pb-6">
-            <div v-if="loading" class="text-sm text-base-content/70">Loading...</div>
+            <div v-if="loading" class="text-sm text-muted">Loading…</div>
             <template v-else>
               <div v-if="investmentsGroupedByCategory.length" class="space-y-8">
                 <div
@@ -422,7 +414,7 @@
             </h2>
           </div>
           <div class="pl-2.5 pr-1.5 py-4 pb-6">
-            <div v-if="loading" class="text-sm text-base-content/70">Loading...</div>
+            <div v-if="loading" class="text-sm text-muted">Loading…</div>
             <template v-else>
               <div v-if="savingsGroupedByCategory.length" class="space-y-8">
                 <div
@@ -527,7 +519,7 @@
             </h2>
           </div>
           <div class="pl-2.5 pr-1.5 py-4 pb-6">
-            <div v-if="loading" class="text-sm text-base-content/70">Loading...</div>
+            <div v-if="loading" class="text-sm text-muted">Loading…</div>
             <template v-else>
               <div v-if="taxGroupedByCategory.length" class="space-y-8">
                 <div
@@ -630,7 +622,7 @@
             </h2>
           </div>
           <div class="pl-2.5 pr-1.5 py-4 pb-6">
-            <div v-if="loading" class="text-sm text-base-content/70">Loading...</div>
+            <div v-if="loading" class="text-sm text-muted">Loading…</div>
             <template v-else>
               <div v-if="insuranceGroupedByCategory.length" class="space-y-8">
                 <div
@@ -866,6 +858,8 @@ function isGrossPayLine(item) {
   return String(item?.income_type || "gross").toLowerCase() === "gross";
 }
 
+const snapshotReady = ref(false);
+
 const budgetSnapshotStats = computed(() => {
   const income = budgets.value.income ?? [];
   const expenses = budgets.value.expenses ?? [];
@@ -879,7 +873,9 @@ const budgetSnapshotStats = computed(() => {
       .reduce((sum, item) => sum + monthlyAmount(item), 0);
   const gainLoss = grossPay - taxesAndExpenses;
   const money = (n) =>
-    n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    snapshotReady.value
+      ? n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : "—";
   return [
     { name: "Gross Pay", value: money(grossPay) },
     { name: "Total Taxes/Expenses", value: money(taxesAndExpenses) },
@@ -927,7 +923,14 @@ async function acceptSuggestion(line) {
 }
 
 async function loadBudgets() {
-  if (!auth.user) return;
+  if (!auth.user) {
+    budgets.value = { income: [], expenses: [] };
+    debtRecords.value = [];
+    snapshotReady.value = false;
+    loadError.value = "";
+    loading.value = false;
+    return;
+  }
   loading.value = true;
   loadError.value = "";
   try {
@@ -937,11 +940,16 @@ async function loadBudgets() {
 
     const debtData = await $fetch("/api/records/debt").then((d) => d?.records ?? []).catch(() => []);
     debtRecords.value = Array.isArray(debtData) ? debtData : [];
+    snapshotReady.value = true;
   } catch (err) {
-    console.error("Failed to load budgets. If you recently updated the app, run: npm run migrate", err);
-    loadError.value = parseFetchError(err, "The budget could not be loaded. Try again in a moment.");
+    const failure = settleLoadError(err, "The budget could not be loaded. Try again in a moment.");
+    loadError.value = failure.message;
+    if (!failure.auth) {
+      console.error("Failed to load budgets. If you recently updated the app, run: npm run migrate", err);
+    }
     budgets.value = { income: [], expenses: [] };
     debtRecords.value = [];
+    snapshotReady.value = false;
   } finally {
     loading.value = false;
   }
@@ -979,9 +987,9 @@ onMounted(() => {
 });
 
 watch(
-  () => auth.user,
-  (user) => {
-    if (user) loadBudgets();
+  () => [auth.ready, auth.user],
+  ([ready]) => {
+    if (ready) void loadBudgets();
   },
   { immediate: true },
 );

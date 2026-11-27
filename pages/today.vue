@@ -1,7 +1,7 @@
 <template>
   <section class="app-page today-page">
     <div v-if="!auth.ready" class="app-card px-5 py-6 text-base text-muted">
-      Loading session...
+      Loading…
     </div>
 
     <template v-else>
@@ -146,9 +146,9 @@ async function loadPhysical() {
   } catch (error) {
     physicalText.value = "";
     physicalDetail.value = "";
-    const status = error?.statusCode || error?.status;
-    if (status === 401) return;
-    physicalError.value = error?.data?.statusMessage || error?.statusMessage || "Could not load today.";
+    const failure = settleLoadError(error, "Could not load today.");
+    if (failure.auth) return;
+    physicalError.value = failure.message;
   } finally {
     physicalLoading.value = false;
   }
@@ -166,12 +166,8 @@ onMounted(() => {
 
 watch(
   () => [auth.ready, auth.user],
-  ([ready, user]) => {
+  ([ready]) => {
     if (!ready) return;
-    if (!user) {
-      void navigateTo("/login", { replace: true });
-      return;
-    }
     loadToday();
   },
   { immediate: true },

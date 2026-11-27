@@ -168,7 +168,7 @@ h1, h2, h3, h4, h5, h6,
 
 /* Shared application UI (stacked shell + daisyUI tokens) */
 .app-page {
-  @apply mx-auto w-full max-w-7xl px-1 py-4 sm:px-6 sm:py-6 lg:px-8;
+  @apply mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8;
 }
 
 .app-page-wide {
@@ -542,8 +542,7 @@ ion-app.app-shell button {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--color-base-content, #1a1a1a);
-  opacity: 0.5;
+  color: var(--sl-muted, #5e5a52);
 }
 
 .app-sidebar ul {
@@ -1315,9 +1314,58 @@ h6 { font-size: 16px; line-height: 24px; }
   font-feature-settings: "tnum";
 }
 
+.app-page > header h1,
+.page-header h1,
+.spiritual-page__intro > header h1 {
+  font-size: 28px;
+  line-height: 34px;
+}
+
 [data-pillar] .app-page > header h1,
 [data-pillar] .spiritual-page__intro > header h1 {
   color: var(--color-pillar);
+}
+
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.page-header__copy {
+  min-width: 0;
+  flex: 1 1 16rem;
+}
+
+.page-header__lede {
+  margin-top: 0.5rem;
+  max-width: 42rem;
+  font-size: 1rem;
+  line-height: 1.5rem;
+  color: var(--sl-muted, #5e5a52);
+}
+
+.skip-link {
+  position: absolute;
+  left: 0.75rem;
+  top: 0.75rem;
+  z-index: 80;
+  transform: translateY(-200%);
+  border-radius: 0.75rem;
+  background: var(--sl-primary, #1f3a5f);
+  color: #ffffff;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  transform: none;
 }
 
 .app-card-link--financial { --color-pillar: var(--sl-evergreen); --color-pillar-tint: var(--sl-evergreen-tint); }
@@ -1351,6 +1399,12 @@ ion-app .btn[disabled] {
 ion-app .btn:focus-visible {
   outline: 2px solid var(--color-primary, #1f3a5f);
   outline-offset: 2px;
+}
+
+ion-app a.btn.btn-primary:not(.btn-outline) {
+  background: var(--btn-bg, var(--color-primary, #1f3a5f));
+  color: var(--btn-fg, var(--color-primary-content, #ffffff));
+  border-color: transparent;
 }
 
 ion-app .btn-outline:not(.btn-error) {

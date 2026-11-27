@@ -291,7 +291,12 @@ async function loadList() {
       if (!startDates[plan.key]) startDates[plan.key] = plan.suggested_start;
     }
   } catch (error) {
-    loadError.value = parseFetchError(error, "Failed to load reading plans.");
+    const failure = settleLoadError(error, "Failed to load reading plans.");
+    loadError.value = failure.message;
+    if (failure.auth) {
+      library.value = [];
+      plans.value = [];
+    }
   } finally {
     loading.value = false;
   }

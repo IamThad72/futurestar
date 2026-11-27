@@ -10,11 +10,14 @@ test("page heading that repeats the toolbar title is a duplicate", () => {
 });
 
 test("section home headings match their short tab titles", () => {
-  assert.equal(isDuplicateScreenTitle("Money", "Money", "/financial"), true);
   assert.equal(isDuplicateScreenTitle("Faith", "Faith", "/spiritual"), true);
-  assert.equal(isDuplicateScreenTitle("Body", "Body", "/physical/"), true);
-  assert.equal(isDuplicateScreenTitle("Money", "Investments", "/financial"), true);
   assert.equal(isDuplicateScreenTitle("Money", "Investments", "/investments"), false);
+});
+
+test("Money and Body keep the page title instead of the smaller toolbar label", () => {
+  assert.equal(isDuplicateScreenTitle("Money", "Money", "/financial"), false);
+  assert.equal(isDuplicateScreenTitle("Body", "Body", "/physical/"), false);
+  assert.equal(isDuplicateScreenTitle("Money", "Investments", "/financial"), false);
 });
 
 test("headings that add information are kept", () => {

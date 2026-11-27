@@ -194,7 +194,9 @@ async function loadDay() {
     shortenedIntention.value = "";
     practiceText.value = "";
   } catch (error) {
-    prayerError.value = parseFetchError(error, "Failed to load morning prayer.");
+    const failure = settleLoadError(error, "Failed to load morning prayer.");
+    prayerError.value = failure.message;
+    if (failure.auth) prayers.value = [];
   } finally {
     prayerLoading.value = false;
   }

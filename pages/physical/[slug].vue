@@ -1,10 +1,10 @@
 <template>
   <section v-if="section" class="app-page">
     <header v-if="section.slug !== 'nutrition'" class="app-sticky-action mb-6">
-      <h1 class="text-lg font-semibold text-base-content sm:text-xl">{{ section.name }}</h1>
+      <h1>{{ section.name }}</h1>
     </header>
     <header v-else-if="!useMobileChrome" class="mb-4">
-      <h1 class="text-lg font-semibold text-base-content sm:text-xl">{{ section.name }}</h1>
+      <h1>{{ section.name }}</h1>
     </header>
     <NutritionTracker v-if="section.slug === 'nutrition'" />
     <WorkoutExerciseJournal v-else-if="section.slug === 'workout-journal'" />

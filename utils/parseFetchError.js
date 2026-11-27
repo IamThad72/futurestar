@@ -32,14 +32,38 @@ function usefulServerMessage(error) {
   return "";
 }
 
+/** HTTP status from an ofetch / $fetch error, or 0 when there isn't one. */
+export function fetchStatus(error) {
+  const raw =
+    error?.statusCode ?? error?.status ?? error?.response?.status ?? error?.data?.statusCode;
+  const status = Number(raw);
+  return Number.isFinite(status) ? status : 0;
+}
+
+/** Anonymous or forbidden responses are empty data, not a page error. */
+export function isAuthStatus(error) {
+  const status = fetchStatus(error);
+  return status === 401 || status === 403;
+}
+
+/**
+ * Loaders use this so a signed-out request clears to empty data.
+ * Real failures keep a message for LoadErrorPanel.
+ */
+export function settleLoadError(error, fallback = "Something went wrong. Please try again.") {
+  if (isAuthStatus(error)) return { auth: true, message: "" };
+  return { auth: false, message: parseFetchError(error, fallback) };
+}
+
 /**
  * Map $fetch / network errors to user-facing messages.
+ * 401 and 403 are not errors to show: the page stays empty and browsable.
  */
 export function parseFetchError(error, fallback = "Something went wrong. Please try again.") {
   if (!error) return fallback;
+  if (isAuthStatus(error)) return "";
 
-  const status =
-    error?.statusCode ?? error?.status ?? error?.response?.status ?? error?.data?.statusCode;
+  const status = fetchStatus(error);
 
   const raw = messageCandidates(error).map((value) => String(value ?? "")).join(" ");
   const msg = usefulServerMessage(error);
@@ -50,10 +74,6 @@ export function parseFetchError(error, fallback = "Something went wrong. Please 
 
   // Prefer HTTP status handling before treating FetchError as a network outage.
   // (ofetch uses FetchError for 4xx/5xx as well as true connectivity failures.)
-  if (status === 401 || status === 403) {
-    return msg || "Your session may have expired. Please sign in again.";
-  }
-
   if (status === 404) {
     return msg || "The requested resource was not found.";
   }

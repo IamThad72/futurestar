@@ -1,10 +1,11 @@
 /** Estate totals for dashboard / summary views (matches estate_mgmt.vue stats). */
-import { parseFetchError } from "~/utils/parseFetchError";
+import { settleLoadError } from "~/utils/parseFetchError";
 
 export function useEstateSummary() {
   const auth = useAuthStore();
   const loading = ref(true);
   const loadError = ref("");
+  const ready = ref(false);
   const assetInventory = ref([]);
   const assetVehicles = ref([]);
   const cashAndInvestments = ref([]);
@@ -60,15 +61,39 @@ export function useEstateSummary() {
 
   const netWealth = computed(() => totalAssets.value - totalDebt.value);
 
-  const estateStats = computed(() => [
-    { name: "Assets", value: formatMoney(totalAssets.value) },
-    { name: "Debt", value: formatMoney(totalDebt.value) },
-    { name: "Hard Assets", value: formatMoney(totalHardAssets.value) },
-    { name: "Net Wealth", value: formatMoney(netWealth.value) },
-  ]);
+  const estateStats = computed(() => {
+    if (!ready.value) {
+      return [
+        { name: "Assets", value: "—" },
+        { name: "Debt", value: "—" },
+        { name: "Hard Assets", value: "—" },
+        { name: "Net Wealth", value: "—" },
+      ];
+    }
+    return [
+      { name: "Assets", value: formatMoney(totalAssets.value) },
+      { name: "Debt", value: formatMoney(totalDebt.value) },
+      { name: "Hard Assets", value: formatMoney(totalHardAssets.value) },
+      { name: "Net Wealth", value: formatMoney(netWealth.value) },
+    ];
+  });
+
+  function clearRecords() {
+    assetInventory.value = [];
+    assetVehicles.value = [];
+    cashAndInvestments.value = [];
+    debt.value = [];
+    realEstate.value = [];
+  }
 
   async function loadSummary() {
-    if (!auth.user) return;
+    if (!auth.user) {
+      clearRecords();
+      ready.value = false;
+      loadError.value = "";
+      loading.value = false;
+      return;
+    }
     loading.value = true;
     loadError.value = "";
     try {
@@ -84,14 +109,13 @@ export function useEstateSummary() {
       cashAndInvestments.value = cash;
       debt.value = debtRes;
       realEstate.value = real;
+      ready.value = true;
     } catch (error) {
-      console.error("Failed to load estate summary", error);
-      loadError.value = parseFetchError(error, "Failed to load estate summary.");
-      assetInventory.value = [];
-      assetVehicles.value = [];
-      cashAndInvestments.value = [];
-      debt.value = [];
-      realEstate.value = [];
+      const failure = settleLoadError(error, "Failed to load estate summary.");
+      clearRecords();
+      ready.value = false;
+      loadError.value = failure.message;
+      if (!failure.auth) console.error("Failed to load estate summary", error);
     } finally {
       loading.value = false;
     }

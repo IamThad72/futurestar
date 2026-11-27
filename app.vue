@@ -4,6 +4,7 @@
     :data-pillar="pillar || undefined"
     class="app-shell min-h-screen bg-base-200 text-base-content antialiased"
   >
+    <a class="skip-link" href="#main-content">Skip to content</a>
     <OfflineBanner />
     <div class="app-shell__main">
       <NuxtLayout>
@@ -24,8 +25,6 @@ const auth = useAuthStore();
 const route = useRoute();
 const themeName = ref("sacredledger");
 
-const guestPaths = new Set(["/", "/login", "/logout", "/reset-password", "/delete-account"]);
-
 const pillar = computed(() => {
   const path = route.path;
   if (isFinancialPath(path)) return "financial";
@@ -39,15 +38,6 @@ function syncTheme() {
   themeName.value = dark ? "sacredledger-dark" : "sacredledger";
   document.documentElement.setAttribute("data-theme", themeName.value);
 }
-
-watch(
-  () => auth.user,
-  (user, prevUser) => {
-    if (prevUser && !user && !guestPaths.has(route.path)) {
-      void navigateTo("/login", { replace: true });
-    }
-  },
-);
 
 let themeQuery;
 

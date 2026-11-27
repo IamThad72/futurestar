@@ -1,5 +1,5 @@
 import { buildBudgetChartRows, buildOtherBudgetChartRows } from "~/utils/budgetChart";
-import { parseFetchError } from "~/utils/parseFetchError";
+import { settleLoadError } from "~/utils/parseFetchError";
 
 export function useBudgetChartData() {
   const auth = useAuthStore();
@@ -56,8 +56,18 @@ export function useBudgetChartData() {
     ),
   );
 
+  function clearCharts() {
+    budgets.value = { income: [], expenses: [] };
+    transactions.value = [];
+  }
+
   async function loadBudgetChartData() {
-    if (!auth.user) return;
+    if (!auth.user) {
+      clearCharts();
+      loadError.value = "";
+      loading.value = false;
+      return;
+    }
     loading.value = true;
     loadError.value = "";
     try {
@@ -77,10 +87,10 @@ export function useBudgetChartData() {
       const orphans = Array.isArray(txData?.orphans) ? txData.orphans : [];
       transactions.value = orphans.length ? [...matched, ...orphans] : matched;
     } catch (error) {
-      console.error("Failed to load budget chart data", error);
-      loadError.value = parseFetchError(error, "Failed to load budget charts.");
-      budgets.value = { income: [], expenses: [] };
-      transactions.value = [];
+      const failure = settleLoadError(error, "Failed to load budget charts.");
+      clearCharts();
+      loadError.value = failure.message;
+      if (!failure.auth) console.error("Failed to load budget chart data", error);
     } finally {
       loading.value = false;
     }

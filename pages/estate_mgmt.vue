@@ -1,44 +1,36 @@
 <template>
-  <main>
+  <section class="app-page">
 
-    <div v-if="!auth.ready" class="mx-auto max-w-7xl px-1 py-8 sm:px-6 lg:px-8">
-      <p class="text-sm text-gray-500 dark:text-gray-400">Loading session...</p>
-    </div>
-
-    <div
-      v-else-if="!auth.user"
-      class="mx-auto max-w-7xl px-1 py-8 sm:px-6 lg:px-8 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
-    >
-      You must be logged in to use estate management.
-    </div>
+    <p v-if="!auth.ready" class="text-sm text-muted">Loading…</p>
 
     <template v-else>
       <div class="relative isolate overflow-hidden">
-        <header class="pb-4 pt-6 sm:pb-6">
-          <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-6 px-1 sm:flex-nowrap sm:px-6 lg:px-8">
-            <h1 class="text-lg font-semibold text-base-content md:text-xl">Estate Management</h1>
-            <div class="ml-auto flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+        <header class="page-header">
+          <div class="page-header__copy">
+            <h1>Estate Management</h1>
+            <p class="page-header__lede">Assets, debts, insurance, and what they add up to.</p>
+          </div>
+          <div class="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
               <button
-                v-if="auth.user"
                 type="button"
-                class="estate-action-btn"
+                class="btn btn-primary"
                 @click="openUploadDocument"
               >
                 Upload document
               </button>
               <button
-                v-if="auth.user"
                 type="button"
-                class="estate-action-btn"
+                class="btn btn-outline"
                 @click="openManageAssetCategoriesModal"
               >
                 Manage Asset Categories
               </button>
-            </div>
           </div>
         </header>
+        <p v-if="loading" class="text-sm text-muted">Loading…</p>
+        <LoadErrorPanel v-else-if="loadError" class="mb-4" :message="loadError" @retry="loadSummary" />
         <div class="border-b border-gray-900/10 lg:border-t lg:border-t-gray-900/5 dark:border-white/10 dark:lg:border-t-white/5">
-          <dl class="mx-auto grid max-w-7xl grid-cols-2 lg:grid-cols-4 lg:px-2 xl:px-0">
+          <dl class="grid grid-cols-2 lg:grid-cols-4">
             <div
               v-for="(stat, statIdx) in estateStats"
               :key="stat.name"
@@ -71,10 +63,10 @@
           </EstateSection>
         </div>
 
-        <div v-if="loading" class="mx-auto max-w-7xl px-1 py-4 text-xs text-gray-500 sm:px-6 md:text-sm lg:px-8 dark:text-gray-400">Loading records...</div>
+        <p v-if="loading" class="text-sm text-muted">Loading…</p>
 
         <template v-else>
-        <EstateSection title="Asset Inventory" :total="formatMoney(totalAssetInventory)" @add="openAddModal('asset')">
+        <EstateSection title="Asset Inventory" :total="statMoney(totalAssetInventory)" @add="openAddModal('asset')">
           <EstateRecordList
             :items="sortedAssetInventory"
             item-key="ai_id"
@@ -88,7 +80,7 @@
         <EstateSection
           title="Asset Vehicles"
           title-to="/garage"
-          :total="formatMoney(totalAssetVehicles)"
+          :total="statMoney(totalAssetVehicles)"
           @add="openAddModal('vehicle')"
         >
           <EstateRecordList
@@ -104,7 +96,7 @@
             @edit="openEditModal('vehicle', $event)"
           />
         </EstateSection>
-        <EstateSection title="Cash and Investments" :total="formatMoney(totalCashAndInvestments)" @add="openAddModal('cash')">
+        <EstateSection title="Cash and Investments" :total="statMoney(totalCashAndInvestments)" @add="openAddModal('cash')">
           <EstateRecordList
             :items="sortedCashAndInvestments"
             item-key="ci_id"
@@ -115,7 +107,7 @@
             @edit="openEditModal('cash', $event)"
           />
         </EstateSection>
-        <EstateSection title="Debt" :total="formatMoney(totalDebtTable)" @add="openAddModal('debt')">
+        <EstateSection title="Debt" :total="statMoney(totalDebtTable)" @add="openAddModal('debt')">
           <EstateRecordList
             :items="sortedDebt"
             item-key="dbt_id"
@@ -126,7 +118,7 @@
             @edit="openEditModal('debt', $event)"
           />
         </EstateSection>
-        <EstateSection title="Real Estate" :total="formatMoney(totalRealEstateValue)" @add="openAddModal('real_estate')">
+        <EstateSection title="Real Estate" :total="statMoney(totalRealEstateValue)" @add="openAddModal('real_estate')">
           <EstateRecordList
             :items="sortedRealEstate"
             item-key="re_id"
@@ -188,7 +180,7 @@
         <button type="submit">close</button>
       </form>
     </dialog>
-  </main>
+  </section>
 </template>
 
 <script setup>
@@ -250,6 +242,8 @@ const insuranceColumns = [
 const auth = useAuthStore();
 const route = useRoute();
 const loading = ref(true);
+const summaryReady = ref(false);
+const loadError = ref("");
 const addEstateModalRef = ref(null);
 const editEstateModalRef = ref(null);
 const manageAssetCategoriesModalRef = ref(null);
@@ -504,11 +498,16 @@ const netWealth = computed(() => totalAssets.value - totalDebt.value);
 
 const totalHardAssets = computed(() => totalAssetInventory.value + totalAssetVehicles.value);
 
+function statMoney(val) {
+  if (!summaryReady.value) return "—";
+  return formatMoney(val);
+}
+
 const estateStats = computed(() => [
-  { name: "Assets", value: formatMoney(totalAssets.value) },
-  { name: "Debt", value: formatMoney(totalDebt.value) },
-  { name: "Hard Assets", value: formatMoney(totalHardAssets.value) },
-  { name: "Net Wealth", value: formatMoney(netWealth.value) },
+  { name: "Assets", value: statMoney(totalAssets.value) },
+  { name: "Debt", value: statMoney(totalDebt.value) },
+  { name: "Hard Assets", value: statMoney(totalHardAssets.value) },
+  { name: "Net Wealth", value: statMoney(netWealth.value) },
 ]);
 
 const sumByKey = (arr, key) => arr.reduce((a, r) => a + (toNumber(r[key]) || 0), 0);
@@ -554,26 +553,66 @@ async function openEditModal(type, record) {
   editEstateModalRef.value?.open(type, record);
 }
 
+function clearEstateRecords() {
+  assetInventory.value = [];
+  assetVehicles.value = [];
+  cashAndInvestments.value = [];
+  debt.value = [];
+  realEstate.value = [];
+  insurance.value = [];
+  linkedAssets.value = [];
+}
+
+async function fetchRows(url, key) {
+  try {
+    const data = await $fetch(url);
+    return { auth: false, rows: data?.[key] ?? [] };
+  } catch (error) {
+    if (isAuthStatus(error)) return { auth: true, rows: [] };
+    throw error;
+  }
+}
+
 async function loadSummary() {
-  if (!auth.user) return;
+  if (!auth.user) {
+    clearEstateRecords();
+    summaryReady.value = false;
+    loadError.value = "";
+    loading.value = false;
+    return;
+  }
   loading.value = true;
+  loadError.value = "";
   try {
     const [inv, vehicles, cash, debtRes, real, ins, linked] = await Promise.all([
-      $fetch('/api/records/asset-inventory').then((d) => d?.records ?? []).catch(() => []),
-      $fetch('/api/records/asset-vehicles').then((d) => d?.records ?? []).catch(() => []),
-      $fetch('/api/records/cash-and-investments').then((d) => d?.records ?? []).catch(() => []),
-      $fetch('/api/records/debt').then((d) => d?.records ?? []).catch(() => []),
-      $fetch('/api/records/real-estate').then((d) => d?.records ?? []).catch(() => []),
-      $fetch('/api/records/insurance').then((d) => d?.records ?? []).catch(() => []),
-      $fetch('/api/records/linked-assets').then((d) => d?.assets ?? []).catch(() => []),
+      fetchRows("/api/records/asset-inventory", "records"),
+      fetchRows("/api/records/asset-vehicles", "records"),
+      fetchRows("/api/records/cash-and-investments", "records"),
+      fetchRows("/api/records/debt", "records"),
+      fetchRows("/api/records/real-estate", "records"),
+      fetchRows("/api/records/insurance", "records"),
+      fetchRows("/api/records/linked-assets", "assets"),
     ]);
-    assetInventory.value = inv;
-    assetVehicles.value = vehicles;
-    cashAndInvestments.value = cash;
-    debt.value = debtRes;
-    realEstate.value = real;
-    insurance.value = ins;
-    linkedAssets.value = linked;
+    const batches = [inv, vehicles, cash, debtRes, real, ins, linked];
+    if (batches.some((batch) => batch.auth)) {
+      clearEstateRecords();
+      summaryReady.value = false;
+      return;
+    }
+    assetInventory.value = inv.rows;
+    assetVehicles.value = vehicles.rows;
+    cashAndInvestments.value = cash.rows;
+    debt.value = debtRes.rows;
+    realEstate.value = real.rows;
+    insurance.value = ins.rows;
+    linkedAssets.value = linked.rows;
+    summaryReady.value = true;
+  } catch (error) {
+    clearEstateRecords();
+    summaryReady.value = false;
+    const failure = settleLoadError(error, "The estate could not be loaded. Try again in a moment.");
+    loadError.value = failure.message;
+    if (!failure.auth) console.error("Failed to load estate summary", error);
   } finally {
     loading.value = false;
   }

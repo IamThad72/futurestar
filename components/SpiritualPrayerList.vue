@@ -179,7 +179,9 @@ async function load() {
     prayers.value = data?.prayers || [];
     counts.value = data?.counts || counts.value;
   } catch (error) {
-    loadError.value = parseFetchError(error, "Failed to load the prayer list.");
+    const failure = settleLoadError(error, "Failed to load the prayer list.");
+    loadError.value = failure.message;
+    if (failure.auth) prayers.value = [];
   } finally {
     loading.value = false;
   }

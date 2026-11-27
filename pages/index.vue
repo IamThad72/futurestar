@@ -38,7 +38,7 @@
 <script setup>
 const auth = useAuthStore();
 
-useHead({ title: "Future Star" });
+useHead({ title: "Future Star", titleTemplate: "%s" });
 
 watch(
   () => [auth.ready, auth.user],

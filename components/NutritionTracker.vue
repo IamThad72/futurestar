@@ -1102,7 +1102,8 @@ async function loadHistory() {
     });
     historyDays.value = data?.days || [];
   } catch (error) {
-    historyError.value = parseFetchError(error, "Failed to load nutrition chart.");
+    const failure = settleLoadError(error, "Failed to load nutrition chart.");
+    historyError.value = failure.message;
     historyDays.value = [];
   } finally {
     historyLoading.value = false;
@@ -1120,7 +1121,12 @@ async function loadDay() {
     comparison.value = data?.comparison || null;
     applyPlan(data?.plan || null);
   } catch (error) {
-    loadError.value = parseFetchError(error, "Failed to load nutrition for this day.");
+    const failure = settleLoadError(error, "Failed to load nutrition for this day.");
+    loadError.value = failure.message;
+    if (failure.auth) {
+      entries.value = [];
+      comparison.value = null;
+    }
   } finally {
     loading.value = false;
   }
@@ -1167,7 +1173,7 @@ async function loadFoods() {
     }
   } catch (error) {
     foods.value = [];
-    foodsError.value = parseFetchError(error, "Failed to load foods.");
+    foodsError.value = settleLoadError(error, "Failed to load foods.").message;
   } finally {
     loadingFoods.value = false;
   }

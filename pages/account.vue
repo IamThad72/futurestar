@@ -85,8 +85,9 @@ import { rememberAccountDeleted } from "~/utils/accountDeletedNotice";
 import { profileIdentity, profilePhotoUrl, showProfileAvatar } from "~/utils/profileAvatar";
 import { runGuardedSignOut } from "~/utils/signOutGuard";
 
+useHead({ title: "You" });
+
 const auth = useAuthStore();
-const router = useRouter();
 const { signOut } = useSignOut();
 const showAccountManagement = ref(false);
 const showLinkedAccounts = ref(false);
@@ -122,9 +123,6 @@ async function handleLogout() {
 onMounted(async () => {
   if (!auth.ready) {
     await auth.fetchSession();
-  }
-  if (!auth.user) {
-    await router.replace("/login");
   }
 });
 </script>

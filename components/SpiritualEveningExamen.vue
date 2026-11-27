@@ -97,7 +97,9 @@ async function loadDay() {
     followQuestions.value = {};
     form.value = { ...emptySpiritualReview(), ...(data?.review || {}) };
   } catch (error) {
-    loadError.value = parseFetchError(error, `Failed to load this day’s ${faith.eveningWord.value}.`);
+    const failure = settleLoadError(error, `Failed to load this day’s ${faith.eveningWord.value}.`);
+    loadError.value = failure.message;
+    if (failure.auth) form.value = emptySpiritualReview();
   } finally {
     loading.value = false;
   }

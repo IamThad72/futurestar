@@ -8,13 +8,7 @@
       v-if="!auth.ready"
       class="app-card px-4 py-6 text-sm text-base-content/60"
     >
-      Loading session...
-    </div>
-    <div
-      v-else-if="!auth.user"
-      class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
-    >
-      You must be logged in to use Faith.
+      Loading…
     </div>
     <template v-else>
       <SpiritualMorningPrayer v-if="section.slug === 'morning'" />

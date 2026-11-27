@@ -1,6 +1,6 @@
 import { financialSidebarGroups, financialTabsForPath, isFinancialPath } from "~/utils/financialNav";
 import { primaryNavForPath } from "~/utils/primaryNav";
-import { isPhysicalPath, physicalTabsForPath } from "~/utils/physicalNav";
+import { isPhysicalPath, physicalSidebarGroups, physicalTabsForPath } from "~/utils/physicalNav";
 import { isSpiritualHomePath, isSpiritualPath, spiritualSidebarGroups } from "~/utils/spiritualNav";
 import { screenTitleForRoute } from "~/utils/screenTitle";
 
@@ -53,7 +53,7 @@ export function useAppNav() {
     }
     if (isPhysicalSection.value) {
       const tabs = physicalTabsForPath(route.path).filter((tab) => tab.href !== "/physical");
-      return tabs.length ? [{ name: "Training", tabs }] : [];
+      return physicalSidebarGroups(tabs);
     }
     return [];
   });

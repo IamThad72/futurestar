@@ -1,26 +1,32 @@
 <template>
   <section class="app-page">
-    <header class="mb-6">
-      <h1 class="text-lg font-semibold text-base-content sm:text-xl">Workout Manager</h1>
-      <p class="mt-1 text-sm text-base-content/60">
-        {{
-          editing
-            ? "Set the exercises and one target each. Starting this plan in the Exercise Journal copies it. The saved plan stays as you left it."
-            : "Open a saved plan, or start a new one. The Exercise Journal can start a session from any plan here."
-        }}
-      </p>
+    <header class="page-header">
+      <div class="page-header__copy">
+        <h1>Workout Manager</h1>
+        <p class="page-header__lede">
+          {{
+            editing
+              ? "Set the exercises and one target each. Starting this plan in the Exercise Journal copies it."
+              : "Save a plan here, then start it again from the Exercise Journal."
+          }}
+        </p>
+      </div>
+      <button v-if="!editing" type="button" class="btn btn-primary" @click="onNew">New workout</button>
     </header>
 
     <WorkoutBuilderPanel v-if="editing" @back="editing = false" />
 
     <div v-else class="space-y-4">
       <WorkoutPlanAssistant @saved="loadList" />
-      <button type="button" class="training-chip btn btn-primary btn-sm rounded-full" @click="onNew">
-        New workout
-      </button>
-      <p v-if="listError || saveError" class="text-sm text-error">{{ listError || saveError }}</p>
-      <p v-else-if="listLoading" class="text-sm text-base-content/60">Loading workouts…</p>
-      <p v-else-if="!savedWorkouts.length" class="text-sm text-base-content/60">No saved workouts yet.</p>
+      <LoadErrorPanel v-if="listError || saveError" :message="listError || saveError" :show-retry="Boolean(listError)" @retry="loadList" />
+      <p v-else-if="listLoading" class="text-sm text-muted">Loading…</p>
+      <EmptyState
+        v-else-if="!savedWorkouts.length"
+        title="No saved workouts yet."
+        sentence="Start a plan you can open again from the Exercise Journal."
+        action="New workout"
+        @action="onNew"
+      />
       <ul v-else class="space-y-2">
         <li v-for="item in savedWorkouts" :key="item.workoutId">
           <button
@@ -73,6 +79,13 @@ async function onOpen(item) {
 onMounted(() => {
   void ensureList();
 });
+
+watch(
+  () => auth.ready,
+  (ready) => {
+    if (ready) void ensureList();
+  },
+);
 
 watch(
   () => auth.user?.user_id,

@@ -125,6 +125,8 @@ import {
   parseSupabaseAuthParams,
 } from "~/utils/supabaseAuthHash";
 
+useHead({ title: "Reset password" });
+
 const auth = useAuthStore();
 const { go } = useAppNavigate();
 const router = useRouter();

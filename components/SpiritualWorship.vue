@@ -189,7 +189,12 @@ async function load() {
     apply(await $fetch("/api/spiritual/worship", { query: { date: todayIsoDate() } }));
     editWeek(editingWeek.value || weekStart.value);
   } catch (error) {
-    loadError.value = parseFetchError(error, "Failed to load worship check-ins.");
+    const failure = settleLoadError(error, "Failed to load worship check-ins.");
+    loadError.value = failure.message;
+    if (failure.auth) {
+      history.value = [];
+      streak.value = 0;
+    }
   } finally {
     loading.value = false;
   }

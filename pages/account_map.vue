@@ -1,19 +1,21 @@
 <template>
-  <main v-if="!isNarrow" class="account-map-page">
-    <div v-if="!auth.ready" class="px-1 py-8 text-sm text-gray-500">Loading session...</div>
-    <div
-      v-else-if="!auth.user"
-      class="mx-4 my-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
-    >
-      You must be logged in to use Account Map.
-    </div>
+  <section class="app-page">
+    <EmptyState
+      v-if="isNarrow"
+      title="Account Map needs a wider screen"
+      sentence="Use Budget Setup to add and edit lines on this phone."
+      action="Open Budget Setup"
+      to="/cash_flow_mgmt"
+    />
+    <div v-else class="account-map-page">
+    <p v-if="!auth.ready" class="text-sm text-muted">Loading…</p>
 
     <template v-else>
       <header class="account-map-header">
         <div>
-          <h1 class="text-base font-semibold text-gray-900 md:text-lg dark:text-white">Account Map</h1>
-          <p class="text-xs text-gray-500 dark:text-gray-400">
-            Build budgets visually — connect estate records and budget lines, then set one budget active for Setup and Tracker.
+          <h1>Account Map</h1>
+          <p class="page-header__lede">
+            How income, accounts, and budget lines connect.
           </p>
         </div>
         <div class="account-map-toolbar">
@@ -242,7 +244,7 @@
         </div>
       </div>
 
-      <div v-if="loading" class="px-1 py-8 text-sm text-gray-500">Loading map...</div>
+      <p v-if="loading" class="px-4 py-8 text-sm text-muted">Loading…</p>
       <div v-else-if="error" class="mx-4 my-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
         {{ error }}
         <button type="button" class="btn btn-ghost btn-xs ml-2" @click="loadMap">Retry</button>
@@ -464,7 +466,8 @@
         @deleted="onEstateRecordEdited"
       />
     </template>
-  </main>
+    </div>
+  </section>
 </template>
 
 <script setup>
@@ -475,16 +478,7 @@ useHead({ title: "Account Map" });
 
 const auth = useAuthStore();
 const { isNarrow } = useMobileShell();
-const { go } = useAppNavigate();
 const { confirm: askUser } = useConfirm();
-
-watch(
-  isNarrow,
-  (narrow) => {
-    if (narrow) void go("/financial", { replace: true });
-  },
-  { immediate: true },
-);
 
 const loading = ref(true);
 const error = ref("");
@@ -997,7 +991,9 @@ async function loadMap() {
       throw graphErr;
     }
   } catch (e) {
-    error.value = e?.data?.statusMessage || e?.message || "Failed to load account map.";
+    const failure = settleLoadError(e, "The account map could not be loaded. Try again in a moment.");
+    error.value = failure.message;
+    if (!failure.auth) console.error("Failed to load account map", e);
   } finally {
     loading.value = false;
   }
@@ -1021,7 +1017,9 @@ async function selectBudget(budgetId) {
       throw graphErr;
     }
   } catch (e) {
-    error.value = e?.data?.statusMessage || e?.message || "Failed to load account map.";
+    const failure = settleLoadError(e, "The account map could not be loaded. Try again in a moment.");
+    error.value = failure.message;
+    if (!failure.auth) console.error("Failed to load account map", e);
   } finally {
     loading.value = false;
   }
@@ -1390,7 +1388,7 @@ function autoLayout() {
 }
 
 watch(
-  () => Boolean(auth.ready && auth.user) && !isNarrow.value,
+  () => auth.ready && !isNarrow.value,
   (ok) => {
     if (ok) void loadMap();
     else if (auth.ready) loading.value = false;

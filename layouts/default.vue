@@ -113,6 +113,7 @@
           </aside>
           <div class="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden bg-base-200">
             <main
+              id="main-content"
               class="layout-main flex-1"
               :class="{ 'layout-main--flush-end': isSpiritualHome }"
             >
