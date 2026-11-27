@@ -4,7 +4,7 @@
  * LEGAL_DRAFT stays true until the owner approves the text.
  */
 
-export const LEGAL_UPDATED = "2026-11-26";
+export const LEGAL_UPDATED = "2026-11-27";
 export const LEGAL_DRAFT = true;
 export const PUBLISHER_NAME = "Marcelli Enterprises LLC";
 
@@ -223,7 +223,7 @@ export const privacyPolicy = {
       blocks: [
         {
           type: "p",
-          text: "The app does not delete records on a timer. They stay until you delete them in the app.",
+          text: "While your account is open, records stay until you delete them in the app.",
         },
         {
           type: "p",
@@ -231,7 +231,15 @@ export const privacyPolicy = {
         },
         {
           type: "p",
-          text: "When account deletion runs, shared household money stays with the household and is handed to someone who remains. Your private data is erased. That includes faith practice, nutrition, workouts and the training journal, your profile photo, your password hash, and your sessions. Money rows that were never shared with a household are erased with your account. If you are the last person in the household, the household and its shared records are deleted with the account. An estate file is removed when that document is deleted. A document handed to the household stays, including the file. A share you granted on a single estate record is removed with your account, even if the record itself stays. Copies kept only on the device, described under On this device, stay until the browser clears them or you remove them there.",
+          text: "When account deletion runs, shared household money stays with the household and is handed to someone who remains. Household tax profiles and deduction overrides stay. If one of your shared income, investment, or savings sources has the same name as one a remaining person already has, your copy is kept and renamed with \" (former member)\". If that name is taken, a number is added, such as \" (former member) 2\". If you are the last person in the household, the household and its shared records are deleted with the account, including records that still name someone who already left. Those records are not turned into private records.",
+        },
+        {
+          type: "p",
+          text: "Your private faith practice, nutrition, workouts and the training journal, your profile, your sessions, and your sign-in are erased. Budget lines, transactions, and estate records that belong only to you are erased. Private asset inventory, vehicle, and cash or investment account records that are not in a household are kept hidden for 90 days and then permanently deleted. That hold includes the holdings on a private cash or investment account and the service history on a private vehicle. They are not visible or accessible in the app during those 90 days. A daily job then deletes them. Shared household copies of those records, including shared holdings and service history, stay with the household.",
+        },
+        {
+          type: "p",
+          text: "Stored files for estate documents that are erased are queued for deletion. A document handed to the household stays, including the file, while other members remain. If removing a stored file or the sign-in does not finish immediately, a daily job retries until it is gone. The sign-in id is kept only so that sign-in cannot open a new account. Your email is not stored on that marker. Copies kept only on the device, described under On this device, stay until the browser clears them or you remove them there.",
         },
       ],
     },
@@ -284,7 +292,7 @@ export const privacyPolicy = {
       blocks: [
         {
           type: "p",
-          text: "When this policy changes, the date at the top changes with it. This draft is dated November 26, 2026.",
+          text: "When this policy changes, the date at the top changes with it. This draft is dated November 27, 2026.",
         },
       ],
     },
@@ -398,7 +406,7 @@ export const termsOfService = {
           parts: [
             "You can stop using the app. Deleting the account is described in the ",
             { href: "/privacy", label: "privacy policy" },
-            ", under Retention and deletion. When the app includes that control, it is under You, in Privacy and data. The publisher can stop offering the app.",
+            ", under Retention and deletion. When the app includes that control, it is under You, in Privacy and data. Shared household money stays with the household. Private asset inventory, vehicle, and cash or investment account records that are not in a household, including investment holdings and vehicle service history, are kept hidden for 90 days and then permanently deleted. They are not visible or accessible in the app during that time. The publisher can stop offering the app.",
           ],
         },
       ],
@@ -441,7 +449,7 @@ export const termsOfService = {
       blocks: [
         {
           type: "p",
-          text: "When these terms change, the date at the top changes with it. This draft is dated November 26, 2026.",
+          text: "When these terms change, the date at the top changes with it. This draft is dated November 27, 2026.",
         },
       ],
     },
