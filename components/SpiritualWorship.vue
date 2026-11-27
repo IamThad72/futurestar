@@ -13,7 +13,7 @@
       <section class="app-card min-w-0 max-w-full overflow-hidden px-4 py-4">
         <p class="sl-caption">{{ editingWeek === weekStart ? "This week" : "Week of" }} · {{ weekRange(editingWeek) }}</p>
         <h2 class="mt-1 text-base font-semibold text-gray-900">{{ terms.question }}</h2>
-        <form class="mt-3 grid min-w-0 gap-3" @submit.prevent="save">
+        <form v-if="auth.user || auth.sessionEnded" class="mt-3 grid min-w-0 gap-3" @submit.prevent="save">
           <div class="flex flex-wrap gap-2" role="radiogroup" :aria-label="terms.question">
             <button
               v-for="option in attendanceOptions"
@@ -101,6 +101,7 @@ import { addDays } from "~/utils/readingPlans";
 import { attendanceLabel, attended, streakMessage, worshipTerms } from "~/utils/worshipCheckin";
 
 const faith = useFaithProfile();
+const auth = useAuthStore();
 const { light } = useHaptics();
 const loading = ref(true);
 const loadError = ref("");

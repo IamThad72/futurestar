@@ -139,9 +139,9 @@ test("only the header login link navigates to /login", () => {
   assert.doesNotMatch(auth, /navigateTo\(\s*["'`]\/login/);
 
   const writes = {
-    "pages/physical/workouts/index.vue": /saveError\.value = SIGN_IN_MESSAGE/,
+    "pages/physical/workouts/index.vue": /saveError\.value = auth\.sessionEnded \? SESSION_ENDED_MESSAGE : SIGN_IN_MESSAGE/,
     "pages/garage/index.vue": /error\.value = SIGN_IN_MESSAGE/,
-    "pages/cash_flow_tracker.vue": /txError\.value = SIGN_IN_MESSAGE[\s\S]*editTxError\.value = SIGN_IN_MESSAGE/,
+    "pages/cash_flow_tracker.vue": /txError\.value = auth\.sessionEnded \? SESSION_ENDED_MESSAGE : SIGN_IN_MESSAGE[\s\S]*editTxError\.value = auth\.sessionEnded \? SESSION_ENDED_MESSAGE : SIGN_IN_MESSAGE/,
     "components/EstateDocumentsPanel.vue": /uploadError\.value = SIGN_IN_MESSAGE/,
   };
   for (const [rel, pattern] of Object.entries(writes)) {
@@ -151,17 +151,17 @@ test("only the header login link navigates to /login", () => {
   }
 
   const workouts = readFileSync(join(root, "pages/physical/workouts/index.vue"), "utf8");
-  assert.match(workouts, /v-if="!editing && auth\.user"/);
-  assert.match(workouts, /<WorkoutPlanAssistant v-if="auth\.user"/);
+  assert.match(workouts, /v-if="!editing && \(auth\.user \|\| auth\.sessionEnded\)"/);
+  assert.match(workouts, /<WorkoutPlanAssistant v-if="auth\.user \|\| auth\.sessionEnded"/);
 
   const estate = readFileSync(join(root, "pages/estate_mgmt.vue"), "utf8");
-  assert.match(estate, /v-if="auth\.user"[\s\S]{0,240}Upload document/);
-  assert.match(estate, /:show-add="Boolean\(auth\.user\)"/);
+  assert.match(estate, /v-if="canWrite"[\s\S]{0,240}Upload document/);
+  assert.match(estate, /:show-add="canWrite"/);
 
   const tracker = readFileSync(join(root, "pages/cash_flow_tracker.vue"), "utf8");
-  assert.match(tracker, /<NuxtLink v-if="auth\.user" to="\/cash_flow_mgmt"/);
-  assert.match(tracker, /<div v-if="auth\.user" class="app-sticky-action">/);
-  assert.match(tracker, /<div v-if="auth\.user" class="ml-auto flex/);
+  assert.match(tracker, /<NuxtLink v-if="canWrite" to="\/cash_flow_mgmt"/);
+  assert.match(tracker, /<div v-if="canWrite" class="app-sticky-action">/);
+  assert.match(tracker, /<div v-if="canWrite" class="ml-auto flex/);
   assert.match(tracker, /parseFetchError\(err, "Failed to save transactions\."\)/);
   assert.match(tracker, /parseFetchError\(err, "Failed to add transaction\."\)/);
   assert.doesNotMatch(tracker, /csvError\.value = err\?\.message/);
@@ -169,6 +169,58 @@ test("only the header login link navigates to /login", () => {
   const shell = readFileSync(join(root, "app.vue"), "utf8");
   assert.match(shell, /sessionEndedMessage/);
   assert.match(shell, /role="alert"/);
+});
+
+test("a mid-session 401 keeps open forms and guests do not see write controls", () => {
+  const root = fileURLToPath(new URL("..", import.meta.url)).replace(/[/\\]$/, "");
+  const read = (rel) => readFileSync(join(root, rel), "utf8");
+
+  const workouts = read("pages/physical/workouts/index.vue");
+  assert.match(
+    workouts,
+    /if \(!userId && auth\.sessionEnded\) \{[\s\S]*?return;[\s\S]*?resetForUserChange\(\)/,
+  );
+  const draft = read("composables/useWorkoutDraft.js");
+  assert.match(draft, /if \(failure\.auth && !failure\.expired\) savedWorkouts\.value = \[\]/);
+
+  const tracker = read("pages/cash_flow_tracker.vue");
+  assert.match(tracker, /const canWrite = computed\(\(\) => Boolean\(auth\.user \|\| auth\.sessionEnded\)\)/);
+  assert.match(tracker, /if \(auth\.sessionEnded\) \{\s*loadError\.value = "";\s*return;\s*\}/);
+  assert.match(tracker, /if \(failure\.expired\) \{\s*loadError\.value = "";\s*return;\s*\}/);
+  assert.match(tracker, /<div v-if="canWrite" class="app-sticky-action">/);
+
+  const estate = read("pages/estate_mgmt.vue");
+  assert.match(estate, /settleLoadError\(error, ""\)/);
+  assert.match(estate, /if \(expired\)/);
+  assert.match(estate, /if \(auth\.sessionEnded\) return;/);
+  assert.doesNotMatch(estate, /:show-add="Boolean\(auth\.user\)"/);
+  const sections = estate.match(/<EstateSection\b/g) || [];
+  const shown = estate.match(/:show-add="canWrite"/g) || [];
+  assert.equal(shown.length, sections.length);
+
+  const investments = read("pages/investments.vue");
+  assert.match(investments, /return parseFetchError\(error, fallback\)/);
+  assert.match(investments, /settleLoadError\(error, "Could not load investment holdings\."\)/);
+
+  const modal = read("components/AddEstateRecordModal.vue");
+  assert.match(modal, /parseFetchError\(err, "Failed to add asset\."\)/);
+  assert.doesNotMatch(modal, /addError\.value = err\?\.data\?\.statusMessage/);
+  assert.match(modal, /role="alert"/);
+
+  const gated = [
+    "components/NutritionTracker.vue",
+    "components/SpiritualMorningPrayer.vue",
+    "components/SpiritualEveningExamen.vue",
+    "components/SpiritualPrayerList.vue",
+    "components/SpiritualWorship.vue",
+    "components/SpiritualReadingPlans.vue",
+    "pages/garage/[id].vue",
+  ];
+  for (const rel of gated) {
+    assert.match(read(rel), /auth\.user \|\| auth\.sessionEnded/, rel);
+  }
+  assert.match(read("pages/garage/[id].vue"), /Add Service/);
+  assert.match(read("pages/estate_mgmt.vue"), /SIGN_IN_MESSAGE/);
 });
 
 test("named loaders map anonymous responses through settleLoadError", () => {

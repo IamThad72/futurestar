@@ -8,7 +8,8 @@
           <h1>{{ vehicle ? vehicleTitle : "Vehicle" }}</h1>
           <p class="page-header__lede">{{ vehicle?.vin ? `VIN ${vehicle.vin}` : "Service history for this vehicle." }}</p>
         </div>
-        <button v-if="vehicle" type="button" class="btn btn-primary" @click="openAddModal">Add Service</button>
+        <button v-if="vehicle && (auth.user || auth.sessionEnded)" type="button" class="btn btn-primary" @click="openAddModal">Add Service</button>
+        <p v-if="writeNotice" class="text-sm text-error" role="alert">{{ writeNotice }}</p>
       </header>
 
       <LoadErrorPanel v-if="error" :message="error" @retry="loadDetail" />
@@ -28,7 +29,7 @@
             <li v-for="item in dueItems" :key="item.service_name" class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-500/30 dark:bg-amber-500/10">
               <p class="text-sm font-medium text-gray-900 dark:text-white">{{ item.service_name }}</p>
               <p class="mt-0.5 text-xs text-gray-600 dark:text-gray-300">{{ item.reason }}</p>
-              <button type="button" class="btn btn-ghost btn-xs mt-2" @click="openDueService(item)">Add this service</button>
+              <button v-if="auth.user || auth.sessionEnded" type="button" class="btn btn-ghost btn-xs mt-2" @click="openDueService(item)">Add this service</button>
             </li>
           </ul>
 
@@ -211,6 +212,7 @@ useHead({ title: "Vehicle Details" });
 const { confirm: askUser } = useConfirm();
 
 const auth = useAuthStore();
+const writeNotice = ref("");
 const overflowIcon = overflowIconName(Capacitor.getPlatform());
 const route = useRoute();
 const vehicleId = computed(() => String(route.params.id || ""));
@@ -256,6 +258,11 @@ const dueItems = computed(() => {
 });
 
 function openDueService(item) {
+  if (!auth.user) {
+    writeNotice.value = auth.sessionEnded ? SESSION_ENDED_MESSAGE : SIGN_IN_MESSAGE;
+    return;
+  }
+  writeNotice.value = "";
   editingService.value = null;
   resetForm();
   form.service_name = item.service_name;
@@ -308,6 +315,11 @@ function resetForm() {
 }
 
 function openAddModal() {
+  if (!auth.user) {
+    writeNotice.value = auth.sessionEnded ? SESSION_ENDED_MESSAGE : SIGN_IN_MESSAGE;
+    return;
+  }
+  writeNotice.value = "";
   editingService.value = null;
   resetForm();
   serviceModalRef.value?.showModal();

@@ -203,7 +203,7 @@
                 Continue
               </button>
             </template>
-            <form v-else class="mt-3 flex flex-wrap items-end gap-2" @submit.prevent="startPlan(plan)">
+            <form v-else-if="auth.user || auth.sessionEnded" class="mt-3 flex flex-wrap items-end gap-2" @submit.prevent="startPlan(plan)">
               <label class="form-control min-w-0">
                 <span class="label py-1"><span class="label-text text-xs">Start on</span></span>
                 <input v-model="startDates[plan.key]" type="date" class="input input-bordered input-sm w-full min-w-0" />
@@ -225,6 +225,7 @@ import { parseFetchError } from "~/utils/parseFetchError";
 import { todayIsoDate } from "~/utils/liturgicalCalendar";
 
 const faith = useFaithProfile();
+const auth = useAuthStore();
 const { light } = useHaptics();
 const { confirm: askUser } = useConfirm();
 const route = useRoute();

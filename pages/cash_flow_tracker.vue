@@ -8,7 +8,7 @@
           <h1>Budget Tracker</h1>
           <p class="page-header__lede">Log spending against this month's plan.</p>
         </div>
-        <NuxtLink v-if="auth.user" to="/cash_flow_mgmt" class="btn btn-primary shrink-0">Add a budget line</NuxtLink>
+        <NuxtLink v-if="canWrite" to="/cash_flow_mgmt" class="btn btn-primary shrink-0">Add a budget line</NuxtLink>
       </header>
       <div class="pb-4">
         <div class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-6">
@@ -82,7 +82,7 @@
                 Pin for this month
               </button>
             </div>
-            <div v-if="auth.user" class="ml-auto flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <div v-if="canWrite" class="ml-auto flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               <input ref="csvFileInputRef" type="file" accept=".csv" class="hidden" @change="onCsvFileSelected" />
               <button
                 type="button"
@@ -110,7 +110,7 @@
       <LoadErrorPanel v-else-if="loadError" :message="loadError" @retry="loadData" />
 
       <div v-else class="py-4 md:py-6">
-        <div v-if="auth.user" class="app-sticky-action">
+        <div v-if="canWrite" class="app-sticky-action">
         <form class="mb-4 grid gap-2" @submit.prevent="draftTransaction">
           <label class="form-control">
             <span class="label py-1"><span class="label-text text-sm">Describe a transaction</span></span>
@@ -187,8 +187,8 @@
           v-if="!loadError && !budgetTrackerDisplaySections.length && !previousCategorySection.rows.length"
           title="No budget lines yet."
           sentence="Add a line in Budget Setup, then record spending against it here."
-          :action="auth.user ? 'Add a budget line' : ''"
-          :to="auth.user ? '/cash_flow_mgmt' : ''"
+          :action="canWrite ? 'Add a budget line' : ''"
+          :to="canWrite ? '/cash_flow_mgmt' : ''"
         />
       </div>
 
@@ -507,7 +507,7 @@
               <span class="label-text text-sm">Description</span>
               <input v-model.trim="txForm.description" class="input input-bordered w-full" type="text" placeholder="Optional notes" />
             </label>
-            <div v-if="txError" class="text-sm text-error">{{ txError }}</div>
+            <div v-if="txError" class="text-sm text-error" role="alert">{{ txError }}</div>
             <div class="modal-action">
               <button type="button" class="btn btn-ghost" @click="addDialogRef?.close()">Cancel</button>
               <button type="submit" class="btn btn-primary" :disabled="txSubmitting">
@@ -589,7 +589,7 @@
                         </option>
                       </select>
                     </label>
-                    <div v-if="editTxError" class="text-sm text-error">{{ editTxError }}</div>
+                    <div v-if="editTxError" class="text-sm text-error" role="alert">{{ editTxError }}</div>
                     <div class="flex gap-2">
                       <button type="submit" class="btn btn-primary btn-sm" :disabled="editTxSaving">Save</button>
                       <button type="button" class="btn btn-ghost btn-sm" @click="cancelEdit">Cancel</button>
@@ -865,6 +865,7 @@ import {
 useHead({ title: "Budget Tracker" });
 
 const auth = useAuthStore();
+const canWrite = computed(() => Boolean(auth.user || auth.sessionEnded));
 const addDialogRef = ref(null);
 const deleteDialogRef = ref(null);
 const subCategoryModalRef = ref(null);
@@ -1638,11 +1639,15 @@ function formatDate(dateStr) {
 
 async function loadData() {
   if (!auth.user) {
+    loading.value = false;
+    if (auth.sessionEnded) {
+      loadError.value = "";
+      return;
+    }
     budgets.value = { income: [], expenses: [] };
     transactions.value = [];
     orphans.value = [];
     loadError.value = "";
-    loading.value = false;
     return;
   }
   loading.value = true;
@@ -1673,6 +1678,10 @@ async function loadData() {
     };
   } catch (err) {
     const failure = settleLoadError(err, "The budget tracker could not be loaded. Try again in a moment.");
+    if (failure.expired) {
+      loadError.value = "";
+      return;
+    }
     loadError.value = failure.message;
     if (!failure.auth) {
       console.error("Failed to load budget tracker. If you recently updated the app, run: npm run migrate", err);
@@ -2453,7 +2462,7 @@ function buildAddTxDescription(payee, description) {
 
 async function submitTransaction() {
   if (!auth.user) {
-    txError.value = SIGN_IN_MESSAGE;
+    txError.value = auth.sessionEnded ? SESSION_ENDED_MESSAGE : SIGN_IN_MESSAGE;
     return;
   }
   txError.value = "";
@@ -2771,7 +2780,7 @@ function cancelEdit() {
 
 async function saveEditTransaction() {
   if (!auth.user) {
-    editTxError.value = SIGN_IN_MESSAGE;
+    editTxError.value = auth.sessionEnded ? SESSION_ENDED_MESSAGE : SIGN_IN_MESSAGE;
     return;
   }
   if (!editingTxId.value) return;
@@ -2877,6 +2886,10 @@ async function draftTransaction() {
   const text = sentenceText.value.trim();
   if (text.length < 2 || sentenceBusy.value) return;
   if (!auth.user) {
+    if (auth.sessionEnded) {
+      sentenceError.value = SESSION_ENDED_MESSAGE;
+      return;
+    }
     sentenceNotice.value = "No draft for that yet.";
     return;
   }

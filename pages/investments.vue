@@ -459,7 +459,7 @@ function closeEditor() {
 }
 
 function requestError(error, fallback) {
-  return settleLoadError(error, fallback).message;
+  return parseFetchError(error, fallback);
 }
 
 async function saveHolding(draft) {

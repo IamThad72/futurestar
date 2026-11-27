@@ -8,7 +8,7 @@
     </div>
 
     <template v-else>
-      <section class="app-card min-w-0 max-w-full overflow-hidden px-4 py-4">
+      <section v-if="auth.user || auth.sessionEnded" class="app-card min-w-0 max-w-full overflow-hidden px-4 py-4">
         <h2 class="text-sm font-semibold text-gray-900">{{ editingId ? "Edit request" : "Add a request" }}</h2>
         <form class="mt-3 grid min-w-0 gap-3 sm:grid-cols-2" @submit.prevent="saveRequest">
           <label class="form-control min-w-0 sm:col-span-2">
@@ -80,7 +80,7 @@
               <p v-if="prayer.answer_note" class="sl-scripture mt-1 whitespace-pre-line break-words">{{ prayer.answer_note }}</p>
             </div>
 
-            <form v-if="answeringId === prayer.prayer_id" class="mt-3 grid min-w-0 gap-2" @submit.prevent="answer(prayer)">
+            <form v-if="(auth.user || auth.sessionEnded) && answeringId === prayer.prayer_id" class="mt-3 grid min-w-0 gap-2" @submit.prevent="answer(prayer)">
               <label class="form-control min-w-0 max-w-xs">
                 <span class="label py-1"><span class="label-text text-sm">Answered on</span></span>
                 <input v-model="answerForm.answered_on" type="date" class="prayer-field input input-bordered input-sm" />
@@ -95,7 +95,7 @@
               </div>
             </form>
 
-            <div v-else class="mt-3 flex flex-wrap gap-2">
+            <div v-else-if="auth.user || auth.sessionEnded" class="mt-3 flex flex-wrap gap-2">
               <template v-if="view === 'active'">
                 <button type="button" class="training-chip btn btn-ghost btn-xs rounded-full" @click="startAnswer(prayer)">Answered</button>
                 <button type="button" class="training-chip btn btn-ghost btn-xs rounded-full" @click="startEdit(prayer)">Edit</button>
@@ -123,6 +123,7 @@ import { parseFetchError } from "~/utils/parseFetchError";
 import { todayIsoDate } from "~/utils/liturgicalCalendar";
 import { PRAYER_CATEGORIES, prayerConfirmOpen } from "~/utils/prayerList";
 
+const auth = useAuthStore();
 const { light } = useHaptics();
 const { confirm: askUser } = useConfirm();
 const categories = PRAYER_CATEGORIES;

@@ -11,7 +11,7 @@
     </div>
 
     <div class="grid gap-6 lg:grid-cols-2 lg:items-start">
-      <section ref="logCardEl" class="app-card px-4 py-4 lg:col-start-1 lg:row-start-1">
+      <section v-if="canWrite" ref="logCardEl" class="app-card px-4 py-4 lg:col-start-1 lg:row-start-1">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
             {{ editingEntryId ? "Edit log entry" : "Log food" }}
@@ -194,7 +194,7 @@
                     C {{ formatMacro(entry.carb_g, 1) }} g
                   </p>
                 </div>
-                <div class="flex shrink-0 gap-1">
+                <div v-if="canWrite" class="flex shrink-0 gap-1">
                   <button
                     type="button"
                     class="training-chip btn btn-ghost btn-xs rounded-full"
@@ -220,7 +220,7 @@
       <section class="app-card min-w-0 px-4 py-4 lg:col-start-2 lg:row-start-2">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <h2 class="text-sm font-semibold text-gray-900 dark:text-white">{{ eatenOnLabel }} vs plan</h2>
-          <button type="button" class="training-chip btn btn-outline btn-sm rounded-full" @click="openPlanModal">
+          <button v-if="canWrite" type="button" class="training-chip btn btn-outline btn-sm rounded-full" @click="openPlanModal">
             Edit plan
           </button>
         </div>
@@ -665,6 +665,8 @@ import {
 } from "~/utils/foodPortionLabel";
 
 const emit = defineEmits(["plan-change"]);
+const auth = useAuthStore();
+const canWrite = computed(() => Boolean(auth.user || auth.sessionEnded));
 
 const mealOptions = [
   { value: "breakfast", label: "Breakfast" },

@@ -204,7 +204,7 @@ export function useWorkoutDraft() {
     } catch (error) {
       const failure = settleLoadError(error, "Could not load saved workouts.");
       listError.value = failure.message;
-      if (failure.auth) savedWorkouts.value = [];
+      if (failure.auth && !failure.expired) savedWorkouts.value = [];
     } finally {
       listLoading.value = false;
     }

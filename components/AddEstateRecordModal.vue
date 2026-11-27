@@ -16,7 +16,7 @@
         <label class="form-control w-full"><span class="label-text text-sm">Value</span><input v-model.number="addAssetForm.value" class="input input-bordered input-sm w-full" type="number" inputmode="decimal" step="0.01" min="0" required /></label>
         <label class="form-control w-full"><span class="label-text text-sm">Description</span><textarea v-model.trim="addAssetForm.description" class="textarea textarea-bordered textarea-sm w-full" rows="2" required /></label>
         <label class="form-control w-full"><span class="label-text text-sm">Location</span><input v-model.trim="addAssetForm.location" class="input input-bordered input-sm w-full" /></label>
-        <div v-if="addError" class="text-sm text-error">{{ addError }}</div>
+        <div v-if="addError" class="text-sm text-error" role="alert">{{ addError }}</div>
         <div class="modal-action">
           <button type="button" class="btn btn-ghost btn-sm min-h-9" @click="addModalRef?.close()">Cancel</button>
           <button type="submit" class="btn btn-primary btn-sm min-h-9" :disabled="addSaving">{{ addSaving ? 'Saving...' : 'Save' }}</button>
@@ -36,7 +36,7 @@
         </div>
         <label class="form-control"><span class="label-text text-sm">Value</span><input v-model.number="addRealEstateForm.value" class="input input-bordered input-sm w-full" type="number" inputmode="decimal" step="0.01" min="0" required /></label>
         <label class="form-control"><span class="label-text text-sm">Trust (Y/N)</span><select v-model="addRealEstateForm.trust_designated" class="select select-bordered select-sm w-full" required><option value="">Select...</option><option value="Y">Y</option><option value="N">N</option></select></label>
-        <div v-if="addError" class="text-sm text-error">{{ addError }}</div>
+        <div v-if="addError" class="text-sm text-error" role="alert">{{ addError }}</div>
         <div class="modal-action">
           <button type="button" class="btn btn-ghost btn-sm min-h-9" @click="addModalRef?.close()">Cancel</button>
           <button type="submit" class="btn btn-primary btn-sm min-h-9" :disabled="addSaving">{{ addSaving ? 'Saving...' : 'Save' }}</button>
@@ -53,7 +53,7 @@
         <label class="form-control"><span class="label-text text-sm">Amount</span><input v-model="addInsuranceForm.policy_amt" class="input input-bordered input-sm w-full" type="number" inputmode="decimal" step="0.01" min="0" /></label>
         <label class="form-control"><span class="label-text text-sm">Intent</span><input v-model.trim="addInsuranceForm.intent" class="input input-bordered input-sm w-full" placeholder="e.g. Life, Auto, Home" /></label>
         <label class="form-control"><span class="label-text text-sm">Institution URL</span><input v-model.trim="addInsuranceForm.institution_url" class="input input-bordered input-sm w-full" type="url" /></label>
-        <div v-if="addError" class="text-sm text-error">{{ addError }}</div>
+        <div v-if="addError" class="text-sm text-error" role="alert">{{ addError }}</div>
         <div class="modal-action">
           <button type="button" class="btn btn-ghost btn-sm min-h-9" @click="addModalRef?.close()">Cancel</button>
           <button type="submit" class="btn btn-primary btn-sm min-h-9" :disabled="addSaving">{{ addSaving ? 'Saving...' : 'Save' }}</button>
@@ -102,7 +102,7 @@
           <label class="form-control"><span class="label-text text-sm">Support #</span><input v-model.trim="addDebtForm.customer_support_no" class="input input-bordered input-sm w-full" /></label>
         </div>
         <label class="form-control"><span class="label-text text-sm">URL</span><input v-model.trim="addDebtForm.address_url" class="input input-bordered input-sm w-full" type="url" /></label>
-        <div v-if="addError" class="text-sm text-error">{{ addError }}</div>
+        <div v-if="addError" class="text-sm text-error" role="alert">{{ addError }}</div>
         <div class="modal-action">
           <button type="button" class="btn btn-ghost btn-sm min-h-9" @click="addModalRef?.close()">Cancel</button>
           <button type="submit" class="btn btn-primary btn-sm min-h-9" :disabled="addSaving">{{ addSaving ? 'Saving...' : 'Save' }}</button>
@@ -143,7 +143,7 @@
         </div>
         <label class="form-control"><span class="label-text text-sm">Account Intent</span><input v-model.trim="addCashForm.account_intent" class="input input-bordered input-sm w-full" required /></label>
         <label class="form-control"><span class="label-text text-sm">Trust (Y/N)</span><select v-model="addCashForm.trust_designated" class="select select-bordered select-sm w-full" required><option value="">Select...</option><option value="Y">Y</option><option value="N">N</option></select></label>
-        <div v-if="addError" class="text-sm text-error">{{ addError }}</div>
+        <div v-if="addError" class="text-sm text-error" role="alert">{{ addError }}</div>
         <div class="modal-action">
           <button type="button" class="btn btn-ghost btn-sm min-h-9" @click="addModalRef?.close()">Cancel</button>
           <button type="submit" class="btn btn-primary btn-sm min-h-9" :disabled="addSaving">{{ addSaving ? 'Saving...' : 'Save' }}</button>
@@ -195,7 +195,7 @@
             <option value="N">N</option>
           </select>
         </label>
-        <div v-if="addError" class="text-sm text-error">{{ addError }}</div>
+        <div v-if="addError" class="text-sm text-error" role="alert">{{ addError }}</div>
         <div class="modal-action">
           <button type="button" class="btn btn-ghost btn-sm min-h-9" @click="addModalRef?.close()">Cancel</button>
           <button type="submit" class="btn btn-primary btn-sm min-h-9" :disabled="addSaving || !canSubmitAddVehicle">{{ addSaving ? 'Saving...' : 'Save' }}</button>
@@ -223,6 +223,8 @@
 </template>
 
 <script setup>
+import { parseFetchError } from "~/utils/parseFetchError";
+
 const emit = defineEmits(["created", "saved"]);
 
 const addModalRef = ref(null);
@@ -414,7 +416,7 @@ async function submitAddAsset() {
     emit("created", { type: r.type, id: r.id });
     emit("saved");
   } catch (err) {
-    addError.value = err?.data?.statusMessage || err?.message || "Failed to add asset.";
+    addError.value = parseFetchError(err, "Failed to add asset.");
   } finally {
     addSaving.value = false;
   }
@@ -440,7 +442,7 @@ async function submitAddRealEstate() {
     emit("created", { type: r.type, id: r.id });
     emit("saved");
   } catch (err) {
-    addError.value = err?.data?.statusMessage || err?.message || "Failed to add real estate.";
+    addError.value = parseFetchError(err, "Failed to add real estate.");
   } finally {
     addSaving.value = false;
   }
@@ -465,7 +467,7 @@ async function submitAddInsurance() {
     emit("created", { type: r.type, id: r.id });
     emit("saved");
   } catch (err) {
-    addError.value = err?.data?.statusMessage || err?.message || "Failed to add insurance.";
+    addError.value = parseFetchError(err, "Failed to add insurance.");
   } finally {
     addSaving.value = false;
   }
@@ -500,7 +502,7 @@ async function submitAddDebt() {
     emit("created", { type: r.type, id: r.id });
     emit("saved");
   } catch (err) {
-    addError.value = err?.data?.statusMessage || err?.message || "Failed to add debt.";
+    addError.value = parseFetchError(err, "Failed to add debt.");
   } finally {
     addSaving.value = false;
   }
@@ -529,7 +531,7 @@ async function submitAddCash() {
     emit("created", { type: r.type, id: r.id });
     emit("saved");
   } catch (err) {
-    addError.value = err?.data?.statusMessage || err?.message || "Failed to add cash/investment.";
+    addError.value = parseFetchError(err, "Failed to add cash/investment.");
   } finally {
     addSaving.value = false;
   }

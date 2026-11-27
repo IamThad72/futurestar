@@ -12,7 +12,7 @@
           </div>
           <div class="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
               <button
-                v-if="auth.user"
+                v-if="canWrite"
                 type="button"
                 class="btn btn-primary"
                 @click="openUploadDocument"
@@ -20,6 +20,7 @@
                 Upload document
               </button>
               <button
+                v-if="canWrite"
                 type="button"
                 class="btn btn-outline"
                 @click="openManageAssetCategoriesModal"
@@ -28,6 +29,7 @@
               </button>
           </div>
         </header>
+        <p v-if="addNotice" class="mb-4 text-sm text-error" role="alert">{{ addNotice }}</p>
         <p v-if="loading" class="text-sm text-muted">Loading…</p>
         <LoadErrorPanel v-else-if="loadError" class="mb-4" :message="loadError" @retry="loadSummary" />
         <div class="border-b border-gray-900/10 lg:border-t lg:border-t-gray-900/5 dark:border-white/10 dark:lg:border-t-white/5">
@@ -59,7 +61,7 @@
 
       <div class="space-y-10 py-8 md:space-y-16 md:py-16 xl:space-y-20">
         <div id="estate-documents">
-          <EstateSection title="Documents" add-label="Upload" :show-add="Boolean(auth.user)" @add="openUploadDocument">
+          <EstateSection title="Documents" add-label="Upload" :show-add="canWrite" @add="openUploadDocument">
             <EstateDocumentsPanel ref="docsPanelRef" />
           </EstateSection>
         </div>
@@ -67,7 +69,7 @@
         <p v-if="loading" class="text-sm text-muted">Loading…</p>
 
         <template v-else>
-        <EstateSection title="Asset Inventory" :total="statMoney(totalAssetInventory)" @add="openAddModal('asset')">
+        <EstateSection title="Asset Inventory" :total="statMoney(totalAssetInventory)" :show-add="canWrite" @add="openAddModal('asset')">
           <EstateRecordList
             :items="sortedAssetInventory"
             item-key="ai_id"
@@ -82,6 +84,7 @@
           title="Asset Vehicles"
           title-to="/garage"
           :total="statMoney(totalAssetVehicles)"
+          :show-add="canWrite"
           @add="openAddModal('vehicle')"
         >
           <EstateRecordList
@@ -97,7 +100,7 @@
             @edit="openEditModal('vehicle', $event)"
           />
         </EstateSection>
-        <EstateSection title="Cash and Investments" :total="statMoney(totalCashAndInvestments)" @add="openAddModal('cash')">
+        <EstateSection title="Cash and Investments" :total="statMoney(totalCashAndInvestments)" :show-add="canWrite" @add="openAddModal('cash')">
           <EstateRecordList
             :items="sortedCashAndInvestments"
             item-key="ci_id"
@@ -108,7 +111,7 @@
             @edit="openEditModal('cash', $event)"
           />
         </EstateSection>
-        <EstateSection title="Debt" :total="statMoney(totalDebtTable)" @add="openAddModal('debt')">
+        <EstateSection title="Debt" :total="statMoney(totalDebtTable)" :show-add="canWrite" @add="openAddModal('debt')">
           <EstateRecordList
             :items="sortedDebt"
             item-key="dbt_id"
@@ -119,7 +122,7 @@
             @edit="openEditModal('debt', $event)"
           />
         </EstateSection>
-        <EstateSection title="Real Estate" :total="statMoney(totalRealEstateValue)" @add="openAddModal('real_estate')">
+        <EstateSection title="Real Estate" :total="statMoney(totalRealEstateValue)" :show-add="canWrite" @add="openAddModal('real_estate')">
           <EstateRecordList
             :items="sortedRealEstate"
             item-key="re_id"
@@ -130,7 +133,7 @@
             @edit="openEditModal('real_estate', $event)"
           />
         </EstateSection>
-        <EstateSection title="Insurance" @add="openAddModal('insurance')">
+        <EstateSection title="Insurance" :show-add="canWrite" @add="openAddModal('insurance')">
           <EstateRecordList
             :items="sortedInsurance"
             item-key="ins_id"
@@ -241,6 +244,17 @@ const insuranceColumns = [
 ];
 
 const auth = useAuthStore();
+const canWrite = computed(() => Boolean(auth.user || auth.sessionEnded));
+const addNotice = ref("");
+
+function blockGuestWrite() {
+  if (auth.user) {
+    addNotice.value = "";
+    return false;
+  }
+  addNotice.value = auth.sessionEnded ? SESSION_ENDED_MESSAGE : SIGN_IN_MESSAGE;
+  return true;
+}
 const route = useRoute();
 const loading = ref(true);
 const summaryReady = ref(false);
@@ -524,17 +538,20 @@ const totalDebtTable = computed(() =>
 const totalRealEstateValue = computed(() => sumByKey(realEstate.value, 'value'));
 
 async function openAddModal(type) {
+  if (blockGuestWrite()) return;
   await ensureModal("addEstate");
   addEstateModalRef.value?.open(type);
 }
 
 async function openManageAssetCategoriesModal() {
+  if (blockGuestWrite()) return;
   await ensureModal("categories");
   await nextTick();
   manageAssetCategoriesModalRef.value?.showModal();
 }
 
 function openUploadDocument() {
+  if (blockGuestWrite()) return;
   docsPanelRef.value?.openUpload();
 }
 
@@ -550,6 +567,7 @@ function onEstatePanelRecordsUpdated() {
 }
 
 async function openEditModal(type, record) {
+  if (blockGuestWrite()) return;
   await ensureModal("editEstate");
   editEstateModalRef.value?.open(type, record);
 }
@@ -567,19 +585,23 @@ function clearEstateRecords() {
 async function fetchRows(url, key) {
   try {
     const data = await $fetch(url);
-    return { auth: false, rows: data?.[key] ?? [] };
+    return { auth: false, expired: false, rows: data?.[key] ?? [] };
   } catch (error) {
-    if (isAuthStatus(error)) return { auth: true, rows: [] };
+    if (isAuthStatus(error)) {
+      const failure = settleLoadError(error, "");
+      return { auth: true, expired: failure.expired, message: failure.message, rows: [] };
+    }
     throw error;
   }
 }
 
 async function loadSummary() {
   if (!auth.user) {
+    loading.value = false;
+    if (auth.sessionEnded) return;
     clearEstateRecords();
     summaryReady.value = false;
     loadError.value = "";
-    loading.value = false;
     return;
   }
   loading.value = true;
@@ -596,8 +618,14 @@ async function loadSummary() {
     ]);
     const batches = [inv, vehicles, cash, debtRes, real, ins, linked];
     if (batches.some((batch) => batch.auth)) {
+      const expired = batches.some((batch) => batch.expired);
+      if (expired) {
+        loadError.value = batches.find((batch) => batch.message)?.message || SESSION_ENDED_MESSAGE;
+        return;
+      }
       clearEstateRecords();
       summaryReady.value = false;
+      loadError.value = "";
       return;
     }
     assetInventory.value = inv.rows;
