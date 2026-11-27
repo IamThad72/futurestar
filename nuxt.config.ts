@@ -56,7 +56,7 @@ export default defineNuxtConfig({
     exerciseDbBaseUrl: "",
     // USDA FoodData Central search (Foundation + Branded). FDC_API_KEY or USDA_FDC_API_KEY.
     fdcApiKey: process.env.FDC_API_KEY || process.env.USDA_FDC_API_KEY || "",
-    // Meal logging and expense-file categorization. GROQ_API_KEY or NUXT_GROQ_API_KEY.
+    // Notes, plans, and other Groq callers. GROQ_API_KEY or NUXT_GROQ_API_KEY.
     groqApiKey: process.env.GROQ_API_KEY || "",
     groqModel: process.env.GROQ_MODEL || "openai/gpt-oss-20b",
     // Weekday close refresh. ALPHA_VANTAGE_API_KEY and CRON_SECRET on the server only.
