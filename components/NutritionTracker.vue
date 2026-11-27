@@ -26,19 +26,9 @@
           </button>
         </div>
         <p v-if="!editingEntryId" class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Describe a meal, or choose a saved food. You'll review a description before it is logged.
+          Choose a saved food, or use Add food to save a new one.
         </p>
         <form class="mt-3 grid gap-3" @submit.prevent="submitComposer">
-          <label v-if="!editingEntryId" class="form-control">
-            <span class="label py-1"><span class="label-text text-sm">Describe a meal</span></span>
-            <textarea
-              v-model="describeText"
-              rows="2"
-              class="textarea textarea-bordered w-full"
-              placeholder="1 container Chobani greek yogurt, 5.3 oz"
-              maxlength="800"
-            />
-          </label>
           <p v-if="foodsError" class="text-sm text-red-600 dark:text-red-400">{{ foodsError }}</p>
           <p v-else-if="loadingFoods" class="text-sm text-gray-500 dark:text-gray-400">Loading foods…</p>
           <p v-else-if="!foods.length && !editingEntryId" class="text-sm text-gray-500 dark:text-gray-400">
@@ -47,7 +37,24 @@
           <template v-else>
             <div class="form-control">
               <span class="label py-1"><span id="log-food-label" class="label-text text-sm">Food</span></span>
-              <Combobox v-model="logForm.foodId" nullable>
+              <div v-if="isNarrow">
+                <button
+                  ref="foodPickerButtonEl"
+                  type="button"
+                  class="input input-bordered flex w-full items-center justify-between gap-2 text-left font-normal"
+                  aria-haspopup="dialog"
+                  aria-controls="food-picker-sheet"
+                  :aria-expanded="foodSheetOpen"
+                  aria-labelledby="log-food-label food-picker-value"
+                  @click="openFoodSheet"
+                >
+                  <span id="food-picker-value" class="min-w-0 flex-1 truncate" :class="selectedFood ? 'text-gray-900 dark:text-white' : 'text-base-content/50'">
+                    {{ selectedFood ? foodLabel(selectedFood) : "Choose a food" }}
+                  </span>
+                  <AppIcon name="chevron-down" :size="18" class="shrink-0 text-base-content/60" />
+                </button>
+              </div>
+              <Combobox v-else v-model="logForm.foodId" nullable>
                 <div class="relative">
                   <ComboboxInput
                     class="input input-bordered w-full pr-10"
@@ -121,24 +128,14 @@
               <input v-model="logForm.time" type="time" class="input input-bordered w-full" required />
             </label>
           </div>
-          <p v-if="describeError && describeIntent === 'meal'" class="text-sm text-red-600 dark:text-red-400">{{ describeError }}</p>
-          <p v-else-if="describeMessage" class="text-sm text-gray-600 dark:text-gray-300">{{ describeMessage }}</p>
+          <p v-if="describeMessage" class="text-sm text-gray-600 dark:text-gray-300">{{ describeMessage }}</p>
           <p v-if="logError" class="text-sm text-red-600 dark:text-red-400">{{ logError }}</p>
           <div class="flex flex-wrap gap-2">
             <button
               v-if="!editingEntryId"
               type="submit"
               class="training-chip btn btn-primary btn-sm rounded-full"
-              :disabled="describing || !describeText.trim()"
-            >
-              {{ describing && describeIntent === "meal" ? "Reading…" : "Review foods" }}
-            </button>
-            <button
-              v-if="!editingEntryId"
-              type="button"
-              class="training-chip btn btn-outline btn-sm rounded-full"
               :disabled="logging || !selectedFood"
-              @click="logFood"
             >
               {{ logging ? "Saving…" : "Add to log" }}
             </button>
@@ -276,6 +273,76 @@
         :error="historyError"
       />
     </div>
+
+    <dialog
+      id="food-picker-sheet"
+      ref="foodSheetEl"
+      class="modal modal-bottom focus:outline-none"
+      aria-labelledby="food-picker-title"
+      tabindex="-1"
+      @close="onFoodSheetClose"
+    >
+      <div class="modal-box mt-auto flex max-h-[85vh] w-full max-w-none flex-col overflow-hidden rounded-b-none pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div class="flex items-center justify-between gap-3">
+          <h3 id="food-picker-title" class="text-lg font-semibold">Choose a food</h3>
+          <button
+            ref="foodSheetCloseEl"
+            type="button"
+            class="training-chip btn btn-ghost btn-sm rounded-full"
+            @click="closeFoodSheet"
+          >
+            Close
+          </button>
+        </div>
+        <label class="form-control mt-3">
+          <span class="label py-1"><span class="label-text text-sm">Search foods</span></span>
+          <input
+            ref="foodSheetSearchEl"
+            v-model="foodSheetQuery"
+            type="search"
+            enterkeyhint="search"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            class="input input-bordered w-full"
+            placeholder="Search saved foods"
+            :readonly="foodSheetSearchLocked"
+            @pointerdown="unlockFoodSheetSearch"
+            @focus="onFoodSheetSearchFocus"
+          />
+        </label>
+        <ul
+          class="mt-3 min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain"
+          role="listbox"
+          aria-labelledby="food-picker-title"
+        >
+          <li v-if="!filteredSheetFoods.length" class="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
+            No foods match that search.
+          </li>
+          <li v-for="food in filteredSheetFoods" :key="food.user_food_id">
+            <button
+              type="button"
+              role="option"
+              class="w-full rounded-lg px-3 py-3 text-left"
+              :class="String(food.user_food_id) === String(logForm.foodId) ? 'bg-primary/10' : 'hover:bg-base-200'"
+              :aria-selected="String(food.user_food_id) === String(logForm.foodId)"
+              @click="chooseSheetFood(food)"
+            >
+              <span
+                class="block text-sm font-medium"
+                :class="String(food.user_food_id) === String(logForm.foodId) ? 'text-primary' : 'text-gray-900 dark:text-white'"
+              >
+                {{ foodLabel(food) }}
+              </span>
+              <span class="block text-xs text-gray-500 dark:text-gray-400">{{ foodMeta(food) }}</span>
+            </button>
+          </li>
+        </ul>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button type="submit" class="text-transparent" aria-label="Dismiss"></button>
+      </form>
+    </dialog>
 
     <dialog ref="foodModalEl" class="modal" @close="onFoodModalClose">
       <div class="modal-box flex max-h-[90vh] max-w-lg flex-col overflow-y-auto overscroll-contain">
@@ -845,12 +912,18 @@ const loadingFoods = ref(false);
 const foodsError = ref("");
 const logForm = ref(emptyLogForm());
 const foodSearchQuery = ref("");
+const foodSheetQuery = ref("");
+const foodSheetOpen = ref(false);
+const foodSheetSearchLocked = ref(true);
+const foodSheetEl = ref(null);
+const foodSheetCloseEl = ref(null);
+const foodSheetSearchEl = ref(null);
+const foodPickerButtonEl = ref(null);
 const logging = ref(false);
 const logError = ref("");
-const describeText = ref("");
 const describing = ref(false);
 const describeError = ref("");
-const describeIntent = ref("meal");
+const describeIntent = ref("remaining");
 const describeMessage = ref("");
 const describeModalEl = ref(null);
 const describeProposals = ref([]);
@@ -903,15 +976,18 @@ const selectedFood = computed(() => {
   if (id == null || id === "") return null;
   return foods.value.find((food) => String(food.user_food_id) === String(id)) || null;
 });
-const filteredLogFoods = computed(() => {
-  const q = foodSearchQuery.value.trim().toLowerCase();
+function foodsMatching(query) {
+  const q = String(query || "").trim().toLowerCase();
   if (!q) return foods.value;
   return foods.value.filter((food) => {
     const label = foodLabel(food).toLowerCase();
     const serving = String(food.serving_label || "").toLowerCase();
     return label.includes(q) || serving.includes(q);
   });
-});
+}
+
+const filteredLogFoods = computed(() => foodsMatching(foodSearchQuery.value));
+const filteredSheetFoods = computed(() => foodsMatching(foodSheetQuery.value));
 
 function foodDisplayValue(id) {
   if (id == null || id === "") return "";
@@ -1026,7 +1102,10 @@ watch(chartRangeDays, () => {
 });
 
 watch(isNarrow, (narrow) => {
-  if (!narrow) void loadHistory();
+  if (!narrow) {
+    void loadHistory();
+    if (foodSheetOpen.value) closeFoodSheet();
+  }
 });
 
 onMounted(() => {
@@ -1576,35 +1655,86 @@ function onDescribeModalClose() {
   describeReviewError.value = "";
 }
 
-function submitComposer() {
-  if (editingEntryId.value || (selectedFood.value && !describeText.value.trim())) {
-    void logFood();
-    return;
-  }
-  void logFromDescription();
+function isTextEntry(node) {
+  if (!node || typeof node.tagName !== "string") return false;
+  return node.tagName === "INPUT" || node.tagName === "TEXTAREA";
 }
 
-async function logFromDescription() {
-  const text = describeText.value.trim();
-  if (text.length < 2 || describing.value) return;
-  describeIntent.value = "meal";
-  describing.value = true;
-  describeError.value = "";
-  describeMessage.value = "";
-  try {
-    const result = await $fetch("/api/physical/nutrition/intake/describe", {
-      method: "POST",
-      body: {
-        text,
-        meal: logForm.value.meal,
-      },
-    });
-    openDescribed(result);
-  } catch (error) {
-    describeError.value = parseFetchError(error, "Failed to read that meal.");
-  } finally {
-    describing.value = false;
+let foodSheetSettling = false;
+let foodSheetSettleToken = 0;
+
+function focusFoodSheet() {
+  const dialog = foodSheetEl.value;
+  const closeButton = foodSheetCloseEl.value;
+  (closeButton || dialog)?.focus();
+  const active = document.activeElement;
+  if (isTextEntry(active) && dialog?.contains(active)) {
+    active.blur();
+    (closeButton || dialog)?.focus();
   }
+}
+
+function openFoodSheet() {
+  foodSheetQuery.value = "";
+  foodSheetSearchLocked.value = true;
+  if (foodSheetSearchEl.value) foodSheetSearchEl.value.readOnly = true;
+  foodSheetOpen.value = true;
+  const token = ++foodSheetSettleToken;
+  foodSheetSettling = true;
+  nextTick(() => {
+    const dialog = foodSheetEl.value;
+    if (!dialog) return;
+    if (!dialog.open) dialog.showModal();
+    focusFoodSheet();
+    requestAnimationFrame(() => focusFoodSheet());
+    window.setTimeout(() => {
+      if (token === foodSheetSettleToken) foodSheetSettling = false;
+    }, 400);
+  });
+}
+
+function closeFoodSheet() {
+  foodSheetSettleToken += 1;
+  foodSheetSettling = false;
+  const dialog = foodSheetEl.value;
+  if (dialog?.open) dialog.close();
+  else onFoodSheetClose();
+}
+
+function onFoodSheetClose() {
+  foodSheetOpen.value = false;
+  foodSheetQuery.value = "";
+  foodSheetSearchLocked.value = true;
+  nextTick(() => {
+    const button = foodPickerButtonEl.value;
+    if (button?.isConnected) button.focus();
+  });
+}
+
+function unlockFoodSheetSearch(event) {
+  foodSheetSearchLocked.value = false;
+  const input = event.currentTarget;
+  if (input) input.readOnly = false;
+}
+
+function onFoodSheetSearchFocus(event) {
+  const input = event.target;
+  if (!input?.readOnly) return;
+  if (foodSheetSettling) {
+    focusFoodSheet();
+    return;
+  }
+  foodSheetSearchLocked.value = false;
+  input.readOnly = false;
+}
+
+function chooseSheetFood(food) {
+  logForm.value.foodId = String(food.user_food_id);
+  closeFoodSheet();
+}
+
+function submitComposer() {
+  void logFood();
 }
 
 async function suggestRemaining() {
@@ -1689,7 +1819,6 @@ async function confirmDescribedFoods() {
       savedNames.push(row.name.trim());
       describeProposals.value = describeProposals.value.filter((item) => item.key !== row.key);
     }
-    describeText.value = "";
     describeMessage.value = savedNames.length ? `Added ${savedNames.join(", ")}.` : "Added that meal.";
     closeDescribeModal();
     await loadDay();
