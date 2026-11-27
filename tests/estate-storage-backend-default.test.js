@@ -5,7 +5,7 @@ import test from "node:test";
 const root = new URL("../", import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), "utf8");
 
-const ALTER = "ALTER TABLE estate_documents ALTER COLUMN storage_backend SET DEFAULT 'supabase';";
+const ALTER = "ALTER TABLE public.estate_documents ALTER COLUMN storage_backend SET DEFAULT 'supabase';";
 const MIGRATION = "alter_estate_documents_storage_backend_default.sql";
 
 function listedMigrations(source) {

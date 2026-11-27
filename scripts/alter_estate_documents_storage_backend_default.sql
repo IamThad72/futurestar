@@ -34,5 +34,5 @@ BEGIN
     RETURN;
   END IF;
 
-  ALTER TABLE estate_documents ALTER COLUMN storage_backend SET DEFAULT 'supabase';
+  ALTER TABLE public.estate_documents ALTER COLUMN storage_backend SET DEFAULT 'supabase';
 END $$;
