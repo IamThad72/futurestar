@@ -100,8 +100,17 @@ export default defineNuxtConfig({
     },
   },
 
-  // Required for Capacitor (app must run fully client-side)
+  // Required for Capacitor (app must run fully client-side).
+  // /delete-account is the exception: Play's web link must see the deletion
+  // text in the HTML, not an empty client shell.
   ssr: false,
+  ...(isCapacitorBuild
+    ? {}
+    : {
+        routeRules: {
+          "/delete-account": { ssr: true, prerender: true },
+        },
+      }),
 
   // SPA + static Capacitor builds: app manifest fetch (/_nuxt/builds/meta/dev.json) 404s and can show error page
   experimental: {
@@ -120,15 +129,20 @@ export default defineNuxtConfig({
     preset: isVercel || (isProd && !isCapacitorBuild) ? "vercel" : undefined,
     prerender: {
       crawlLinks: false,
-      routes: isCapacitorBuild ? ["/"] : [],
+      routes: isCapacitorBuild ? ["/"] : ["/delete-account"],
     },
     vercel: {
       functions: {
         maxDuration: 300,
       },
       config: {
-        // 01:00 UTC Tuesday–Saturday is 8:00pm Eastern Monday–Friday, after the US close.
-        crons: [{ path: "/api/cron/investment-prices", schedule: "0 1 * * 2-6" }],
+        // Price cron: 01:00 UTC Tuesday–Saturday is 8:00pm Eastern Monday–Friday, after the US close.
+        // Account cleanup is once a day. Hobby rejects a cron that runs more than once per day,
+        // and it runs a daily job sometime during the named hour, not at minute 15.
+        crons: [
+          { path: "/api/cron/investment-prices", schedule: "0 1 * * 2-6" },
+          { path: "/api/cron/account-cleanup", schedule: "15 8 * * *" },
+        ],
         routes: [
           {
             src: "/_nuxt/(.*)",

@@ -9,6 +9,7 @@ export function screenTitleForRoute(path, query = {}, hash = "", tradition = "")
   if (p === "/today") return "Today";
   if (p.startsWith("/login")) return "Login";
   if (p.startsWith("/reset-password")) return "Reset password";
+  if (p === "/delete-account") return "Delete account";
   if (p === "/account") return "You";
   if (p.startsWith("/garage/") && p !== "/garage") return "Vehicle";
 

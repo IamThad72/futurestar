@@ -2,6 +2,7 @@ import { createError, getQuery } from "h3";
 import { createDbClient } from "../../../utils/db";
 import { getSessionUserId } from "../../../utils/auth";
 import { getUserGroupId, groupAccessClause, soloUserClause } from "../../../utils/group";
+import { cashAccountJoin } from "../../../utils/cashAccountJoin";
 import { getActiveBudget, getBudgetForPeriod, monthDateRange } from "../../../utils/budgetAccess";
 import { partitionTransactionsForBudget } from "../../../utils/budgetTransactions";
 
@@ -59,7 +60,7 @@ export default defineEventHandler(async (event) => {
        FROM budget_transactions t
        LEFT JOIN income i ON t.income_id = i.income_id
        LEFT JOIN expenses e ON t.expense_id = e.expense_id
-       LEFT JOIN cash_and_investments ci ON t.cash_investment_id = ci.ci_id
+       ${cashAccountJoin(groupId != null)}
        LEFT JOIN debt d ON t.debt_id = d.dbt_id
        ${whereClause}
        ORDER BY t.transaction_date DESC, t.transaction_id DESC`,

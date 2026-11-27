@@ -1,7 +1,7 @@
 import { createError, readBody } from "h3";
 import { createDbClient } from "../../utils/db";
 import { getSessionUserId } from "../../utils/auth";
-import { backfillGroupIdForUser, getUserGroupMembership } from "../../utils/group";
+import { assertNoOtherHousehold, backfillGroupIdForUser, getUserGroupMembership } from "../../utils/group";
 
 export default defineEventHandler(async (event) => {
   const userId = await getSessionUserId(event);
@@ -44,6 +44,8 @@ export default defineEventHandler(async (event) => {
         statusMessage: "Second user not found.",
       });
     }
+
+    await assertNoOtherHousehold(client, secondUserId, null);
 
     const groupResult = await client.query(
       `INSERT INTO groups (group_name, created_by)

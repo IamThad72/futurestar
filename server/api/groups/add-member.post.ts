@@ -1,7 +1,7 @@
 import { createError, readBody } from "h3";
 import { createDbClient } from "../../utils/db";
 import { getSessionUserId } from "../../utils/auth";
-import { assertGroupOwner, backfillGroupIdForUser } from "../../utils/group";
+import { assertGroupOwner, assertNoOtherHousehold, backfillGroupIdForUser } from "../../utils/group";
 
 export default defineEventHandler(async (event) => {
   const userId = await getSessionUserId(event);
@@ -55,6 +55,8 @@ export default defineEventHandler(async (event) => {
         statusMessage: "Group is full. Maximum 6 members allowed.",
       });
     }
+
+    await assertNoOtherHousehold(client, memberUserId, membership.group_id);
 
     await client.query(
       `INSERT INTO group_members (group_id, user_id, role)

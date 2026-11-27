@@ -43,7 +43,7 @@ export default defineEventHandler(async (event) => {
 
     if (vin) {
       const existingVin = await client.query(
-        `SELECT 1 FROM asset_vehicles WHERE vin IS NOT NULL AND TRIM(LOWER(vin)) = TRIM(LOWER($1)) LIMIT 1`,
+        `SELECT 1 FROM asset_vehicles WHERE user_id IS NOT NULL AND vin IS NOT NULL AND TRIM(LOWER(vin)) = TRIM(LOWER($1)) LIMIT 1`,
         [vin],
       );
       if (existingVin.rows.length > 0) {

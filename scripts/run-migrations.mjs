@@ -108,6 +108,13 @@ const migrations = [
   "create_bible.sql",
   "create_faith_profiles.sql",
   "create_faith_common.sql",
+  "alter_groups_created_by_restrict.sql",
+  "create_deleted_auth_users.sql",
+  "create_pending_storage_deletes.sql",
+  "create_account_deletion_attempts.sql",
+  "create_deleted_user_private_rows.sql",
+  "alter_hold_child_user_id_nullable.sql",
+  "alter_held_rows_user_id_detachable.sql",
 ];
 
 async function run() {

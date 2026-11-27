@@ -24,7 +24,7 @@ const auth = useAuthStore();
 const route = useRoute();
 const themeName = ref("sacredledger");
 
-const guestPaths = new Set(["/", "/login", "/logout", "/reset-password"]);
+const guestPaths = new Set(["/", "/login", "/logout", "/reset-password", "/delete-account"]);
 
 const pillar = computed(() => {
   const path = route.path;

@@ -120,9 +120,12 @@
 </template>
 
 <script setup>
+import { takeAccountDeletedNotice } from "~/utils/accountDeletedNotice";
+import { safeDeleteAccountNext } from "~/utils/deletionGuards";
 import { isPasswordRecoveryRedirect, parseSupabaseAuthParams } from "~/utils/supabaseAuthHash";
 
 const { go } = useAppNavigate();
+const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 const loading = computed(() => auth.loading);
@@ -148,6 +151,9 @@ function switchToSignIn() {
 }
 
 onMounted(() => {
+  const deletedNotice = takeAccountDeletedNotice();
+  if (deletedNotice) success.value = deletedNotice;
+
   if (import.meta.client && sessionStorage.getItem("loginForgotPassword") === "1") {
     sessionStorage.removeItem("loginForgotPassword");
     switchToForgot();
@@ -182,7 +188,7 @@ const submit = async () => {
     const user = await auth.login(form.email, form.password);
     success.value = `Welcome back${user?.display_name ? `, ${user.display_name}` : ""}!`;
     form.password = "";
-    await go("/today");
+    await go(safeDeleteAccountNext(route.query.next) || "/today");
   } catch (err) {
     error.value = err?.data?.statusMessage || err?.message || "Login failed.";
   }
