@@ -1,0 +1,2435 @@
+import {
+  formatDebtRecordLabel,
+  textLooksLikeLoanOrCreditCard,
+} from "~/utils/budgetDebt";
+import { computeDebtPaymentApplication, inferIsRevolvingDebt } from "~/utils/debtPayment";
+import { isNetIncomeBudgetLine } from "~/utils/budgetChart";
+import {
+  classifyFiscalIncomeKind,
+  classifyFiscalPosttaxKind,
+  classifyFiscalPretaxKind,
+  classifyTaxAnnualKind,
+} from "~/utils/annualTotals";
+import {
+  buildGrossAllocatableLines,
+  computeNetFromGross,
+  findNetIncomeBudgetLine,
+  getPositiveGrossAllocations,
+  grossAllocationKey,
+  isGrossIncomeBudgetItem,
+  partitionSavingsInvestmentForGrossAlloc,
+  sumGrossAllocationAmounts,
+} from "~/utils/grossIncomeAllocation";
+import {
+  enrichCsvExpenseRows,
+  applyCsvDuplicateFlags,
+  budgetCsvDedupeKey,
+  buildExistingExpenseDedupeSets,
+  csvBudgetItemKey,
+  parseCsvBudgetItemKey,
+} from "~/utils/csvExpenseImport";
+import {
+  categoryOptionValue,
+  classSelectionKey,
+  parseClassSelectionKey,
+  recordingMatchKey,
+} from "~/utils/recordingCategory";
+
+export function useBudgetTracker() {
+useHead({ title: "Budget Tracker" });
+
+const auth = useAuthStore();
+const addDialogRef = ref(null);
+const deleteDialogRef = ref(null);
+const subCategoryModalRef = ref(null);
+const csvFileInputRef = ref(null);
+const csvUploadModalRef = ref(null);
+const csvUploadKind = ref("checking");
+const csvBulkPaymentSourceId = ref("");
+const selectedBudgetItem = ref(null);
+const editingTxId = ref(null);
+const editTxForm = ref({ date: "", amount: null, description: "", budgetItemId: "", type: "income", cashInvestmentId: "", debtId: "" });
+/** When editing, original row had debt_id — keep showing debt picker even if labels change */
+const editSourceDebtId = ref(null);
+const editTxError = ref("");
+const editTxSaving = ref(false);
+const budgets = ref({ income: [], expenses: [] });
+const budgetOptions = ref([]);
+const periodBudgetId = ref(null);
+const periodBudgetName = ref("");
+const periodIsOverride = ref(false);
+const periodIsInferred = ref(false);
+const budgetAssignBusy = ref(false);
+const transactions = ref([]);
+const orphans = ref([]);
+const recordingCategories = ref([]);
+const cashAccounts = ref([]);
+const debtRecords = ref([]);
+const incomeSources = ref([]);
+const investmentSources = ref([]);
+const savingsSources = ref([]);
+const annualTotals = ref({ tax: {}, income: {}, pretax: {}, posttax: {} });
+const showNewIncomeFromInput = ref(false);
+const showNewInvestmentFromInput = ref(false);
+const showNewSavingsFromInput = ref(false);
+const loading = ref(true);
+const loadError = ref("");
+const txSubmitting = ref(false);
+const deleting = ref(false);
+const txError = ref("");
+const deletingTx = ref(null);
+const isDeletingGrossPaycheck = computed(() => {
+  const tx = deletingTx.value;
+  if (!tx || tx.from_gross_pay !== true) return false;
+  return isGrossIncomeBudgetItem({
+    income_type: tx.item_type,
+    category: tx.category,
+    sub_category: tx.sub_category,
+  });
+});
+const csvRows = ref([]);
+const csvError = ref("");
+const csvImportBanner = ref("");
+const csvPageNotice = ref("");
+const sentenceText = ref("");
+const sentenceBusy = ref(false);
+const sentenceError = ref("");
+const sentenceNotice = ref("");
+const pendingDraft = ref(null);
+const pendingKey = ref("");
+const sentenceCategories = computed(() => csvCategoryCatalog());
+const csvSaving = ref(false);
+const now = new Date();
+const currentYear = now.getFullYear();
+const route = useRoute();
+const queryMonth = Number(route.query.month);
+const queryYear = Number(route.query.year);
+const selectedMonth = ref(queryMonth >= 1 && queryMonth <= 12 ? queryMonth : now.getMonth() + 1);
+const selectedYear = ref(queryYear >= 2026 && queryYear <= 2032 ? queryYear : currentYear >= 2026 && currentYear <= 2032 ? currentYear : 2026);
+const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+const yearOptions = computed(() => {
+  const years = [];
+  for (let y = 2026; y <= 2032; y++) {
+    years.push(y);
+  }
+  return years;
+});
+
+const grossAllocationAmounts = ref({});
+
+const txForm = ref({
+  type: "expense",
+  budgetItemId: "",
+  date: "",
+  amount: null,
+  payee: "",
+  incomeSourceId: "",
+  incomeSourceName: "",
+  investmentSourceId: "",
+  investmentSourceName: "",
+  savingsSourceId: "",
+  savingsSourceName: "",
+  description: "",
+  fromCashInvestmentId: "",
+  cashInvestmentId: "",
+  debtId: "",
+});
+
+function mapRecordingCategory(entry) {
+  const kind = entry?.item_kind === "income" ? "income" : "expense";
+  const itemType = entry?.item_type || (kind === "income" ? "gross" : "expense");
+  const id = entry?.id != null && Number(entry.id) > 0 ? Number(entry.id) : null;
+  return {
+    id,
+    type: kind,
+    item_kind: kind,
+    item_type: itemType,
+    income_type: kind === "income" ? itemType : undefined,
+    expense_type: kind === "expense" ? itemType : undefined,
+    category: entry?.category || "Uncategorized",
+    sub_category: entry?.sub_category ?? null,
+    description: entry?.description || "",
+    monthly_amount: null,
+    annual_amount: null,
+    cash_investment_id: entry?.cash_investment_id ?? null,
+    from_cash_investment_id: entry?.from_cash_investment_id ?? null,
+    debt_id: entry?.debt_id ?? null,
+    off_plan: true,
+    selection_key: id != null ? String(id) : classSelectionKey(kind, itemType, entry?.category, entry?.sub_category),
+    match_key: recordingMatchKey(kind, itemType, entry?.category, entry?.sub_category),
+  };
+}
+
+function expenseBudgetItemById(id) {
+  if (!id) return null;
+  const parsed = parseClassSelectionKey(id);
+  if (parsed) {
+    return (
+      recordingCategories.value.find(
+        (e) => e.match_key === recordingMatchKey(parsed.item_kind, parsed.item_type, parsed.category, parsed.sub_category),
+      ) || {
+        expense_type: parsed.item_type,
+        category: parsed.category,
+        sub_category: parsed.sub_category,
+        item_kind: parsed.item_kind,
+        type: parsed.item_kind,
+      }
+    );
+  }
+  return (
+    (budgets.value.expenses ?? []).find((e) => String(e.id) === String(id)) ||
+    recordingCategories.value.find((e) => e.item_kind === "expense" && String(e.id) === String(id)) ||
+    null
+  );
+}
+
+function incomeBudgetItemById(id) {
+  if (!id) return null;
+  const parsed = parseClassSelectionKey(id);
+  if (parsed?.item_kind === "income") {
+    return (
+      recordingCategories.value.find(
+        (e) => e.match_key === recordingMatchKey("income", parsed.item_type, parsed.category, parsed.sub_category),
+      ) || {
+        income_type: parsed.item_type,
+        category: parsed.category,
+        sub_category: parsed.sub_category,
+        type: "income",
+        item_kind: "income",
+      }
+    );
+  }
+  return (
+    (budgets.value.income ?? []).find((i) => String(i.id) === String(id)) ||
+    recordingCategories.value.find((e) => e.item_kind === "income" && String(e.id) === String(id)) ||
+    null
+  );
+}
+
+function csvKeyForBudgetItem(item, kind) {
+  if (item?.id != null && Number(item.id) > 0) return csvBudgetItemKey(kind, item.id);
+  if (kind === "insurance") return classSelectionKey("income", "deduction", item?.category, item?.sub_category);
+  return classSelectionKey("expense", item?.expense_type || item?.item_type || "expense", item?.category, item?.sub_category);
+}
+
+function txRecordingKey(tx) {
+  const kind = tx?.item_kind === "income" || tx?.type === "income" ? "income" : "expense";
+  return recordingMatchKey(kind, tx?.item_type, tx?.category, tx?.sub_category);
+}
+
+function recordedTransactions() {
+  return [...(transactions.value ?? []), ...(orphans.value ?? [])];
+}
+
+function incomeLinesForPaycheck() {
+  return [...(budgets.value.income ?? []), ...recordingIncomeItems.value];
+}
+
+function categorySelectionFields(selection, fallbackKind) {
+  const parsed = parseClassSelectionKey(selection);
+  if (parsed) {
+    return {
+      item_kind: parsed.item_kind,
+      item_type: parsed.item_type,
+      category: parsed.category,
+      sub_category: parsed.sub_category,
+    };
+  }
+  const id = parseInt(String(selection), 10);
+  if (fallbackKind === "income") return { income_id: id };
+  return { expense_id: id };
+}
+
+function groupBudgetItemsByCategory(items) {
+  const byCategory = {};
+  for (const item of items) {
+    const cat = item.category || "Uncategorized";
+    if (!byCategory[cat]) byCategory[cat] = [];
+    byCategory[cat].push(item);
+  }
+  for (const cat of Object.keys(byCategory)) {
+    byCategory[cat].sort((a, b) =>
+      (a.sub_category || "").toLowerCase().localeCompare((b.sub_category || "").toLowerCase()),
+    );
+  }
+  return Object.entries(byCategory)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([category, grouped]) => ({ category, items: grouped }));
+}
+
+const recordingIncomeItems = computed(() =>
+  recordingCategories.value.filter((item) => item.item_kind === "income"),
+);
+const recordingExpenseItems = computed(() =>
+  recordingCategories.value.filter((item) => item.item_kind === "expense"),
+);
+
+/** Edit lists include categories that are no longer on this month's plan. */
+const incomeGroupedByCategory = computed(() =>
+  groupBudgetItemsByCategory([...(budgets.value.income ?? []), ...recordingIncomeItems.value]),
+);
+
+const expensesGroupedByCategory = computed(() =>
+  groupBudgetItemsByCategory([...(budgets.value.expenses ?? []), ...recordingExpenseItems.value]),
+);
+
+/** Add Entry modal: radio values map to budget line subsets (aligned with Budget Setup) */
+const addModalBudgetTypeOptions = [
+  { value: "expense", label: "Expense" },
+  { value: "income", label: "Income" },
+  { value: "investment", label: "Investments" },
+  { value: "savings", label: "Savings" },
+  { value: "tax", label: "Tax" },
+];
+
+const incomeBudgetGroups = computed(() =>
+  groupBudgetItemsByCategory(
+    (budgets.value.income ?? []).filter((i) => i.income_type !== "tax" && i.income_type !== "deduction"),
+  ),
+);
+
+const taxBudgetGroups = computed(() =>
+  groupBudgetItemsByCategory((budgets.value.income ?? []).filter((i) => i.income_type === "tax")),
+);
+
+const expenseBudgetGroups = computed(() =>
+  groupBudgetItemsByCategory(
+    (budgets.value.expenses ?? []).filter((e) => (e.expense_type || "expense") === "expense"),
+  ),
+);
+
+const csvExpenseGroups = computed(() =>
+  groupBudgetItemsByCategory([
+    ...(budgets.value.expenses ?? []).filter((e) => (e.expense_type || "expense") === "expense"),
+    ...recordingExpenseItems.value.filter((e) => (e.expense_type || e.item_type || "expense") === "expense"),
+  ]),
+);
+
+const csvInsuranceGroups = computed(() =>
+  groupBudgetItemsByCategory([
+    ...(budgets.value.income ?? []).filter((i) => i.income_type === "deduction"),
+    ...recordingIncomeItems.value.filter((i) => (i.income_type || i.item_type) === "deduction"),
+  ]),
+);
+
+const validCsvBudgetItemKeys = computed(() => {
+  const keys = new Set();
+  for (const group of csvExpenseGroups.value) {
+    for (const item of group.items) keys.add(csvKeyForBudgetItem(item, "expense"));
+  }
+  for (const group of csvInsuranceGroups.value) {
+    for (const item of group.items) keys.add(csvKeyForBudgetItem(item, "insurance"));
+  }
+  return keys;
+});
+
+const savingsBudgetGroups = computed(() =>
+  groupBudgetItemsByCategory((budgets.value.expenses ?? []).filter((e) => e.expense_type === "savings")),
+);
+
+const investmentBudgetGroups = computed(() =>
+  groupBudgetItemsByCategory((budgets.value.expenses ?? []).filter((e) => e.expense_type === "investment")),
+);
+
+/** Insurance budget lines (income_type deduction) */
+const insuranceBudgetGroups = computed(() =>
+  groupBudgetItemsByCategory((budgets.value.income ?? []).filter((i) => i.income_type === "deduction")),
+);
+
+function budgetGroupsForTxType(t) {
+  switch (t) {
+    case "income":
+      return incomeBudgetGroups.value;
+    case "tax":
+      return taxBudgetGroups.value;
+    case "insurance":
+      return insuranceBudgetGroups.value;
+    case "expense":
+      return expenseBudgetGroups.value;
+    case "savings":
+      return savingsBudgetGroups.value;
+    case "investment":
+      return investmentBudgetGroups.value;
+    default:
+      return [];
+  }
+}
+
+function firstBudgetItemIdForType(t) {
+  const groups = budgetGroupsForTxType(t);
+  const first = groups[0]?.items?.[0];
+  return first != null ? String(first.id) : "";
+}
+
+const addModalBudgetLineMeta = computed(() => {
+  const id = txForm.value.budgetItemId;
+  if (!id) return null;
+  const groups = budgetGroupsForTxType(txForm.value.type);
+  const pools = [
+    ...groups.flatMap((g) => g.items.map((item) => ({ item, category: g.category }))),
+    ...recordingCategories.value
+      .filter((item) => addModalBudgetTypeFromItem(item, item.type) === txForm.value.type)
+      .map((item) => ({ item, category: item.category })),
+  ];
+  for (const { item, category } of pools) {
+    if (categoryOptionValue(item) !== String(id) && String(item.id) !== String(id)) continue;
+    const sub = (item.sub_category || "").trim();
+    return {
+      category,
+      subcategoryDisplay: sub || "—",
+      categorySubLabel: sub ? `${category}-${sub}` : category,
+    };
+  }
+  return null;
+});
+
+const selectedGrossIncomeBudgetItem = computed(() => {
+  if (txForm.value.type !== "income" || !txForm.value.budgetItemId) return null;
+  const item = incomeBudgetItemById(txForm.value.budgetItemId);
+  if (!item || isNetIncomeBudgetLine(item)) return null;
+  return isGrossIncomeBudgetItem(item) ? item : null;
+});
+
+const isGrossIncomePaycheckMode = computed(() => selectedGrossIncomeBudgetItem.value != null);
+
+const pairedNetIncomeBudgetLine = computed(() => {
+  const gross = selectedGrossIncomeBudgetItem.value;
+  if (!gross) return null;
+  return findNetIncomeBudgetLine(incomeLinesForPaycheck(), {
+    category: gross.category,
+    excludeId: gross.id,
+  });
+});
+
+const grossAllocExpensePartition = computed(() =>
+  partitionSavingsInvestmentForGrossAlloc(savingsBudgetGroups.value, investmentBudgetGroups.value),
+);
+
+const grossIncomeAllocatableLines = computed(() =>
+  buildGrossAllocatableLines(
+    taxBudgetGroups.value,
+    insuranceBudgetGroups.value,
+    grossAllocExpensePartition.value.retirementGroups,
+    [],
+    grossAllocExpensePartition.value.investmentGroups,
+  ).map((line) => ({
+    ...line,
+    key: grossAllocationKey(line.kind, line.id),
+  })),
+);
+
+const grossAllocTaxLines = computed(() => grossIncomeAllocatableLines.value.filter((l) => l.kind === "tax"));
+const grossAllocInsuranceLines = computed(() => grossIncomeAllocatableLines.value.filter((l) => l.kind === "insurance"));
+const grossAllocRetirementLines = computed(() => grossIncomeAllocatableLines.value.filter((l) => l.kind === "retirement"));
+const grossAllocInvestmentLines = computed(() =>
+  grossIncomeAllocatableLines.value.filter((l) => l.kind === "investment"),
+);
+
+const grossIncomeAllocatedTotal = computed(() => sumGrossAllocationAmounts(grossAllocationAmounts.value));
+
+const grossIncomeNetAmount = computed(() =>
+  computeNetFromGross(txForm.value.amount, grossIncomeAllocatedTotal.value),
+);
+
+const addTransactionModalTitle = computed(() => {
+  if (isGrossIncomePaycheckMode.value) {
+    const meta = addModalBudgetLineMeta.value;
+    if (meta?.categorySubLabel) {
+      return `Add Gross Income — ${meta.categorySubLabel}`;
+    }
+    return "Add Gross Income";
+  }
+  const opt = addModalBudgetTypeOptions.find((o) => o.value === txForm.value.type);
+  const typeLabel = opt?.label ?? txForm.value.type;
+  const meta = addModalBudgetLineMeta.value;
+  if (meta?.categorySubLabel) {
+    return `Add - ${typeLabel} ${meta.categorySubLabel} item`;
+  }
+  return `Add - ${typeLabel} item`;
+});
+
+/** Budget Details: by type, then flat rows "Category — Subcategory" (group order, then subcategory sort) */
+const budgetTrackerDisplaySections = computed(() => {
+  const base = [
+    { key: "expense", title: "Expenses", listType: "expense", badgeClass: "estate-record-list__badge--expense", groups: expenseBudgetGroups.value },
+    { key: "income", title: "Income", listType: "income", badgeClass: "estate-record-list__badge--income", groups: incomeBudgetGroups.value },
+    { key: "investment", title: "Investments", listType: "expense", badgeClass: "estate-record-list__badge--investment", groups: investmentBudgetGroups.value },
+    { key: "savings", title: "Savings", listType: "expense", badgeClass: "estate-record-list__badge--savings", groups: savingsBudgetGroups.value },
+    { key: "tax", title: "Tax", listType: "income", badgeClass: "estate-record-list__badge--tax", groups: taxBudgetGroups.value },
+    { key: "insurance", title: "Insurance", listType: "income", badgeClass: "estate-record-list__badge--insurance", groups: insuranceBudgetGroups.value },
+  ];
+  return base
+    .map((s) => ({
+      ...s,
+      rows: s.groups.flatMap((group) =>
+        group.items.map((item) => {
+          const sub = (item.sub_category || "").trim();
+          return {
+            item,
+            group,
+            categorySubcategoryLabel: sub ? `${group.category}-${sub}` : group.category,
+          };
+        }),
+      ),
+    }))
+    .filter((s) => s.rows.length > 0);
+});
+
+const previousCategorySection = computed(() => ({
+  key: "previous",
+  title: "Previous categories",
+  listType: "expense",
+  badgeClass: "",
+  rows: recordingCategories.value.map((item) => {
+    const sub = (item.sub_category || "").trim();
+    return {
+      item,
+      group: { category: item.category },
+      categorySubcategoryLabel: sub ? `${item.category}-${sub}` : item.category,
+    };
+  }),
+}));
+
+function recordingTypeLabel(item) {
+  const t = item?.item_type || item?.income_type || item?.expense_type;
+  if (t === "tax") return "Tax";
+  if (t === "deduction") return "Insurance";
+  if (t === "savings") return "Savings";
+  if (t === "investment") return "Investment";
+  if (item?.item_kind === "income" || item?.type === "income") return "Income";
+  return "Expense";
+}
+
+function sectionBudgetedTotal(section) {
+  let budget = 0;
+  for (const row of section.rows) {
+    budget += Number(row.item.monthly_amount) || 0;
+  }
+  return budget;
+}
+
+function actualForTrackerRow(section, row) {
+  if (row.item?.off_plan) return offPlanActualByKey.value[row.item.match_key] || 0;
+  return getActualForItem(row.item.id, section.listType);
+}
+
+function sectionActualTotal(section) {
+  let actual = 0;
+  for (const row of section.rows) {
+    actual += actualForTrackerRow(section, row);
+  }
+  return actual;
+}
+
+function budgetTrackerListItems(section) {
+  return section.rows.map((row) => ({
+    ...row,
+    _listKey: `${section.key}-${row.item.match_key || row.item.id}`,
+  }));
+}
+
+function mapBudgetTrackerRow(section) {
+  return (row) => {
+    const { item, group } = row;
+    const sub = (item.sub_category || "").trim();
+    const actual = actualForTrackerRow(section, row);
+    const budgeted = item.monthly_amount;
+    const lines = item.off_plan
+      ? [
+          {
+            label: "Plan",
+            segments: [{ text: "Not on this budget", class: "estate-record-list__line-value--budgeted" }],
+          },
+        ]
+      : [
+      {
+        label: "Budgeted",
+        segments: [
+          { text: `$${formatAmount(budgeted)}`, class: "estate-record-list__line-value--budgeted" },
+          { text: " / ", class: "estate-record-list__line-sep" },
+          { text: "Dif: ", class: "estate-record-list__line-dif-label" },
+          {
+            text: formatBudgetDifference(actual, budgeted, section.listType, section.key),
+            class: getBudgetDifferenceClass(actual, budgeted, section.listType, section.key),
+          },
+        ],
+      },
+    ];
+    const storedYear = storedYearAmount(item, section);
+    if (storedYear != null) {
+      lines.push({
+        label: `${selectedYear.value} YTD`,
+        segments: [{ text: `$${formatAmount(storedYear)}`, class: "estate-record-list__line-value--budgeted" }],
+      });
+    }
+    return {
+      title: item.off_plan ? `${recordingTypeLabel(item)} · ${group.category}` : group.category,
+      titleSuffix: sub || undefined,
+      titleSuffixBadgeClass: item.off_plan ? undefined : section.badgeClass,
+      note: `$${formatAmount(actual)}`,
+      noteClass: item.off_plan ? "estate-record-list__note--on-budget" : getBudgetNoteClass(actual, budgeted),
+      lines,
+    };
+  };
+}
+
+function indexAnnualTotals(rows, key) {
+  const out = {};
+  for (const row of rows ?? []) out[row[key]] = Number(row.total_amount) || 0;
+  return out;
+}
+
+/** Year total from the tax-page tables, for lines that map onto those rows. */
+function storedYearAmount(item, section) {
+  const category = item?.category;
+  const sub = item?.sub_category;
+  const incomeType = item?.income_type || item?.item_type;
+  const expenseType = item?.expense_type || item?.item_type;
+  if (section.key === "tax" || incomeType === "tax") {
+    const kind = classifyTaxAnnualKind(category, sub);
+    return kind ? annualTotals.value.tax[kind] ?? 0 : null;
+  }
+  if (section.key === "income") {
+    const kind = classifyFiscalIncomeKind(category, sub);
+    return kind ? annualTotals.value.income[kind] ?? 0 : null;
+  }
+  if (section.key === "insurance" || incomeType === "deduction") {
+    const post = classifyFiscalPosttaxKind(category, sub);
+    if (post) return annualTotals.value.posttax[post] ?? 0;
+    const pre = classifyFiscalPretaxKind(category, sub);
+    return pre ? annualTotals.value.pretax[pre] ?? 0 : null;
+  }
+  if (
+    section.key === "investment" ||
+    section.key === "savings" ||
+    expenseType === "investment" ||
+    expenseType === "savings"
+  ) {
+    const pre = classifyFiscalPretaxKind(category, sub);
+    return pre ? annualTotals.value.pretax[pre] ?? 0 : null;
+  }
+  return null;
+}
+
+function onBudgetTrackerRowSelect(section, row) {
+  const listType = row.item?.off_plan
+    ? row.item.item_kind === "income"
+      ? "income"
+      : "expense"
+    : section.listType;
+  openSubCategoryModal(row.item, listType, row.group);
+}
+
+
+function isIncomeSideBudgetType(t) {
+  return t === "income" || t === "tax" || t === "insurance";
+}
+
+/** From / To cash or debt (plain expense only; savings & investment use their own From source + To account) */
+const showAppliedAccountSelector = computed(() => txForm.value.type === "expense");
+
+const addModalExpenseForAppliedAccount = computed(() => {
+  if (txForm.value.type !== "expense") return null;
+  return expenseBudgetItemById(txForm.value.budgetItemId);
+});
+
+/** Loan / credit card lines use Estate Management debt institutions instead of cash accounts */
+const selectedDebtForPayment = computed(() => {
+  if (!txForm.value.debtId) return null;
+  return debtRecords.value.find((r) => String(r.dbt_id) === String(txForm.value.debtId)) ?? null;
+});
+
+const debtPaymentPreview = computed(() => {
+  if (!useDebtInstitutionsForAddModal.value || !selectedDebtForPayment.value) return null;
+  const amount = Number(txForm.value.amount);
+  if (!amount || isNaN(amount) || amount <= 0) return null;
+  return computeDebtPaymentApplication(selectedDebtForPayment.value, amount);
+});
+
+const editSelectedDebtForPayment = computed(() => {
+  if (!editTxForm.value.debtId) return null;
+  return debtRecords.value.find((r) => String(r.dbt_id) === String(editTxForm.value.debtId)) ?? null;
+});
+
+const editDebtPaymentPreview = computed(() => {
+  if (!editShowsDebtDestination.value || !editSelectedDebtForPayment.value) return null;
+  const amount = Number(editTxForm.value.amount);
+  if (!amount || isNaN(amount) || amount <= 0) return null;
+  return computeDebtPaymentApplication(editSelectedDebtForPayment.value, amount);
+});
+
+const useDebtInstitutionsForAddModal = computed(() => {
+  if (!showAppliedAccountSelector.value) return false;
+  const ex = addModalExpenseForAppliedAccount.value;
+  if (!ex) return false;
+  const et = ex.expense_type || "expense";
+  if (et === "savings" || et === "investment") return false;
+  if (ex.debt_id != null && ex.debt_id !== "") return true;
+  return textLooksLikeLoanOrCreditCard(ex.category, ex.sub_category, ex.description);
+});
+
+const editModalExpenseItem = computed(() => {
+  if (editTxForm.value.type !== "expense") return null;
+  return expenseBudgetItemById(editTxForm.value.budgetItemId);
+});
+
+const editShowsDebtDestination = computed(() => {
+  if (editTxForm.value.type !== "expense") return false;
+  const ex = editModalExpenseItem.value;
+  if (!ex) return false;
+  const et = ex.expense_type || "expense";
+  if (et === "savings" || et === "investment") return false;
+  if (editSourceDebtId.value != null) return true;
+  if (ex.debt_id != null && ex.debt_id !== "") return true;
+  return textLooksLikeLoanOrCreditCard(ex.category, ex.sub_category, ex.description);
+});
+
+const editShowsCashDestination = computed(() => {
+  if (editTxForm.value.type === "income") {
+    const inc = incomeBudgetItemById(editTxForm.value.budgetItemId);
+    return inc != null && (inc.income_type || "gross") === "gross";
+  }
+  if (editTxForm.value.type !== "expense") return false;
+  const ex = editModalExpenseItem.value;
+  return ex != null && (ex.expense_type === "savings" || ex.expense_type === "investment");
+});
+
+function txCalendarParts(dateVal) {
+  if (dateVal == null || dateVal === "") return null;
+  const s = String(dateVal);
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  if (m) {
+    return { year: Number(m[1]), month: Number(m[2]) };
+  }
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return null;
+  return { year: d.getFullYear(), month: d.getMonth() + 1 };
+}
+
+/** Actual totals by budget item for selected month (matched txs only) */
+const actualByItem = computed(() => {
+  const byItem = {};
+  const txList = transactions.value ?? [];
+  const y = selectedYear.value;
+  const m = selectedMonth.value;
+  for (const tx of txList) {
+    const parts = txCalendarParts(tx.date);
+    if (!parts || parts.year !== y || parts.month !== m) continue;
+    const incomeId = tx.matched_income_id ?? tx.income_id;
+    const expenseId = tx.matched_expense_id ?? tx.expense_id;
+    if (incomeId == null && expenseId == null) continue;
+    const key = incomeId != null ? `income-${incomeId}` : `expense-${expenseId}`;
+    byItem[key] = (byItem[key] || 0) + Number(tx.amount);
+  }
+  return byItem;
+});
+
+const offPlanActualByKey = computed(() => {
+  const byKey = {};
+  for (const tx of orphans.value ?? []) {
+    const key = txRecordingKey(tx);
+    byKey[key] = (byKey[key] || 0) + Number(tx.amount);
+  }
+  return byKey;
+});
+
+/** Transactions for the selected sub-category (budget item) */
+const transactionsForModal = computed(() => {
+  const item = selectedBudgetItem.value;
+  if (!item) return [];
+  const txList = item.off_plan ? orphans.value ?? [] : transactions.value ?? [];
+  return txList
+    .filter((tx) => {
+      if (item.off_plan) return txRecordingKey(tx) === item.match_key;
+      const incomeId = tx.matched_income_id ?? tx.income_id;
+      const expenseId = tx.matched_expense_id ?? tx.expense_id;
+      return item.type === "income"
+        ? Number(incomeId) === Number(item.id)
+        : Number(expenseId) === Number(item.id);
+    })
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+});
+
+function getActualForItem(itemId, type) {
+  const key = type === "income" ? `income-${itemId}` : `expense-${itemId}`;
+  return actualByItem.value[key] ?? 0;
+}
+
+function getBudgetNoteClass(actual, budgeted) {
+  const budget = Number(budgeted) || 0;
+  const spent = Number(actual) || 0;
+  if (Math.abs(spent - budget) < 0.01) return "estate-record-list__note--on-budget";
+  return spent > budget
+    ? "estate-record-list__note--over"
+    : "estate-record-list__note--under";
+}
+
+/** Positive = favorable (under spend, beat income target, under tax/insurance). */
+function budgetDifferenceAmount(actual, budgeted, listType, sectionKey) {
+  const budget = Number(budgeted) || 0;
+  const act = Number(actual) || 0;
+  if (sectionKey === "income" && listType === "income") {
+    return act - budget;
+  }
+  return budget - act;
+}
+
+function formatBudgetDifference(actual, budgeted, listType, sectionKey) {
+  const diff = budgetDifferenceAmount(actual, budgeted, listType, sectionKey);
+  if (Math.abs(diff) < 0.01) return `$${formatAmount(0)}`;
+  const sign = diff > 0 ? "+" : "−";
+  return `${sign}$${formatAmount(Math.abs(diff))}`;
+}
+
+function getBudgetDifferenceClass(actual, budgeted, listType, sectionKey) {
+  const diff = budgetDifferenceAmount(actual, budgeted, listType, sectionKey);
+  if (Math.abs(diff) < 0.01) return "estate-record-list__line-value--on-budget";
+  return diff > 0
+    ? "estate-record-list__line-value--under"
+    : "estate-record-list__line-value--over";
+}
+
+function formatAmount(val) {
+  if (val == null || val === "" || isNaN(val)) return "0.00";
+  return Number(val).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+const CATEGORY_SUBCATEGORY_DISPLAY_MAX = 14;
+
+function truncateCategoryLabel(text) {
+  const s = String(text ?? "");
+  if (s.length <= CATEGORY_SUBCATEGORY_DISPLAY_MAX) return s;
+  return `${s.slice(0, CATEGORY_SUBCATEGORY_DISPLAY_MAX)}…`;
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return "—";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+async function loadData() {
+  if (!auth.user) {
+    loading.value = false;
+    if (auth.sessionEnded) {
+      loadError.value = "";
+      return;
+    }
+    budgets.value = { income: [], expenses: [] };
+    budgetOptions.value = [];
+    periodBudgetId.value = null;
+    periodBudgetName.value = "";
+    periodIsOverride.value = false;
+    periodIsInferred.value = false;
+    transactions.value = [];
+    orphans.value = [];
+    loadError.value = "";
+    return;
+  }
+  loading.value = true;
+  loadError.value = "";
+  try {
+    const data = await $fetch("/api/budget/tracker", {
+      query: { year: selectedYear.value, month: selectedMonth.value },
+    });
+    budgetOptions.value = data?.budgets ?? [];
+    budgets.value = { income: data?.income ?? [], expenses: data?.expenses ?? [] };
+    periodBudgetId.value = data?.budget?.budget_id ?? null;
+    periodBudgetName.value = data?.budget?.name || "";
+    periodIsOverride.value = !!data?.is_override;
+    periodIsInferred.value = !!data?.is_inferred;
+    transactions.value = data?.transactions ?? [];
+    orphans.value = data?.orphans ?? [];
+    recordingCategories.value = (data?.recording_categories ?? []).map(mapRecordingCategory);
+    cashAccounts.value = data?.cash_accounts ?? [];
+    debtRecords.value = data?.debt_records ?? [];
+    incomeSources.value = data?.income_sources ?? [];
+    investmentSources.value = data?.investment_sources ?? [];
+    savingsSources.value = data?.savings_sources ?? [];
+    annualTotals.value = {
+      tax: indexAnnualTotals(data?.annual_totals?.tax, "tax_kind"),
+      income: indexAnnualTotals(data?.annual_totals?.income, "total_kind"),
+      pretax: indexAnnualTotals(data?.annual_totals?.pretax, "total_kind"),
+      posttax: indexAnnualTotals(data?.annual_totals?.posttax, "total_kind"),
+    };
+  } catch (err) {
+    const failure = settleLoadError(err, "The budget tracker could not be loaded. Try again in a moment.");
+    if (failure.expired) {
+      loadError.value = "";
+      return;
+    }
+    loadError.value = failure.message;
+    if (!failure.auth) {
+      console.error("Failed to load budget tracker. If you recently updated the app, run: npm run migrate", err);
+    }
+    budgets.value = { income: [], expenses: [] };
+    budgetOptions.value = [];
+    periodBudgetId.value = null;
+    periodBudgetName.value = "";
+    periodIsOverride.value = false;
+    periodIsInferred.value = false;
+    transactions.value = [];
+    orphans.value = [];
+    recordingCategories.value = [];
+    cashAccounts.value = [];
+    debtRecords.value = [];
+    incomeSources.value = [];
+    investmentSources.value = [];
+    savingsSources.value = [];
+    annualTotals.value = { tax: {}, income: {}, pretax: {}, posttax: {} };
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function onPeriodBudgetChange(event) {
+  const nextId = Number(event?.target?.value);
+  if (!Number.isFinite(nextId) || nextId <= 0 || nextId === periodBudgetId.value) return;
+  budgetAssignBusy.value = true;
+  loadError.value = "";
+  try {
+    await $fetch("/api/budgets/month-assignment", {
+      method: "PUT",
+      body: {
+        year: selectedYear.value,
+        month: selectedMonth.value,
+        budget_id: nextId,
+        move_transactions: false,
+      },
+    });
+    await loadData();
+  } catch (err) {
+    loadError.value = parseFetchError(err, "Failed to update budget for this month.");
+  } finally {
+    budgetAssignBusy.value = false;
+  }
+}
+
+async function clearPeriodBudgetOverride() {
+  if (!periodIsOverride.value) return;
+  budgetAssignBusy.value = true;
+  loadError.value = "";
+  try {
+    await $fetch("/api/budgets/month-assignment", {
+      method: "DELETE",
+      query: { year: selectedYear.value, month: selectedMonth.value },
+    });
+    await loadData();
+  } catch (err) {
+    loadError.value = parseFetchError(err, "Failed to clear month budget override.");
+  } finally {
+    budgetAssignBusy.value = false;
+  }
+}
+
+async function pinInferredPeriodBudget() {
+  if (!periodIsInferred.value || periodBudgetId.value == null) return;
+  budgetAssignBusy.value = true;
+  loadError.value = "";
+  try {
+    await $fetch("/api/budgets/month-assignment", {
+      method: "PUT",
+      body: {
+        year: selectedYear.value,
+        month: selectedMonth.value,
+        budget_id: periodBudgetId.value,
+        move_transactions: false,
+      },
+    });
+    await loadData();
+  } catch (err) {
+    loadError.value = parseFetchError(err, "Failed to pin budget for this month.");
+  } finally {
+    budgetAssignBusy.value = false;
+  }
+}
+
+function cancelNewIncomeFrom() {
+  showNewIncomeFromInput.value = false;
+  txForm.value.incomeSourceName = "";
+}
+
+function cancelNewInvestmentFrom() {
+  showNewInvestmentFromInput.value = false;
+  txForm.value.investmentSourceName = "";
+}
+
+function cancelNewSavingsFrom() {
+  showNewSavingsFromInput.value = false;
+  txForm.value.savingsSourceName = "";
+}
+
+async function addSavingsSourceFromForm() {
+  const name = (txForm.value.savingsSourceName || "").trim();
+  if (!name) {
+    txError.value = "Enter a savings source.";
+    return;
+  }
+  try {
+    const created = await $fetch("/api/budget/savings-sources/submit", { method: "POST", body: { name } });
+    const src = created?.source;
+    const next = await $fetch("/api/budget/savings-sources/list").then((d) => d?.sources ?? []).catch(() => []);
+    savingsSources.value = Array.isArray(next) ? next : [];
+    if (src?.id) {
+      txForm.value.savingsSourceId = String(src.id);
+      txForm.value.savingsSourceName = "";
+    }
+    showNewSavingsFromInput.value = false;
+  } catch (err) {
+    txError.value = err?.data?.message || err?.message || "Failed to add savings source.";
+  }
+}
+
+async function addInvestmentSourceFromForm() {
+  const name = (txForm.value.investmentSourceName || "").trim();
+  if (!name) {
+    txError.value = "Enter an investment source.";
+    return;
+  }
+  try {
+    const created = await $fetch("/api/budget/investment-sources/submit", { method: "POST", body: { name } });
+    const src = created?.source;
+    const next = await $fetch("/api/budget/investment-sources/list").then((d) => d?.sources ?? []).catch(() => []);
+    investmentSources.value = Array.isArray(next) ? next : [];
+    if (src?.id) {
+      txForm.value.investmentSourceId = String(src.id);
+      txForm.value.investmentSourceName = "";
+    }
+    showNewInvestmentFromInput.value = false;
+  } catch (err) {
+    txError.value = err?.data?.message || err?.message || "Failed to add investment source.";
+  }
+}
+
+async function addIncomeSourceFromForm() {
+  const name = (txForm.value.incomeSourceName || "").trim();
+  if (!name) {
+    txError.value = "Enter an income source.";
+    return;
+  }
+  try {
+    const created = await $fetch("/api/budget/income-sources/submit", { method: "POST", body: { name } });
+    const src = created?.source;
+    const next = await $fetch("/api/budget/income-sources/list").then((d) => d?.sources ?? []).catch(() => []);
+    incomeSources.value = Array.isArray(next) ? next : [];
+    if (src?.id) {
+      txForm.value.incomeSourceId = String(src.id);
+      txForm.value.incomeSourceName = "";
+    }
+    showNewIncomeFromInput.value = false;
+  } catch (err) {
+    txError.value = err?.data?.message || err?.message || "Failed to add income source.";
+  }
+}
+
+/** Non-ignored CSV rows that will be imported */
+const csvRowsToImport = computed(() => csvRows.value.filter((r) => !r.ignored));
+
+function cashAccountLabel(acct) {
+  return [acct.institution, acct.acct_type].filter(Boolean).join(" — ") || `Account #${acct.ci_id}`;
+}
+
+function cashAccountSearchText(acct) {
+  return `${acct.acct_type || ""} ${acct.institution || ""} ${acct.asset_category || ""}`.toLowerCase();
+}
+
+function isCheckingLikeAccount(acct) {
+  const t = cashAccountSearchText(acct);
+  if (/credit\s*card|creditcard|\bcard\b|charge\s*card/.test(t)) return false;
+  return /check|cash|bank|money\s*market|debit|saving|hysa|deposit/.test(t);
+}
+
+function isCreditLikeAccount(acct) {
+  const t = cashAccountSearchText(acct);
+  return /credit\s*card|creditcard|\bcard\b|charge\s*card|revolving/.test(t);
+}
+
+function isCreditLikeDebt(row) {
+  if (inferIsRevolvingDebt(row)) return true;
+  const blob = `${row?.loan_type || ""} ${row?.institution || ""}`.toLowerCase();
+  return /credit\s*card|creditcard|revolving/.test(blob);
+}
+
+const csvPaymentSourceOptions = computed(() => {
+  if (csvUploadKind.value === "credit") {
+    const creditCash = cashAccounts.value.filter(isCreditLikeAccount);
+    const cashOpts = (creditCash.length ? creditCash : []).map((acct) => ({
+      value: `ci:${acct.ci_id}`,
+      label: cashAccountLabel(acct),
+      kind: "ci",
+      id: Number(acct.ci_id),
+    }));
+    const debtOpts = debtRecords.value.filter(isCreditLikeDebt).map((row) => ({
+      value: `debt:${row.dbt_id}`,
+      label: formatDebtRecordLabel(row),
+      kind: "debt",
+      id: Number(row.dbt_id),
+    }));
+    // If no typed credit cash accounts, still offer other cash accounts so users can pick a card stored as cash.
+    if (!cashOpts.length && !debtOpts.length) {
+      return cashAccounts.value.map((acct) => ({
+        value: `ci:${acct.ci_id}`,
+        label: cashAccountLabel(acct),
+        kind: "ci",
+        id: Number(acct.ci_id),
+      }));
+    }
+    if (!cashOpts.length) {
+      return [
+        ...debtOpts,
+        ...cashAccounts.value.map((acct) => ({
+          value: `ci:${acct.ci_id}`,
+          label: cashAccountLabel(acct),
+          kind: "ci",
+          id: Number(acct.ci_id),
+        })),
+      ];
+    }
+    return [...cashOpts, ...debtOpts];
+  }
+
+  const checking = cashAccounts.value.filter(isCheckingLikeAccount);
+  const list = checking.length ? checking : cashAccounts.value.filter((a) => !isCreditLikeAccount(a));
+  const finalList = list.length ? list : cashAccounts.value;
+  return finalList.map((acct) => ({
+    value: `ci:${acct.ci_id}`,
+    label: cashAccountLabel(acct),
+    kind: "ci",
+    id: Number(acct.ci_id),
+  }));
+});
+
+/** All non-ignored rows have an expense item and payment source selected */
+const allCsvRowsHaveType = computed(() => {
+  const toImport = csvRowsToImport.value;
+  if (!toImport.length) return false;
+  return toImport.every((r) => {
+    if (!r.budgetItemId) return false;
+    const parsed = parseCsvBudgetItemKey(r.budgetItemId);
+    if (parsed?.kind === "insurance") return true;
+    return Boolean(r.paymentSourceId);
+  });
+});
+
+/** Rows that still need a normal Save (excludes duplicate-skipped rows until expense changes or Add entry is used) */
+const csvRowsPendingImport = computed(() =>
+  csvRows.value.filter((r) => {
+    if (r.ignored || r.csvImported || r.csvDuplicateSkipped || !r.budgetItemId) return false;
+    const parsed = parseCsvBudgetItemKey(r.budgetItemId);
+    if (parsed?.kind === "insurance") return true;
+    return Boolean(r.paymentSourceId);
+  }),
+);
+const csvPendingImportCount = computed(() => csvRowsPendingImport.value.length);
+const csvHasPendingImportRows = computed(() => csvPendingImportCount.value > 0);
+
+/** Parse CSV text into rows with date, amount, description */
+function parseCsv(text) {
+  const lines = text.split(/\r?\n/).filter((l) => l.trim());
+  if (lines.length < 2) return [];
+  const rows = [];
+  const transactionDateCols = ["transaction date", "trans date", "transaction_date", "transactiondate"];
+  const otherDateCols = ["date", "posting date", "posted"];
+  const amountCols = ["amount", "debit", "credit", "withdrawal", "deposit"];
+  const descCols = ["description", "memo", "details", "name", "payee", "merchant"];
+  const headerParts = parseCsvLine(lines[0]);
+  let dateIdx = headerParts.findIndex((p) => transactionDateCols.some((c) => p.toLowerCase().trim().includes(c)));
+  if (dateIdx < 0) {
+    dateIdx = headerParts.findIndex((p) => otherDateCols.some((c) => p.toLowerCase().trim().includes(c)));
+  }
+  const useDateIdx = dateIdx >= 0 ? dateIdx : 0;
+  let amountIdx = headerParts.findIndex((p) => amountCols.some((c) => p.toLowerCase().includes(c)));
+  if (amountIdx < 0) amountIdx = 1;
+  const descIdx = headerParts.findIndex((p) => descCols.some((c) => p.toLowerCase().includes(c)));
+  const hasDebit = headerParts.some((p) => p.toLowerCase().includes("debit"));
+  const hasCredit = headerParts.some((p) => p.toLowerCase().includes("credit"));
+  for (let i = 1; i < lines.length; i++) {
+    const parts = parseCsvLine(lines[i]);
+    if (parts.length < 2) continue;
+    let dateVal = (parts[useDateIdx] || "").trim();
+    let amountVal = amountIdx >= 0 ? (parts[amountIdx] || "").trim() : "";
+    const descVal = descIdx >= 0 ? (parts[descIdx] || "").trim() : parts.slice(2).join(" ").trim() || "";
+    if (hasDebit && hasCredit) {
+      const debitIdx = headerParts.findIndex((p) => p.toLowerCase().includes("debit"));
+      const creditIdx = headerParts.findIndex((p) => p.toLowerCase().includes("credit"));
+      const debit = parseFloat(String(parts[debitIdx] || "0").replace(/[$,()\s]/g, "")) || 0;
+      const credit = parseFloat(String(parts[creditIdx] || "0").replace(/[$,()\s]/g, "")) || 0;
+      amountVal = credit > 0 ? String(credit) : debit > 0 ? `-${debit}` : "0";
+    }
+    const amount = parseAmount(amountVal);
+    if (amount == null || isNaN(amount) || amount === 0) continue;
+    const normDate = toISODateString(dateVal);
+    if (!normDate) continue;
+    rows.push({
+      date: normDate,
+      amount: Math.abs(amount),
+      description: descVal || null,
+      type: "expense",
+      budgetItemId: "",
+      paymentSourceId: "",
+      ignored: false,
+      csvImported: false,
+      csvDuplicateSkipped: false,
+      csvPotentialDuplicate: false,
+      csvForceAdding: false,
+      csvAiSuggested: false,
+    });
+  }
+  return rows;
+}
+
+function parseCsvLine(line) {
+  const result = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      inQuotes = !inQuotes;
+    } else if ((c === "," || c === "\t") && !inQuotes) {
+      result.push(current.trim());
+      current = "";
+    } else {
+      current += c;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+function parseAmount(val) {
+  if (!val) return null;
+  const cleaned = String(val).replace(/[$,]/g, "").replace(/\(([^)]+)\)/, "-$1").trim();
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? null : num;
+}
+
+/** Convert any date value to ISO format YYYY-MM-DD for PostgreSQL insert */
+function toISODateString(val) {
+  if (val == null || val === "") return null;
+  const str = String(val).trim();
+  if (!str) return null;
+  const pad = (n) => String(n).padStart(2, "0");
+
+  const isoMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s]|$)/);
+  if (isoMatch) {
+    const y = parseInt(isoMatch[1], 10);
+    const mo = parseInt(isoMatch[2], 10);
+    const d = parseInt(isoMatch[3], 10);
+    if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) {
+      return `${y}-${pad(mo)}-${pad(d)}`;
+    }
+  }
+
+  const slashMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slashMatch) {
+    const a = parseInt(slashMatch[1], 10);
+    const b = parseInt(slashMatch[2], 10);
+    let y = parseInt(slashMatch[3], 10);
+    if (y < 100) y += 2000;
+    let mo, d;
+    if (a > 12) {
+      d = a;
+      mo = b;
+    } else if (b > 12) {
+      mo = a;
+      d = b;
+    } else {
+      mo = a;
+      d = b;
+    }
+    if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) {
+      return `${y}-${pad(mo)}-${pad(d)}`;
+    }
+  }
+
+  const dashMatch = str.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (dashMatch) {
+    const a = parseInt(dashMatch[1], 10);
+    const b = parseInt(dashMatch[2], 10);
+    let y = parseInt(dashMatch[3], 10);
+    if (y < 100) y += 2000;
+    let mo, d;
+    if (a > 12) {
+      d = a;
+      mo = b;
+    } else if (b > 12) {
+      mo = a;
+      d = b;
+    } else {
+      mo = a;
+      d = b;
+    }
+    if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) {
+      return `${y}-${pad(mo)}-${pad(d)}`;
+    }
+  }
+
+  const num = parseInt(str, 10);
+  if (!isNaN(num) && num > 1000) {
+    const excelEpoch = new Date(1899, 11, 30);
+    const d = new Date(excelEpoch.getTime() + num * 86400000);
+    if (!isNaN(d.getTime())) {
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
+  }
+
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) {
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+  return null;
+}
+
+function buildExistingExpenseCsvDedupeKeySet() {
+  return buildExistingExpenseDedupeSets(recordedTransactions()).keysWithExpense;
+}
+
+function csvRowClass(row) {
+  if (row.ignored) return "opacity-50 bg-base-200/50";
+  const parsed = parseCsvBudgetItemKey(row.budgetItemId);
+  const needsSource = parsed?.kind !== "insurance";
+  if (!row.budgetItemId || (needsSource && !row.paymentSourceId)) return "bg-error/10";
+  if (row.csvPotentialDuplicate && !row.csvImported) return "bg-warning/20";
+  if (row.csvImported) return "bg-success/10";
+  return "";
+}
+
+function parsePaymentSourceId(value) {
+  const raw = String(value || "");
+  const m = raw.match(/^(ci|debt):(\d+)$/);
+  if (!m) return null;
+  return { kind: m[1], id: Number(m[2]) };
+}
+
+function csvRowSubmitBody(row, dateStr) {
+  const parsed = parseCsvBudgetItemKey(row.budgetItemId);
+  if (!parsed) return null;
+  const base = {
+    transaction_date: dateStr,
+    amount: row.amount,
+    description: row.description || null,
+  };
+  if (parsed.classification) {
+    const classification = {
+      item_type: parsed.classification.item_type,
+      category: parsed.classification.category,
+      sub_category: parsed.classification.sub_category,
+    };
+    if (parsed.kind === "insurance") {
+      return { ...base, type: "income", ...classification };
+    }
+    const classSource = parsePaymentSourceId(row.paymentSourceId);
+    if (!classSource) return null;
+    if (classSource.kind === "debt") {
+      return {
+        ...base,
+        type: "expense",
+        ...classification,
+        debt_id: classSource.id,
+        cash_investment_id: null,
+        from_cash_investment_id: null,
+        debt_charge: true,
+      };
+    }
+    return {
+      ...base,
+      type: "expense",
+      ...classification,
+      from_cash_investment_id: classSource.id,
+      cash_investment_id: classSource.id,
+      debt_id: null,
+    };
+  }
+  if (parsed.kind === "insurance") {
+    return { ...base, type: "income", income_id: parsed.id };
+  }
+  const source = parsePaymentSourceId(row.paymentSourceId);
+  if (!source) return null;
+  if (source.kind === "debt") {
+    return {
+      ...base,
+      type: "expense",
+      expense_id: parsed.id,
+      debt_id: source.id,
+      cash_investment_id: null,
+      from_cash_investment_id: null,
+      debt_charge: true,
+    };
+  }
+  return {
+    ...base,
+    type: "expense",
+    expense_id: parsed.id,
+    from_cash_investment_id: source.id,
+    cash_investment_id: source.id,
+    debt_id: null,
+  };
+}
+
+function applyBulkPaymentSource(event) {
+  const value = String(event?.target?.value ?? "");
+  csvBulkPaymentSourceId.value = value;
+  if (!value) return;
+  for (const row of csvRows.value) {
+    if (!row.ignored && !row.csvImported) row.paymentSourceId = value;
+  }
+}
+
+function startCsvUpload(kind) {
+  csvUploadKind.value = kind === "credit" ? "credit" : "checking";
+  csvBulkPaymentSourceId.value = "";
+  csvError.value = "";
+  csvImportBanner.value = "";
+  csvPageNotice.value = "";
+  csvFileInputRef.value?.click();
+}
+
+function csvCategoryCatalog() {
+  const byKey = new Map();
+  const add = (item, kind, prefix) => {
+    const key = csvKeyForBudgetItem(item, kind);
+    if (!key || byKey.has(key)) return;
+    const label = [item?.category, item?.sub_category].filter(Boolean).join(" / ") || "Uncategorized";
+    byKey.set(key, { key, label: prefix ? `${prefix}: ${label}` : label });
+  };
+  for (const group of csvExpenseGroups.value) {
+    for (const item of group.items) add(item, "expense", "");
+  }
+  for (const group of csvInsuranceGroups.value) {
+    for (const item of group.items) add(item, "insurance", "Insurance");
+  }
+  return [...byKey.values()];
+}
+
+async function suggestCsvCategories(rows) {
+  const categories = csvCategoryCatalog();
+  if (!categories.length) return { filled: 0, skipped: 0 };
+  const pending = [];
+  rows.forEach((row, index) => {
+    if (!row.ignored && !row.budgetItemId && row.description) {
+      pending.push({
+        index,
+        description: String(row.description).slice(0, 160),
+        amount: row.amount,
+      });
+    }
+  });
+  if (!pending.length) return { filled: 0, skipped: 0 };
+  let filled = 0;
+  let skipped = 0;
+  for (let offset = 0; offset < pending.length; offset += 40) {
+    const chunk = pending.slice(offset, offset + 40);
+    const data = await $fetch("/api/budget/csv-categories", {
+      method: "POST",
+      body: { categories, rows: chunk },
+    });
+    for (const assignment of data?.assignments || []) {
+      const row = rows[assignment.index];
+      if (!row || row.budgetItemId || row.ignored) continue;
+      if (assignment.key && validCsvBudgetItemKeys.value.has(assignment.key)) {
+        row.budgetItemId = assignment.key;
+        row.csvAiSuggested = true;
+        filled++;
+        continue;
+      }
+      if (assignment.skip) {
+        row.ignored = true;
+        skipped++;
+      }
+    }
+  }
+  applyCsvDuplicateFlags(rows, recordedTransactions());
+  return { filled, skipped };
+}
+
+function onCsvExpenseItemChange() {
+  applyCsvDuplicateFlags(csvRows.value, recordedTransactions());
+}
+
+function csvImportSummary(rows) {
+  const dup = rows.filter((r) => !r.ignored && r.csvPotentialDuplicate).length;
+  const suggested = rows.filter((r) => !r.ignored && r.budgetItemId).length;
+  const parts = [];
+  if (suggested) parts.push(`${suggested} row(s) have a suggested expense item from your history.`);
+  if (dup) {
+    parts.push(
+      `${dup} potential duplicate(s) found (same date, amount, and description or budget line as an existing entry). Review flagged rows or use Add entry to import anyway.`,
+    );
+  }
+  return parts.join(" ");
+}
+
+async function onCsvFileSelected(ev) {
+  const file = ev?.target?.files?.[0];
+  ev.target.value = "";
+  if (!file) return;
+  csvError.value = "";
+  csvImportBanner.value = "";
+  csvPageNotice.value = "";
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const text = e.target?.result;
+      if (!text) {
+        csvPageNotice.value = "Could not read file.";
+        return;
+      }
+      const rows = parseCsv(text);
+      if (!rows.length) {
+        csvPageNotice.value = "No valid transactions found. Ensure CSV has date, amount, and description columns.";
+        csvRows.value = [];
+        return;
+      }
+      csvPageNotice.value = "Categorizing expenses…";
+      await loadData();
+      const defaultSource =
+        csvPaymentSourceOptions.value.length === 1 ? csvPaymentSourceOptions.value[0].value : "";
+      csvBulkPaymentSourceId.value = defaultSource;
+      const enriched = enrichCsvExpenseRows(
+        rows,
+        recordedTransactions(),
+        validCsvBudgetItemKeys.value,
+      ).map((row) => ({
+        ...row,
+        paymentSourceId: row.paymentSourceId || defaultSource || "",
+      }));
+      let aiNote = "";
+      try {
+        const suggested = await suggestCsvCategories(enriched);
+        const notes = [];
+        if (suggested.filled) notes.push(`Categorized ${suggested.filled} row(s) from the description.`);
+        if (suggested.skipped) {
+          notes.push(`Ignored ${suggested.skipped} row(s) that look like transfers, card payments, or income.`);
+        }
+        aiNote = notes.join(" ");
+      } catch (err) {
+        aiNote = parseFetchError(err, "Could not categorize the file automatically. Assign expense items below.");
+      }
+      csvRows.value = enriched;
+      csvError.value = "";
+      csvImportBanner.value = [csvImportSummary(enriched), aiNote].filter(Boolean).join(" ");
+      csvPageNotice.value = "";
+      await nextTick();
+      csvUploadModalRef.value?.showModal();
+      if (allCsvRowsHaveType.value && csvHasPendingImportRows.value) {
+        await saveCsvTransactions();
+      }
+    } catch (err) {
+      csvPageNotice.value = err?.data?.message || err?.message || "Failed to parse CSV.";
+      csvRows.value = [];
+    }
+  };
+  reader.readAsText(file, "UTF-8");
+}
+
+function closeCsvModal() {
+  csvUploadModalRef.value?.close();
+  csvRows.value = [];
+  csvError.value = "";
+  csvImportBanner.value = "";
+  csvBulkPaymentSourceId.value = "";
+}
+
+async function forceAddCsvExpenseRow(idx) {
+  const row = csvRows.value[idx];
+  if (!row || row.ignored || !row.budgetItemId) return;
+  csvError.value = "";
+  const parsedKey = parseCsvBudgetItemKey(row.budgetItemId);
+  if (parsedKey?.kind !== "insurance" && !row.paymentSourceId) {
+    csvError.value = "Select a payment account for this row.";
+    return;
+  }
+  row.csvForceAdding = true;
+  try {
+    const dateStr = toISODateString(row.date);
+    if (!dateStr) {
+      csvError.value = `Invalid date for row: ${row.description || row.amount}`;
+      return;
+    }
+    const body = csvRowSubmitBody(row, dateStr);
+    if (!body) {
+      csvError.value = "Invalid expense item for a row.";
+      return;
+    }
+    await $fetch("/api/budget/transactions/submit", { method: "POST", body });
+    row.csvImported = true;
+    row.csvDuplicateSkipped = false;
+    row.csvPotentialDuplicate = false;
+    await loadData();
+    csvImportBanner.value = csvImportSummary(csvRows.value);
+    const active = csvRows.value.filter((r) => !r.ignored);
+    if (active.length > 0 && active.every((r) => r.csvImported)) {
+      closeCsvModal();
+    }
+  } catch (err) {
+    csvError.value = parseFetchError(err, "Failed to add transaction.");
+  } finally {
+    row.csvForceAdding = false;
+  }
+}
+
+async function saveCsvTransactions() {
+  if (!allCsvRowsHaveType.value || csvSaving.value || !csvHasPendingImportRows.value) return;
+  csvError.value = "";
+  csvImportBanner.value = "";
+  csvSaving.value = true;
+  let skippedDup = 0;
+  let imported = 0;
+  try {
+    const keySet = buildExistingExpenseCsvDedupeKeySet();
+    const pending = csvRows.value.filter((r) => !r.ignored && r.budgetItemId && !r.csvImported && !r.csvDuplicateSkipped);
+    for (const row of pending) {
+      const dateStr = toISODateString(row.date);
+      if (!dateStr) {
+        csvError.value = `Invalid date for row: ${row.description || row.amount}`;
+        return;
+      }
+      const key = budgetCsvDedupeKey(row.budgetItemId, dateStr, row.amount);
+      if (!key) {
+        csvError.value = "Invalid expense item or amount for a row.";
+        return;
+      }
+      if (keySet.has(key)) {
+        row.csvDuplicateSkipped = true;
+        skippedDup++;
+        continue;
+      }
+      const body = csvRowSubmitBody(row, dateStr);
+      if (!body) {
+        csvError.value = "Invalid expense item or amount for a row.";
+        return;
+      }
+      await $fetch("/api/budget/transactions/submit", { method: "POST", body });
+      keySet.add(key);
+      row.csvImported = true;
+      row.csvDuplicateSkipped = false;
+      row.csvPotentialDuplicate = false;
+      imported++;
+    }
+    await loadData();
+    applyCsvDuplicateFlags(csvRows.value, recordedTransactions());
+    if (skippedDup > 0) {
+      csvImportBanner.value = `${skippedDup} row(s) were skipped as potential duplicates. Use Add entry on a row to import anyway. ${csvImportSummary(csvRows.value)}`.trim();
+    } else {
+      csvImportBanner.value = csvImportSummary(csvRows.value);
+    }
+    const active = csvRows.value.filter((r) => !r.ignored);
+    if (active.length > 0 && active.every((r) => r.csvImported)) {
+      if (imported > 0) {
+        csvPageNotice.value = `Imported ${imported} expense${imported === 1 ? "" : "s"}.`;
+      }
+      closeCsvModal();
+    }
+  } catch (err) {
+    csvError.value = parseFetchError(err, "Failed to save transactions.");
+  } finally {
+    csvSaving.value = false;
+  }
+}
+
+function buildAddTxDescription(payee, description) {
+  const p = (payee || "").trim();
+  const d = (description || "").trim();
+  if (p && d) return `Payee: ${p} · ${d}`;
+  if (p) return `Payee: ${p}`;
+  return d || null;
+}
+
+async function submitTransaction() {
+  if (!auth.user) {
+    txError.value = auth.sessionEnded ? SESSION_ENDED_MESSAGE : SIGN_IN_MESSAGE;
+    return;
+  }
+  txError.value = "";
+  const id = txForm.value.budgetItemId;
+  const amount = txForm.value.amount;
+    if (!id || amount == null || isNaN(amount)) {
+    txError.value = !id
+      ? "Choose a budget category."
+      : "Enter a valid amount.";
+    return;
+  }
+  if (txForm.value.type === "investment" || txForm.value.type === "savings") {
+    const toId = txForm.value.cashInvestmentId ? parseInt(String(txForm.value.cashInvestmentId), 10) : NaN;
+    if (!toId || isNaN(toId) || toId <= 0) {
+      txError.value = "Select the to account.";
+      return;
+    }
+  }
+  if (txForm.value.type !== "income" && txForm.value.type !== "investment" && txForm.value.type !== "savings" && showAppliedAccountSelector.value) {
+    const fromId = txForm.value.fromCashInvestmentId ? parseInt(String(txForm.value.fromCashInvestmentId), 10) : NaN;
+    if (!fromId || isNaN(fromId) || fromId <= 0) {
+      txError.value = "Select the from account.";
+      return;
+    }
+    if (useDebtInstitutionsForAddModal.value) {
+      const did = txForm.value.debtId ? parseInt(String(txForm.value.debtId), 10) : NaN;
+      if (!did || isNaN(did) || did <= 0) {
+        txError.value = "Select the debt institution this amount applies to.";
+        return;
+      }
+    }
+  }
+
+  if (isGrossIncomePaycheckMode.value) {
+    if (grossIncomeNetAmount.value < 0) {
+      txError.value = "Allocations cannot exceed gross income.";
+      return;
+    }
+    const gross = Number(txForm.value.amount);
+    if (!gross || isNaN(gross) || gross <= 0) {
+      txError.value = "Enter a valid gross income amount.";
+      return;
+    }
+    const net = grossIncomeNetAmount.value;
+    const allocations = getPositiveGrossAllocations(grossAllocationAmounts.value);
+    if (net <= 0 && allocations.length === 0) {
+      txError.value =
+        "Enter a net income amount or allocate to at least one tax, insurance, retirement, or investment line.";
+      return;
+    }
+    const grossItem = selectedGrossIncomeBudgetItem.value;
+    const netLine = findNetIncomeBudgetLine(incomeLinesForPaycheck(), {
+      category: grossItem?.category,
+      excludeId: txForm.value.budgetItemId,
+    });
+    if (net > 0 && !netLine) {
+      txError.value =
+        'Add a Net Income budget line in Budget Setup (e.g. sub-category "Net Income" under the same category) to record take-home pay.';
+      return;
+    }
+    await doSubmitGrossIncomePaycheck();
+    return;
+  }
+
+  await doSubmitTransaction();
+}
+
+function resolveIncomeTxContext() {
+  const incomeSourceId = txForm.value.incomeSourceId ? parseInt(String(txForm.value.incomeSourceId), 10) : null;
+  const effectiveIncomeSourceId =
+    incomeSourceId && !isNaN(incomeSourceId) && incomeSourceId > 0 ? incomeSourceId : null;
+  const to = txForm.value.cashInvestmentId ? parseInt(String(txForm.value.cashInvestmentId), 10) : null;
+  const effectiveCiId = to && !isNaN(to) && to > 0 ? to : null;
+  return {
+    description: buildAddTxDescription(txForm.value.payee, txForm.value.description),
+    effectiveIncomeSourceId,
+    effectiveCiId,
+    transaction_date: txForm.value.date,
+  };
+}
+
+async function doSubmitGrossIncomePaycheck() {
+  const grossLineId = parseInt(String(txForm.value.budgetItemId), 10);
+  const gross = Number(txForm.value.amount);
+  const net = grossIncomeNetAmount.value;
+  const ctx = resolveIncomeTxContext();
+  const allocations = getPositiveGrossAllocations(grossAllocationAmounts.value);
+  const lineByKey = Object.fromEntries(grossIncomeAllocatableLines.value.map((l) => [l.key, l]));
+  const grossItem = selectedGrossIncomeBudgetItem.value;
+  const netLine = findNetIncomeBudgetLine(incomeLinesForPaycheck(), {
+    category: grossItem?.category,
+    excludeId: grossLineId,
+  });
+
+  const payBatchId = crypto.randomUUID();
+  txSubmitting.value = true;
+  try {
+  const lines = [];
+  if (gross > 0 && !isNaN(gross)) {
+    lines.push({
+      type: "income",
+      ...categorySelectionFields(txForm.value.budgetItemId, "income"),
+      amount: gross,
+      cash_investment_id: null,
+      debt_id: null,
+      from_cash_investment_id: null,
+      income_source_id: ctx.effectiveIncomeSourceId,
+      investment_source_id: null,
+      savings_source_id: null,
+    });
+  }
+
+  if (net > 0 && netLine) {
+    lines.push({
+      type: "income",
+      ...(netLine.id != null && Number(netLine.id) > 0
+        ? { income_id: Number(netLine.id) }
+        : {
+            item_kind: "income",
+            item_type: netLine.income_type || netLine.item_type || "gross",
+            category: netLine.category,
+            sub_category: netLine.sub_category,
+          }),
+      amount: net,
+      cash_investment_id: ctx.effectiveCiId,
+      debt_id: null,
+      from_cash_investment_id: null,
+      income_source_id: ctx.effectiveIncomeSourceId,
+      investment_source_id: null,
+      savings_source_id: null,
+    });
+  }
+
+  for (const alloc of allocations) {
+    const line = lineByKey[alloc.key];
+    if (!line) continue;
+
+    if (alloc.kind === "tax" || alloc.kind === "insurance") {
+      lines.push({
+        type: "income",
+        income_id: parseInt(alloc.id, 10),
+        amount: alloc.amount,
+        cash_investment_id: null,
+        debt_id: null,
+        from_cash_investment_id: null,
+        income_source_id: ctx.effectiveIncomeSourceId,
+        investment_source_id: null,
+        savings_source_id: null,
+      });
+      continue;
+    }
+
+    const ex = expenseBudgetItemById(alloc.id);
+    const toRaw = ex?.cash_investment_id;
+    const toId = toRaw != null && toRaw !== "" ? parseInt(String(toRaw), 10) : null;
+    if (!toId || isNaN(toId) || toId <= 0) {
+      const label = line.sub_category || line.category;
+      const kindLabel =
+        alloc.kind === "savings" ? "Savings" : alloc.kind === "retirement" ? "Retirement" : "Investment";
+      throw new Error(`${kindLabel} line "${label}" needs a To account in Budget Setup.`);
+    }
+    const fromRaw = ex?.from_cash_investment_id || ctx.effectiveCiId;
+    const fromId = fromRaw != null && fromRaw !== "" ? parseInt(String(fromRaw), 10) : null;
+    if (!fromId || isNaN(fromId) || fromId <= 0) {
+      throw new Error("Select the deposit account (To) for this paycheck, or set a From account on the budget line.");
+    }
+
+    lines.push({
+      type: "expense",
+      expense_id: parseInt(alloc.id, 10),
+      amount: alloc.amount,
+      cash_investment_id: toId,
+      debt_id: null,
+      from_cash_investment_id: fromId,
+      income_source_id: null,
+      investment_source_id: null,
+      savings_source_id: null,
+    });
+  }
+
+    await $fetch("/api/budget/transactions/paycheck", {
+      method: "POST",
+      body: {
+        transaction_date: ctx.transaction_date,
+        description: ctx.description,
+        pay_batch_id: payBatchId,
+        lines,
+      },
+    });
+
+    grossAllocationAmounts.value = {};
+    addDialogRef.value?.close();
+    await loadData();
+    if (selectedBudgetItem.value) {
+      nextTick(() => subCategoryModalRef.value?.showModal());
+    }
+  } catch (err) {
+    txError.value = err?.data?.message || err?.message || "Failed to save paycheck.";
+  } finally {
+    txSubmitting.value = false;
+  }
+}
+
+async function doSubmitTransaction() {
+  const id = txForm.value.budgetItemId;
+  const amount = txForm.value.amount;
+  const description = buildAddTxDescription(txForm.value.payee, txForm.value.description);
+  const incomeSourceId = txForm.value.incomeSourceId ? parseInt(String(txForm.value.incomeSourceId), 10) : null;
+  const effectiveIncomeSourceId = incomeSourceId && !isNaN(incomeSourceId) && incomeSourceId > 0 ? incomeSourceId : null;
+  const investmentSourceId = txForm.value.investmentSourceId ? parseInt(String(txForm.value.investmentSourceId), 10) : null;
+  const effectiveInvestmentSourceId = investmentSourceId && !isNaN(investmentSourceId) && investmentSourceId > 0 ? investmentSourceId : null;
+  const savingsSourceId = txForm.value.savingsSourceId ? parseInt(String(txForm.value.savingsSourceId), 10) : null;
+  const effectiveSavingsSourceId = savingsSourceId && !isNaN(savingsSourceId) && savingsSourceId > 0 ? savingsSourceId : null;
+  const fromCashInvestmentId = txForm.value.fromCashInvestmentId ? parseInt(String(txForm.value.fromCashInvestmentId), 10) : null;
+  const effectiveFromCiId = fromCashInvestmentId && !isNaN(fromCashInvestmentId) && fromCashInvestmentId > 0 ? fromCashInvestmentId : null;
+  let effectiveCiId = null;
+  let effectiveDebtId = null;
+  if (txForm.value.type === "income") {
+    const to = txForm.value.cashInvestmentId ? parseInt(String(txForm.value.cashInvestmentId), 10) : null;
+    effectiveCiId = to && !isNaN(to) && to > 0 ? to : null;
+  } else if (txForm.value.type === "investment" || txForm.value.type === "savings") {
+    const to = txForm.value.cashInvestmentId ? parseInt(String(txForm.value.cashInvestmentId), 10) : null;
+    effectiveCiId = to && !isNaN(to) && to > 0 ? to : null;
+  } else if (showAppliedAccountSelector.value) {
+    if (useDebtInstitutionsForAddModal.value) {
+      const d = txForm.value.debtId ? parseInt(String(txForm.value.debtId), 10) : null;
+      effectiveDebtId = d && !isNaN(d) && d > 0 ? d : null;
+    } else {
+      const cashInvestmentId = txForm.value.cashInvestmentId ? parseInt(String(txForm.value.cashInvestmentId), 10) : null;
+      effectiveCiId = cashInvestmentId && !isNaN(cashInvestmentId) && cashInvestmentId > 0 ? cashInvestmentId : null;
+    }
+  }
+
+  txSubmitting.value = true;
+  try {
+    const body = isIncomeSideBudgetType(txForm.value.type)
+      ? {
+          type: "income",
+          ...categorySelectionFields(id, "income"),
+          transaction_date: txForm.value.date,
+          amount,
+          description,
+          cash_investment_id: effectiveCiId,
+          debt_id: null,
+          from_cash_investment_id: null,
+          income_source_id: effectiveIncomeSourceId,
+          investment_source_id: null,
+          savings_source_id: null,
+        }
+      : {
+          type: "expense",
+          ...categorySelectionFields(id, "expense"),
+          transaction_date: txForm.value.date,
+          amount,
+          description,
+          cash_investment_id: effectiveDebtId != null ? null : effectiveCiId,
+          debt_id: effectiveDebtId,
+          from_cash_investment_id:
+            txForm.value.type === "investment" || txForm.value.type === "savings" ? null : effectiveFromCiId,
+          income_source_id: null,
+          investment_source_id: txForm.value.type === "investment" ? effectiveInvestmentSourceId : null,
+          savings_source_id: txForm.value.type === "savings" ? effectiveSavingsSourceId : null,
+        };
+    await $fetch("/api/budget/transactions/submit", { method: "POST", body });
+    addDialogRef.value?.close();
+    await loadData();
+    if (selectedBudgetItem.value) {
+      nextTick(() => subCategoryModalRef.value?.showModal());
+    }
+  } catch (err) {
+    txError.value = err?.data?.message || err?.message || "Failed to add transaction.";
+  } finally {
+    txSubmitting.value = false;
+  }
+}
+
+function openSubCategoryModal(item, type, group) {
+  selectedBudgetItem.value = {
+    ...item,
+    type,
+    category: group.category,
+    sub_category: item.sub_category || null,
+  };
+  editingTxId.value = null;
+  nextTick(() => subCategoryModalRef.value?.showModal());
+}
+
+function startEditTx(tx) {
+  editingTxId.value = tx.id;
+  const d = new Date(tx.date);
+  const type = tx.item_kind === "income" || tx.type === "income" ? "income" : "expense";
+  const budgetItemId =
+    tx.income_id != null
+      ? String(tx.income_id)
+      : tx.expense_id != null
+        ? String(tx.expense_id)
+        : classSelectionKey(type, tx.item_type, tx.category, tx.sub_category);
+  editTxForm.value = {
+    date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
+    amount: tx.amount,
+    description: tx.description || "",
+    budgetItemId,
+    type,
+    cashInvestmentId: tx.cash_investment_id != null ? String(tx.cash_investment_id) : "",
+    debtId: tx.debt_id != null ? String(tx.debt_id) : "",
+  };
+  editSourceDebtId.value = tx.debt_id != null ? Number(tx.debt_id) : null;
+  editTxError.value = "";
+}
+
+function cancelEdit() {
+  editingTxId.value = null;
+  editSourceDebtId.value = null;
+}
+
+async function saveEditTransaction() {
+  if (!auth.user) {
+    editTxError.value = auth.sessionEnded ? SESSION_ENDED_MESSAGE : SIGN_IN_MESSAGE;
+    return;
+  }
+  if (!editingTxId.value) return;
+  editTxError.value = "";
+  const amount = editTxForm.value.amount;
+  const budgetItemId = editTxForm.value.budgetItemId;
+  if (amount == null || isNaN(amount)) {
+    editTxError.value = "Enter a valid amount.";
+    return;
+  }
+  if (!budgetItemId) {
+    editTxError.value = "Select a category / sub-category.";
+    return;
+  }
+  if (editShowsDebtDestination.value) {
+    const did = editTxForm.value.debtId ? parseInt(String(editTxForm.value.debtId), 10) : NaN;
+    if (!did || isNaN(did) || did <= 0) {
+      editTxError.value = "Select a debt institution.";
+      return;
+    }
+  }
+  editTxSaving.value = true;
+  try {
+    const body = {
+      transaction_date: editTxForm.value.date,
+      amount,
+      description: editTxForm.value.description || null,
+    };
+    Object.assign(body, categorySelectionFields(budgetItemId, editTxForm.value.type === "income" ? "income" : "expense"));
+    if (editShowsDebtDestination.value) {
+      const did = parseInt(String(editTxForm.value.debtId), 10);
+      body.cash_investment_id = null;
+      body.debt_id = did;
+    } else if (editShowsCashDestination.value) {
+      const cashInvestmentId = editTxForm.value.cashInvestmentId
+        ? parseInt(String(editTxForm.value.cashInvestmentId), 10)
+        : null;
+      const effectiveCiId = cashInvestmentId && !isNaN(cashInvestmentId) && cashInvestmentId > 0 ? cashInvestmentId : null;
+      body.cash_investment_id = effectiveCiId;
+      body.debt_id = null;
+    }
+    await $fetch(`/api/budget/transactions/${editingTxId.value}`, {
+      method: "PUT",
+      body,
+    });
+    editingTxId.value = null;
+    editSourceDebtId.value = null;
+    await loadData();
+  } catch (err) {
+    editTxError.value = err?.data?.message || err?.message || "Failed to update.";
+  } finally {
+    editTxSaving.value = false;
+  }
+}
+
+function confirmDeleteFromModal(tx) {
+  subCategoryModalRef.value?.close();
+  confirmDelete(tx);
+}
+
+function addModalBudgetTypeFromItem(item, listType) {
+  if (listType === "income") {
+    if (item.income_type === "tax") return "tax";
+    if (item.income_type === "deduction") return "insurance";
+    return "income";
+  }
+  const et = item.expense_type || "expense";
+  if (et === "savings") return "savings";
+  if (et === "investment") return "investment";
+  return "expense";
+}
+
+function draftTransactionSentence(draft) {
+  const parsed = parseCsvBudgetItemKey(draft.key);
+  const type = parsed?.kind === "insurance" ? "insurance" : "expense";
+  const budgetItemId = parsed?.classification ? String(draft.key) : parsed?.id ? String(parsed.id) : "";
+  showNewIncomeFromInput.value = false;
+  showNewInvestmentFromInput.value = false;
+  showNewSavingsFromInput.value = false;
+  grossAllocationAmounts.value = {};
+  txForm.value = {
+    type,
+    budgetItemId,
+    date: draft.date,
+    amount: draft.amount,
+    payee: "",
+    incomeSourceId: "",
+    incomeSourceName: "",
+    investmentSourceId: "",
+    investmentSourceName: "",
+    savingsSourceId: "",
+    savingsSourceName: "",
+    description: draft.description,
+    fromCashInvestmentId: cashAccounts.value.length === 1 ? String(cashAccounts.value[0].ci_id) : "",
+    cashInvestmentId: "",
+    debtId: "",
+  };
+  txError.value = "";
+  nextTick(() => addDialogRef.value?.showModal());
+}
+
+async function draftTransaction() {
+  const text = sentenceText.value.trim();
+  if (text.length < 2 || sentenceBusy.value) return;
+  if (!auth.user) {
+    if (auth.sessionEnded) {
+      sentenceError.value = SESSION_ENDED_MESSAGE;
+      return;
+    }
+    sentenceNotice.value = "No draft for that yet.";
+    return;
+  }
+  sentenceBusy.value = true;
+  sentenceError.value = "";
+  sentenceNotice.value = "";
+  const today = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  try {
+    const data = await $fetch("/api/budget/transactions/draft", {
+      method: "POST",
+      body: {
+        text,
+        categories: csvCategoryCatalog(),
+        today: `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`,
+      },
+    });
+    const draft = data?.draft;
+    if (!draft) {
+      sentenceError.value = "Could not draft that transaction.";
+      return;
+    }
+    if (draft.skip) {
+      pendingDraft.value = null;
+      sentenceNotice.value = "That looks like a transfer, card payment, or paycheck, so it was left out of spending.";
+      return;
+    }
+    if (!draft.key) {
+      pendingDraft.value = draft;
+      pendingKey.value = "";
+      sentenceNotice.value = "Pick a category before you save.";
+      return;
+    }
+    pendingDraft.value = null;
+    sentenceNotice.value = "";
+    draftTransactionSentence(draft);
+  } catch (error) {
+    const failure = settleLoadError(error, "Could not draft that transaction.");
+    if (failure.expired) {
+      sentenceError.value = failure.message;
+      return;
+    }
+    if (failure.auth) {
+      sentenceNotice.value = "No draft for that yet.";
+      return;
+    }
+    sentenceError.value = failure.message;
+  } finally {
+    sentenceBusy.value = false;
+  }
+}
+
+function openPendingDraft() {
+  if (!pendingDraft.value || !pendingKey.value) return;
+  draftTransactionSentence({ ...pendingDraft.value, key: pendingKey.value });
+  pendingDraft.value = null;
+  sentenceNotice.value = "";
+}
+
+function addTxFromSubCategory() {
+  const item = selectedBudgetItem.value;
+  if (!item) return;
+  subCategoryModalRef.value?.close();
+  showNewIncomeFromInput.value = false;
+  showNewInvestmentFromInput.value = false;
+  showNewSavingsFromInput.value = false;
+  const pad = (n) => String(n).padStart(2, "0");
+  grossAllocationAmounts.value = {};
+  txForm.value = {
+    type: addModalBudgetTypeFromItem(item, item.type),
+    budgetItemId: categoryOptionValue(item),
+    date: `${selectedYear.value}-${pad(selectedMonth.value)}-01`,
+    amount: null,
+    payee: "",
+    incomeSourceId: "",
+    incomeSourceName: "",
+    investmentSourceId: "",
+    investmentSourceName: "",
+    savingsSourceId: "",
+    savingsSourceName: "",
+    description: "",
+    fromCashInvestmentId: "",
+    cashInvestmentId: "",
+    debtId: "",
+  };
+  txError.value = "";
+  nextTick(() => addDialogRef.value?.showModal());
+}
+
+function confirmDelete(tx) {
+  deletingTx.value = tx;
+  nextTick(() => deleteDialogRef.value?.showModal());
+}
+
+async function performDelete() {
+  if (!deletingTx.value) return;
+  deleting.value = true;
+  try {
+    await $fetch(`/api/budget/transactions/${deletingTx.value.id}`, { method: "DELETE" });
+    deleteDialogRef.value?.close();
+    deletingTx.value = null;
+    await loadData();
+    if (selectedBudgetItem.value) {
+      nextTick(() => subCategoryModalRef.value?.showModal());
+    }
+  } catch (err) {
+    console.error("Delete failed", err);
+  } finally {
+    deleting.value = false;
+  }
+}
+
+watch(
+  () => txForm.value.budgetItemId,
+  (id) => {
+    if (txForm.value.type !== "expense" || !id) return;
+    const ex = expenseBudgetItemById(id);
+    if (ex?.debt_id != null && ex.debt_id !== "") {
+      txForm.value.debtId = String(ex.debt_id);
+    }
+  },
+);
+
+onMounted(() => {
+  if (!auth.ready) auth.fetchSession();
+});
+
+watch(
+  () => [auth.ready, auth.user],
+  ([ready]) => {
+    if (ready) void loadData();
+  },
+  { immediate: true },
+);
+
+watch([selectedYear, selectedMonth], () => {
+  if (auth.user) void loadData();
+});
+
+const monthControlValue = computed(() => `${selectedYear.value}-${String(selectedMonth.value).padStart(2, "0")}`);
+
+const monthControlOptions = computed(() => {
+  const options = [];
+  for (const year of yearOptions.value) {
+    for (let month = 1; month <= 12; month += 1) {
+      options.push({
+        value: `${year}-${String(month).padStart(2, "0")}`,
+        label: `${monthNames[month - 1]} ${year}`,
+      });
+    }
+  }
+  return options;
+});
+
+function onMonthControlChange(event) {
+  const [yearText, monthText] = String(event?.target?.value || "").split("-");
+  const year = Number(yearText);
+  const month = Number(monthText);
+  if (month >= 1 && month <= 12) selectedMonth.value = month;
+  if (year >= 2026 && year <= 2032) selectedYear.value = year;
+}
+
+const canWrite = computed(() => Boolean(auth.user || auth.sessionEnded));
+const showPlanControl = computed(() => canWrite.value || budgetOptions.value.length > 0);
+
+  return {
+    auth,
+    addDialogRef,
+    deleteDialogRef,
+    subCategoryModalRef,
+    csvFileInputRef,
+    csvUploadModalRef,
+    csvUploadKind,
+    csvBulkPaymentSourceId,
+    selectedBudgetItem,
+    editingTxId,
+    editTxForm,
+    editSourceDebtId,
+    editTxError,
+    editTxSaving,
+    budgets,
+    budgetOptions,
+    periodBudgetId,
+    periodBudgetName,
+    periodIsOverride,
+    periodIsInferred,
+    budgetAssignBusy,
+    transactions,
+    orphans,
+    recordingCategories,
+    cashAccounts,
+    debtRecords,
+    incomeSources,
+    investmentSources,
+    savingsSources,
+    annualTotals,
+    showNewIncomeFromInput,
+    showNewInvestmentFromInput,
+    showNewSavingsFromInput,
+    loading,
+    loadError,
+    txSubmitting,
+    deleting,
+    txError,
+    deletingTx,
+    isDeletingGrossPaycheck,
+    csvRows,
+    csvError,
+    csvImportBanner,
+    csvPageNotice,
+    sentenceText,
+    sentenceBusy,
+    sentenceError,
+    sentenceNotice,
+    pendingDraft,
+    pendingKey,
+    sentenceCategories,
+    csvSaving,
+    now,
+    currentYear,
+    route,
+    queryMonth,
+    queryYear,
+    selectedMonth,
+    selectedYear,
+    monthNames,
+    yearOptions,
+    grossAllocationAmounts,
+    txForm,
+    mapRecordingCategory,
+    expenseBudgetItemById,
+    incomeBudgetItemById,
+    csvKeyForBudgetItem,
+    txRecordingKey,
+    recordedTransactions,
+    incomeLinesForPaycheck,
+    categorySelectionFields,
+    groupBudgetItemsByCategory,
+    recordingIncomeItems,
+    recordingExpenseItems,
+    incomeGroupedByCategory,
+    expensesGroupedByCategory,
+    addModalBudgetTypeOptions,
+    incomeBudgetGroups,
+    taxBudgetGroups,
+    expenseBudgetGroups,
+    csvExpenseGroups,
+    csvInsuranceGroups,
+    validCsvBudgetItemKeys,
+    savingsBudgetGroups,
+    investmentBudgetGroups,
+    insuranceBudgetGroups,
+    budgetGroupsForTxType,
+    firstBudgetItemIdForType,
+    addModalBudgetLineMeta,
+    selectedGrossIncomeBudgetItem,
+    isGrossIncomePaycheckMode,
+    pairedNetIncomeBudgetLine,
+    grossAllocExpensePartition,
+    grossIncomeAllocatableLines,
+    grossAllocTaxLines,
+    grossAllocInsuranceLines,
+    grossAllocRetirementLines,
+    grossAllocInvestmentLines,
+    grossIncomeAllocatedTotal,
+    grossIncomeNetAmount,
+    addTransactionModalTitle,
+    budgetTrackerDisplaySections,
+    previousCategorySection,
+    recordingTypeLabel,
+    sectionBudgetedTotal,
+    actualForTrackerRow,
+    sectionActualTotal,
+    budgetTrackerListItems,
+    mapBudgetTrackerRow,
+    indexAnnualTotals,
+    storedYearAmount,
+    onBudgetTrackerRowSelect,
+    isIncomeSideBudgetType,
+    showAppliedAccountSelector,
+    addModalExpenseForAppliedAccount,
+    selectedDebtForPayment,
+    debtPaymentPreview,
+    editSelectedDebtForPayment,
+    editDebtPaymentPreview,
+    useDebtInstitutionsForAddModal,
+    editModalExpenseItem,
+    editShowsDebtDestination,
+    editShowsCashDestination,
+    txCalendarParts,
+    actualByItem,
+    offPlanActualByKey,
+    transactionsForModal,
+    getActualForItem,
+    getBudgetNoteClass,
+    budgetDifferenceAmount,
+    formatBudgetDifference,
+    getBudgetDifferenceClass,
+    formatAmount,
+    CATEGORY_SUBCATEGORY_DISPLAY_MAX,
+    truncateCategoryLabel,
+    formatDate,
+    loadData,
+    onPeriodBudgetChange,
+    clearPeriodBudgetOverride,
+    pinInferredPeriodBudget,
+    cancelNewIncomeFrom,
+    cancelNewInvestmentFrom,
+    cancelNewSavingsFrom,
+    addSavingsSourceFromForm,
+    addInvestmentSourceFromForm,
+    addIncomeSourceFromForm,
+    csvRowsToImport,
+    cashAccountLabel,
+    cashAccountSearchText,
+    isCheckingLikeAccount,
+    isCreditLikeAccount,
+    isCreditLikeDebt,
+    csvPaymentSourceOptions,
+    allCsvRowsHaveType,
+    csvRowsPendingImport,
+    csvPendingImportCount,
+    csvHasPendingImportRows,
+    parseCsv,
+    parseCsvLine,
+    parseAmount,
+    toISODateString,
+    buildExistingExpenseCsvDedupeKeySet,
+    csvRowClass,
+    parsePaymentSourceId,
+    csvRowSubmitBody,
+    applyBulkPaymentSource,
+    startCsvUpload,
+    csvCategoryCatalog,
+    suggestCsvCategories,
+    onCsvExpenseItemChange,
+    csvImportSummary,
+    onCsvFileSelected,
+    closeCsvModal,
+    forceAddCsvExpenseRow,
+    saveCsvTransactions,
+    buildAddTxDescription,
+    submitTransaction,
+    resolveIncomeTxContext,
+    doSubmitGrossIncomePaycheck,
+    doSubmitTransaction,
+    openSubCategoryModal,
+    startEditTx,
+    cancelEdit,
+    saveEditTransaction,
+    confirmDeleteFromModal,
+    addModalBudgetTypeFromItem,
+    draftTransactionSentence,
+    draftTransaction,
+    openPendingDraft,
+    addTxFromSubCategory,
+    confirmDelete,
+    performDelete,
+    monthControlValue,
+    monthControlOptions,
+    onMonthControlChange,
+    showPlanControl,
+    canWrite,
+  };
+}

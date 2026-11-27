@@ -1114,7 +1114,7 @@ const submitForm = async () => {
   success.value = "";
 
   if (!auth.user) {
-    error.value = "You must be logged in to submit.";
+    error.value = SIGN_IN_MESSAGE;
     return;
   }
 
