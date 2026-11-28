@@ -226,26 +226,31 @@
         <p v-else-if="!savedWorkouts.length" class="text-sm text-base-content/60">
           No saved workouts yet. Build one in Workout Manager, then start it here.
         </p>
-        <ul v-else class="space-y-2">
-          <li v-for="workout in savedWorkouts" :key="workout.workoutId">
-            <button
-              type="button"
-              class="flex min-h-11 w-full items-center gap-3 rounded-lg border border-base-300 bg-base-100 px-4 py-3 text-left"
-              :disabled="saving"
-              @click="startFromWorkout(workout)"
-            >
-              <span class="min-w-0 flex-1">
-                <span class="block truncate text-sm font-semibold text-base-content">{{ workout.name }}</span>
-                <span class="text-xs text-base-content/60">
-                  {{ workout.exerciseCount }} {{ workout.exerciseCount === 1 ? "exercise" : "exercises" }}
-                </span>
-              </span>
-              <span class="text-sm font-medium text-primary">
-                {{ startingId === String(workout.workoutId) ? "Starting…" : "Start" }}
-              </span>
-            </button>
-          </li>
-        </ul>
+        <div v-else class="space-y-3">
+          <section v-for="section in journalSections(savedWorkouts)" :key="section.key" class="space-y-2">
+            <h3 v-if="section.title" class="text-xs font-semibold uppercase tracking-wide text-muted">{{ section.title }}</h3>
+            <ul class="space-y-2">
+              <li v-for="workout in section.workouts" :key="`${section.key}-${workout.workoutId}`">
+                <button
+                  type="button"
+                  class="flex min-h-11 w-full items-center gap-3 rounded-lg border border-base-300 bg-base-100 px-4 py-3 text-left"
+                  :disabled="saving"
+                  @click="startFromWorkout(workout)"
+                >
+                  <span class="min-w-0 flex-1">
+                    <span class="block truncate text-sm font-semibold text-base-content">{{ workout.name }}</span>
+                    <span class="text-xs text-base-content/60">
+                      {{ workout.exerciseCount }} {{ workout.exerciseCount === 1 ? "exercise" : "exercises" }}
+                    </span>
+                  </span>
+                  <span class="text-sm font-medium text-primary">
+                    {{ startingId === String(workout.workoutId) ? "Starting…" : "Start" }}
+                  </span>
+                </button>
+              </li>
+            </ul>
+          </section>
+        </div>
       </div>
 
       <div class="space-y-3">
@@ -280,6 +285,7 @@
 
 <script setup>
 import { parseFetchError } from "~/utils/parseFetchError";
+import { journalSections } from "~/utils/workoutPrograms";
 import {
   formatDurationMinutes,
   isTimeBasedExercise,

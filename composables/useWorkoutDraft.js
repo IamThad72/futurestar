@@ -9,6 +9,8 @@ import {
 } from "~/utils/workoutDraft";
 
 const savedWorkouts = ref([]);
+const programList = ref(emptyProgramList());
+const linkProgramId = ref(null);
 const listError = ref("");
 const listLoading = ref(false);
 
@@ -25,11 +27,16 @@ let lastAddedTimer;
 let lineSeq = 0;
 let listLoaded = false;
 
+function emptyProgramList() {
+  return { programs: [], unassigned: { workoutCount: 0, workouts: [] } };
+}
+
 function emptyDraft() {
   return {
     workoutId: null,
     name: "",
     notes: "",
+    programs: [],
     exercises: [],
   };
 }
@@ -69,6 +76,7 @@ function applyWorkout(workout) {
     workoutId: workout.workoutId,
     name: workout.name || "",
     notes: workout.notes || "",
+    programs: Array.isArray(workout.programs) ? workout.programs : [],
     exercises: (workout.exercises || []).map((item) =>
       lineFromPayload(
         {
@@ -125,6 +133,8 @@ export function useWorkoutDraft() {
     saveError.value = "";
     saveNotice.value = "";
     savedWorkouts.value = [];
+    programList.value = emptyProgramList();
+    linkProgramId.value = null;
     listError.value = "";
     listLoaded = false;
   }
@@ -186,11 +196,12 @@ export function useWorkoutDraft() {
     markDirty();
   }
 
-  function startNew() {
+  function startNew(programId = null) {
     draft.value = emptyDraft();
     dirty.value = false;
     saveError.value = "";
     saveNotice.value = "";
+    linkProgramId.value = programId == null ? null : Number(programId);
     expandPanel();
   }
 
@@ -198,13 +209,21 @@ export function useWorkoutDraft() {
     listLoading.value = true;
     listError.value = "";
     try {
-      const data = await $fetch("/api/physical/workouts");
+      const [data, programs] = await Promise.all([
+        $fetch("/api/physical/workouts"),
+        $fetch("/api/physical/programs"),
+      ]);
       savedWorkouts.value = data.workouts || [];
+      programList.value = {
+        programs: programs.programs || [],
+        unassigned: programs.unassigned || { workoutCount: 0, workouts: [] },
+      };
       listLoaded = true;
     } catch (error) {
       const failure = settleLoadError(error, "Could not load saved workouts.");
       listError.value = failure.message;
       if (failure.auth && !failure.expired) savedWorkouts.value = [];
+      if (failure.auth && !failure.expired) programList.value = emptyProgramList();
     } finally {
       listLoading.value = false;
     }
@@ -239,6 +258,7 @@ export function useWorkoutDraft() {
     saveNotice.value = "";
     try {
       const body = payloadForSave();
+      if (!draft.value.workoutId && linkProgramId.value) body.programId = linkProgramId.value;
       const data = draft.value.workoutId
         ? await $fetch(`/api/physical/workouts/${draft.value.workoutId}`, { method: "PUT", body })
         : await $fetch("/api/physical/workouts", { method: "POST", body });
@@ -276,6 +296,52 @@ export function useWorkoutDraft() {
     }
   }
 
+  async function addDraftToProgram(programId) {
+    const workoutId = draft.value.workoutId;
+    const id = Number(programId);
+    if (!workoutId || !Number.isInteger(id) || id <= 0) return false;
+    saveError.value = "";
+    try {
+      await $fetch(`/api/physical/programs/${id}/items`, {
+        method: "PUT",
+        body: { workoutIds: [workoutId] },
+      });
+      if (dirty.value) {
+        const known = programList.value.programs.find((item) => item.programId === id);
+        if (known && !draft.value.programs.some((item) => item.programId === id)) {
+          draft.value.programs = [...draft.value.programs, { programId: id, name: known.name, sortOrder: 0 }];
+        }
+      } else {
+        await openWorkout(workoutId);
+      }
+      await loadList();
+      return true;
+    } catch (error) {
+      saveError.value = parseFetchError(error, "Could not add this workout to that program.");
+      return false;
+    }
+  }
+
+  async function removeDraftFromProgram(programId) {
+    const workoutId = draft.value.workoutId;
+    const id = Number(programId);
+    if (!workoutId || !Number.isInteger(id) || id <= 0) return false;
+    saveError.value = "";
+    try {
+      await $fetch(`/api/physical/programs/${id}/items/${workoutId}`, { method: "DELETE" });
+      if (dirty.value) {
+        draft.value.programs = draft.value.programs.filter((item) => item.programId !== id);
+      } else {
+        await openWorkout(workoutId);
+      }
+      await loadList();
+      return true;
+    } catch (error) {
+      saveError.value = parseFetchError(error, "Could not remove this workout from the program.");
+      return false;
+    }
+  }
+
   function beginCatalogDrag() {
     catalogDragging.value = true;
   }
@@ -286,6 +352,8 @@ export function useWorkoutDraft() {
 
   return {
     savedWorkouts,
+    programList,
+    linkProgramId,
     listError,
     listLoading,
     draft,
@@ -306,6 +374,8 @@ export function useWorkoutDraft() {
     openWorkout,
     saveWorkout,
     deleteWorkout,
+    addDraftToProgram,
+    removeDraftFromProgram,
     expandPanel,
     resetForUserChange,
     beginCatalogDrag,
