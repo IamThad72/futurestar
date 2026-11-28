@@ -17,7 +17,7 @@ export const PHYSICAL_SECTIONS = [
     name: "Workout Manager",
     slug: "workouts",
     icon: "barbell",
-    description: "Save workout plans. Open one to edit its exercises and targets.",
+    description: "Save workouts and group them into programs.",
   },
 ];
 

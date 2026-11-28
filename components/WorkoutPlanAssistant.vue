@@ -131,7 +131,9 @@
       <button type="button" class="btn btn-primary btn-sm rounded-full" :disabled="saving" @click="onSave">
         {{ saving ? "Saving…" : "Save this plan" }}
       </button>
-      <p v-if="savedCount" class="text-sm text-success">Saved {{ savedCount }} training days.</p>
+      <p v-if="savedCount" class="text-sm text-success">
+        Saved {{ savedCount }} training days<span v-if="savedProgram"> into {{ savedProgram }}</span>.
+      </p>
     </div>
   </section>
 </template>
@@ -183,6 +185,7 @@ const saving = ref(false);
 const error = ref("");
 const plan = ref(null);
 const savedCount = ref(0);
+const savedProgram = ref("");
 
 const weekGroups = computed(() => {
   const groups = [];
@@ -201,6 +204,7 @@ async function onGenerate() {
   generating.value = true;
   error.value = "";
   savedCount.value = 0;
+  savedProgram.value = "";
   try {
     const data = await $fetch("/api/physical/workouts/plan", {
       method: "POST",
@@ -237,6 +241,7 @@ async function onSave() {
       },
     });
     savedCount.value = (data.workouts || []).length;
+    savedProgram.value = data.program?.name || "";
     emit("saved");
   } catch (err) {
     error.value = parseFetchError(err, "Could not save the plan.");

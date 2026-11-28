@@ -27,6 +27,8 @@ const DEFAULT_COLUMNS: Record<string, string[]> = {
   income_sources: ["user_id", "group_id"],
   prayer_requests: ["user_id"],
   workouts: ["user_id"],
+  workout_programs: ["user_id"],
+  workout_program_items: ["user_id"],
   nutrition_intake_entries: ["user_id"],
   tax_household_profiles: ["user_id", "group_id", "household_key"],
   tax_deduction_overrides: ["user_id", "household_key"],

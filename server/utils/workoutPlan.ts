@@ -2,6 +2,7 @@ import { createError } from "h3";
 import type { Client } from "pg";
 import { generateJson } from "./groq";
 import { createWorkout, mapWorkoutWriteError, parseExerciseInputs, parseWorkoutName, parseWorkoutNotes } from "./workouts";
+import { addProgramItems, createProgramForPlan } from "./workoutPrograms";
 import { privateUserClause } from "./privateUserAccess";
 import {
   applyCatalogMatches,
@@ -340,5 +341,12 @@ export async function saveWorkoutPlan(client: Client, userId: number, body: unkn
       statusMessage: "Nothing to save. Add the highlighted exercises, or draft the plan again.",
     });
   }
-  return { workouts: saved };
+  const program = await createProgramForPlan(client, userId, title, parseWorkoutNotes(request.description));
+  await addProgramItems(
+    client,
+    userId,
+    program.programId,
+    saved.map((item) => item.workoutId),
+  );
+  return { workouts: saved, program: { programId: program.programId, name: program.name } };
 }

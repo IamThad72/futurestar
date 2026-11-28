@@ -6,12 +6,15 @@
         <p class="page-header__lede">
           {{
             editing
-              ? "Set the exercises and one target each. Starting this plan in the Exercise Journal copies it."
-              : "Save a plan here, then start it again from the Exercise Journal."
+              ? "Set the exercises and one target each. Starting this workout in the Exercise Journal copies it."
+              : "Group workouts into programs. Start a workout again from the Exercise Journal."
           }}
         </p>
       </div>
-      <button v-if="!editing && (auth.user || auth.sessionEnded)" type="button" class="btn btn-primary" @click="onNew">New workout</button>
+      <div v-if="!editing && (auth.user || auth.sessionEnded)" class="flex flex-wrap gap-2">
+        <button type="button" class="btn btn-primary min-h-11" @click="onNew">New workout</button>
+        <button type="button" class="btn btn-ghost min-h-11" @click="onNewProgram">New program</button>
+      </div>
     </header>
 
     <WorkoutBuilderPanel v-if="editing" @back="editing = false" />
@@ -21,26 +24,19 @@
       <LoadErrorPanel v-if="listError || saveError" :message="listError || saveError" :show-retry="Boolean(listError)" @retry="loadList" />
       <p v-else-if="listLoading" class="text-sm text-muted">Loading…</p>
       <EmptyState
-        v-else-if="!savedWorkouts.length"
-        title="No saved workouts yet."
-        sentence="Start a plan you can open again from the Exercise Journal."
-        :action="auth.user || auth.sessionEnded ? 'New workout' : ''"
-        @action="onNew"
+        v-else-if="showEmpty"
+        title="No programs yet."
+        sentence="Create a program, or save a workout and add it later."
+        :action="auth.user || auth.sessionEnded ? 'New program' : ''"
+        @action="onNewProgram"
       />
-      <ul v-else class="space-y-2">
-        <li v-for="item in savedWorkouts" :key="item.workoutId">
-          <button
-            type="button"
-            class="flex min-h-11 w-full items-center gap-3 rounded-lg border border-base-300 bg-base-100 px-4 py-3 text-left"
-            @click="onOpen(item)"
-          >
-            <span class="min-w-0 flex-1 truncate text-sm font-semibold text-base-content">{{ item.name }}</span>
-            <span class="text-sm text-base-content/60">
-              {{ item.exerciseCount }} {{ item.exerciseCount === 1 ? "exercise" : "exercises" }}
-            </span>
-          </button>
-        </li>
-      </ul>
+      <WorkoutProgramBoard
+        v-else
+        :creating="creatingProgram"
+        @open-workout="onOpen"
+        @view-change="onViewChange"
+        @cancel-create="creatingProgram = false"
+      />
     </div>
   </section>
 </template>
@@ -51,9 +47,11 @@ useHead({ title: "Workout Manager" });
 const { confirm: askUser } = useConfirm();
 
 const editing = ref(false);
+const creatingProgram = ref(false);
+const openedProgramId = ref(null);
 const auth = useAuthStore();
 const {
-  savedWorkouts,
+  programList,
   listError,
   listLoading,
   saveError,
@@ -65,13 +63,33 @@ const {
   resetForUserChange,
 } = useWorkoutDraft();
 
+const showEmpty = computed(
+  () =>
+    !creatingProgram.value &&
+    !(programList.value.programs || []).length &&
+    !(programList.value.unassigned?.workouts || []).length,
+);
+
+function onViewChange(payload) {
+  openedProgramId.value = payload?.view === "program" ? payload.programId : null;
+}
+
 function onNew() {
   if (!auth.user) {
     saveError.value = auth.sessionEnded ? SESSION_ENDED_MESSAGE : SIGN_IN_MESSAGE;
     return;
   }
-  startNew();
+  creatingProgram.value = false;
+  startNew(openedProgramId.value);
   editing.value = true;
+}
+
+function onNewProgram() {
+  if (!auth.user) {
+    saveError.value = auth.sessionEnded ? SESSION_ENDED_MESSAGE : SIGN_IN_MESSAGE;
+    return;
+  }
+  creatingProgram.value = true;
 }
 
 async function onOpen(item) {
@@ -106,6 +124,8 @@ watch(
     }
     resetForUserChange();
     editing.value = false;
+    creatingProgram.value = false;
+    openedProgramId.value = null;
     if (userId) void ensureList();
   },
 );

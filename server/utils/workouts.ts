@@ -3,17 +3,25 @@ import type { Client } from "pg";
 import { ensureLocalFeaturedEndurance } from "./exerciseCatalog";
 import { privateUserClause, privateUserClauseAt } from "./privateUserAccess";
 import { exerciseGifUrl } from "./exerciseDb";
+import { defaultLinkSortOrder } from "~/utils/workoutPrograms.js";
 
 /**
  * Physical workouts are always scoped to `app_users.user_id`.
  * Never filter or write `group_id`. Linked accounts do not share workouts.
  */
 
+export type ProgramMembership = {
+  programId: number;
+  name: string;
+  sortOrder: number;
+};
+
 export type WorkoutSummary = {
   workoutId: number;
   name: string;
   notes: string | null;
   exerciseCount: number;
+  programs: ProgramMembership[];
   createdAt: string;
   updatedAt: string;
 };
@@ -38,6 +46,7 @@ export type WorkoutDetail = {
   workoutId: number;
   name: string;
   notes: string | null;
+  programs: ProgramMembership[];
   createdAt: string;
   updatedAt: string;
   exercises: WorkoutExerciseDto[];
@@ -69,15 +78,71 @@ function asNumber(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function mapSummary(row: WorkoutRow): WorkoutSummary {
+function mapSummary(row: WorkoutRow, programs: ProgramMembership[] = []): WorkoutSummary {
   return {
     workoutId: Number(row.workout_id),
     name: row.name,
     notes: row.notes,
     exerciseCount: Number(row.exercise_count || 0),
+    programs,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+type MembershipRow = {
+  workout_id?: number;
+  program_id: number;
+  program_name: string;
+  sort_order: number;
+};
+
+function mapMembership(row: MembershipRow): ProgramMembership {
+  return {
+    programId: Number(row.program_id),
+    name: row.program_name,
+    sortOrder: Number(row.sort_order),
+  };
+}
+
+async function membershipsForUser(client: Client, userId: number): Promise<Map<number, ProgramMembership[]>> {
+  const grouped = new Map<number, ProgramMembership[]>();
+  try {
+    const links = await client.query(
+      `SELECT i.workout_id, i.program_id, i.sort_order, p.name AS program_name
+       FROM workout_program_items i
+       JOIN workout_programs p ON p.program_id = i.program_id AND p.user_id = i.user_id
+       WHERE i.user_id = $1
+       ORDER BY p.sort_order ASC, p.program_id ASC, i.sort_order ASC, i.workout_id ASC`,
+      [userId],
+    );
+    for (const row of links.rows as MembershipRow[]) {
+      const workoutId = Number(row.workout_id);
+      const list = grouped.get(workoutId) ?? [];
+      list.push(mapMembership(row));
+      grouped.set(workoutId, list);
+    }
+  } catch (error) {
+    if (!isMissingRelation(error)) throw error;
+  }
+  return grouped;
+}
+
+async function membershipsForWorkout(client: Client, userId: number, workoutId: number): Promise<ProgramMembership[]> {
+  try {
+    const links = await client.query(
+      `SELECT i.program_id, i.sort_order, p.name AS program_name
+       FROM workout_program_items i
+       JOIN workout_programs p ON p.program_id = i.program_id AND p.user_id = i.user_id
+       WHERE i.workout_id = $2 AND i.user_id = $1
+       ORDER BY p.sort_order ASC, p.program_id ASC`,
+      [userId, workoutId],
+    );
+    return (links.rows as MembershipRow[]).map(mapMembership);
+  } catch (error) {
+    if (!isMissingRelation(error)) throw error;
+    return [];
+  }
 }
 
 function mapExercise(row: {
@@ -190,6 +255,9 @@ export function isMissingRelation(error: unknown) {
 export function mapWorkoutWriteError(error: unknown, fallback: string) {
   const code = error && typeof error === "object" && "code" in error ? String((error as { code?: string }).code) : "";
   const msg = String((error as { message?: string })?.message ?? "");
+  if (code === "23505" && msg.includes("idx_workout_programs_user_name")) {
+    return createError({ statusCode: 400, statusMessage: "You already have a program with that name." });
+  }
   if (code === "23505" || msg.includes("idx_workouts_user_name")) {
     return createError({ statusCode: 400, statusMessage: "You already have a workout with that name." });
   }
@@ -216,7 +284,8 @@ export async function listWorkouts(client: Client, userId: number): Promise<Work
      ORDER BY w.updated_at DESC, w.workout_id DESC`,
     [userId],
   );
-  return result.rows.map(mapSummary);
+  const memberships = await membershipsForUser(client, userId);
+  return result.rows.map((row) => mapSummary(row as WorkoutRow, memberships.get(Number(row.workout_id)) ?? []));
 }
 
 export async function getWorkoutById(
@@ -248,6 +317,7 @@ export async function getWorkoutById(
     workoutId: Number(row.workout_id),
     name: row.name,
     notes: row.notes,
+    programs: await membershipsForWorkout(client, userId, workoutId),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     exercises: exercises.rows.map(mapExercise),
@@ -296,14 +366,49 @@ async function insertExercises(client: Client, workoutId: number, exercises: Wor
   }
 }
 
+export function parseOptionalProgramId(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const id = typeof value === "number" ? value : Number(value);
+  if (!Number.isInteger(id) || id <= 0) {
+    throw createError({ statusCode: 400, statusMessage: "Invalid program id." });
+  }
+  return id;
+}
+
+async function linkNewWorkout(client: Client, userId: number, programId: number, workoutId: number, workoutName: string) {
+  const existing = await client.query(
+    `SELECT sort_order FROM workout_program_items WHERE ${privateUserClauseAt("", 1)} AND program_id = $2`,
+    [userId, programId],
+  );
+  const sortOrder = defaultLinkSortOrder(
+    workoutName,
+    existing.rows.map((row) => Number(row.sort_order)),
+  );
+  await client.query(
+    `INSERT INTO workout_program_items (user_id, program_id, workout_id, sort_order)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (program_id, workout_id) DO NOTHING`,
+    [userId, programId, workoutId, sortOrder],
+  );
+}
+
 export async function createWorkout(
   client: Client,
   userId: number,
-  input: { name: string; notes: string | null; exercises: WorkoutExerciseInput[] },
+  input: { name: string; notes: string | null; exercises: WorkoutExerciseInput[]; programId?: number | null },
 ): Promise<WorkoutDetail> {
   await assertCatalogIds(client, input.exercises.map((item) => item.exerciseId));
   await client.query("BEGIN");
   try {
+    if (input.programId) {
+      const owned = await client.query(
+        `SELECT program_id FROM workout_programs WHERE program_id = $2 AND ${privateUserClauseAt("", 1)}`,
+        [userId, input.programId],
+      );
+      if (!owned.rowCount) {
+        throw createError({ statusCode: 404, statusMessage: "Program not found." });
+      }
+    }
     const inserted = await client.query(
       `INSERT INTO workouts (user_id, name, notes)
        VALUES ($1, $2, $3)
@@ -312,6 +417,9 @@ export async function createWorkout(
     );
     const workoutId = Number(inserted.rows[0].workout_id);
     await insertExercises(client, workoutId, input.exercises);
+    if (input.programId) {
+      await linkNewWorkout(client, userId, input.programId, workoutId, input.name);
+    }
     await client.query("COMMIT");
     const detail = await getWorkoutById(client, userId, workoutId);
     if (!detail) throw createError({ statusCode: 500, statusMessage: "Failed to load the saved workout." });

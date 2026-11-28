@@ -5,6 +5,7 @@ import {
   createWorkout,
   mapWorkoutWriteError,
   parseExerciseInputs,
+  parseOptionalProgramId,
   parseWorkoutName,
   parseWorkoutNotes,
 } from "../../../utils/workouts";
@@ -15,11 +16,12 @@ export default defineEventHandler(async (event) => {
   const name = parseWorkoutName(body.name);
   const notes = parseWorkoutNotes(body.notes);
   const exercises = parseExerciseInputs(body.exercises);
+  const programId = parseOptionalProgramId(body.programId);
 
   const client = createDbClient();
   try {
     await client.connect();
-    const workout = await createWorkout(client, userId, { name, notes, exercises });
+    const workout = await createWorkout(client, userId, { name, notes, exercises, programId });
     return { workout };
   } catch (error: unknown) {
     if (error && typeof error === "object" && "statusCode" in error) throw error;
